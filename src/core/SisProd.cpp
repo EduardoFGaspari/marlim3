@@ -12997,7 +12997,7 @@ void SProd::SolveTrans(double titRev, double alfRev, double betRev, int nrede, P
             escreveIni << "     Versao    " << versao << endl;
             if (arq.saidaClassica == 1) {
                 srand(time(NULL));
-                int frase = rand() % 15;
+                int frase = rand() % 16;
                 escreveIni << "*******************************************************************************" << endl;
                 escreveIni << "                                  UFA!!!!!!!!                                  " << endl;
                 escreveIni << saidaTextoSis[frase] << endl;
@@ -15511,7 +15511,7 @@ double SProd::buscaProdPfundoPerm(double chute, int kontaTenta) {
                                 logger.log(LOGGER_AVISO, LOG_ERR_PARSE_BUSINESS_RULE_VALIDATION,
                                            "Busca de valores iniciais para calculo de zero de funcao em buscaProdPfundoPerm atingiu maximo de iteracoes",
                                            "", "");
-                            cout << "#################PERMANENTE FALHOU EM SUA CONVERGÃŠNCIA##############################" << endl;
+                            cout << "#################PERMANENTE FALHOU EM SUA CONVERGENCIA##############################" << endl;
                             if ((*vg1dSP).iterRede > 0)
                                 return -1.1e10;
                             else

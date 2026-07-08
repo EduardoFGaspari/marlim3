@@ -10597,7 +10597,12 @@ void Ler::parse_perfil_producao(
 						nvarprofp++;
 				}
 
-				if (perfil_producao_json.QLstd().exists()) {
+				if (perfil_producao_json.QOstd().exists()) {
+					profp.qlst = perfil_producao_json.QOstd();
+					if (profp.qlst == 1)
+						nvarprofp++;
+				}
+				else if (perfil_producao_json.QLstd().exists()) {
 					profp.qlst = perfil_producao_json.QLstd();
 					if (profp.qlst == 1)
 						nvarprofp++;

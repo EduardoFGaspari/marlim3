@@ -450,7 +450,7 @@ module FlashExtras
 
             ! ---------> Escrita no arquivo de Debug:
             call WriteDebugFileLine(" ", bConfirmWriteLine = bWriteToDebugFile)
-            write(sDebugFileLine, '("    Iteração ", I4, ": Subst. Sucessiva do flash ainda não convergiu ; dBetaVap = ", F7.5)') iIter, dBetaVap
+            write(sDebugFileLine, '("    Iteração ", I4, ": Subst. Sucessiva do flash ainda não convergiu ; dBetaVap = ", F8.5)') iIter, dBetaVap
             call WriteDebugFileLine(sDebugFileLine, bConfirmWriteLine = bWriteToDebugFile)
             ! ---------> Fim da escrita no arquivo de Debug:
 
@@ -2134,7 +2134,7 @@ module FlashExtras
         real(c_double), dimension(iNComp) :: oD         ! "di" da eq 3 do Cap 9 da referência
         real(c_double), dimension(iNComp) :: oCurrentW, oStationaryPointW_Newton
         real(c_double), dimension(iNComp) :: oCurrentWLnFug, oPreviousWLnFug
-        real(c_double) :: dCurrentWTPD
+        real(c_double) :: dCurrentWTPD, dPreviousWTPD
         real(c_double) :: dNegativeTPDCriteriaToUse
         logical :: bSuccessiveSubstitutionFoundNegativeTPD
         logical :: bTryAnotherNumericalMethod
@@ -2142,6 +2142,9 @@ module FlashExtras
         real(c_double) :: dError
         real(c_double) :: dLastTrialWSumBeforeNormalizationMinusUnity_Loc
         logical :: bIgnoreNewtonOutcomeAndResume
+
+        real(c_double) :: dTPDRelChange     ! Modificação relativa em TPD entre iterações (não era calculada no algoritmo original).
+        logical :: bTPDRelChangeBelowTol    ! "True" se estiver convergido pelo critério da mudança relativa de TPD (não estava no algoritmo original)
 
         character(len=150) :: sDebugFileLine    ! Linha para escrever no arquivo de "debug".
 
@@ -2158,6 +2161,10 @@ module FlashExtras
         real(c_double), parameter :: dDefaultRelativeTol = epsilon(1.0) * 1.0d5 * 0.46d0    ! VALOR MODIFICADO (caso necessário, só reverter para o ORIGINAL acima)
 
         logical, parameter :: bWriteToDebugFile = .true.                    ! No futuro, MANTER LOCAL, mas possibilitar mudar com argumento opcional!
+        logical, parameter :: bCheckTPDRelChangeInSS = .true.               ! "True" para considerar variação relativa de TPD como critério de convergência do
+                                                                            !       Método de Substituições Sucessivas (não fazia parte do algoritmo original).
+        real(c_double), parameter :: dTPDRelChangeInSSTolerance = 0.03d0    ! Tolerância para considerar Substituições Sucessivas convergido pelo critério de
+                                                                            ! variação relativa de TPD entre iterações (não estava no algoritmo original).
 
         ! ------------------ CÁLCULOS:
 
@@ -2167,9 +2174,13 @@ module FlashExtras
         write(sDebugFileLine, '("            ENTRANDO NA SUBROTINA MinimizeTPDFunction")')
         call WriteDebugFileLine(sDebugFileLine, bConfirmWriteLine = bWriteToDebugFile)
         call WriteDebugFileLine(" ", bConfirmWriteLine = bWriteToDebugFile)
-        write(sDebugFileLine, '("            Tolerância no Erro da Subst Suc = ", E12.5, " ; Max Iter Subst Suc = ", I4, " ; dNegativeTPDCriteriaToUse = ", E12.5)') &
-            dDefaultRelativeTol, iSuccessiveSubstitutionMaxAttempts, dNegativeTPDCriteriaToUse
+        write(sDebugFileLine, '("            Tolerância no Erro da Subst Suc = ", E12.5, " ; Max Iter Subst Suc = ", I4, " ; dNegativeTPDCriteria = ", E12.5)') &
+            dDefaultRelativeTol, iSuccessiveSubstitutionMaxAttempts, dNegativeTPDCriteria
         call WriteDebugFileLine(sDebugFileLine, bConfirmWriteLine = bWriteToDebugFile)
+        if(bCheckTPDRelChangeInSS) then
+            write(sDebugFileLine, '("            Tolerância Relativa em TPD = ", E12.5)') dTPDRelChangeInSSTolerance
+            call WriteDebugFileLine(sDebugFileLine, bConfirmWriteLine = bWriteToDebugFile)
+        end if
         call WriteDebugFileLine(" ", bConfirmWriteLine = bWriteToDebugFile)
         ! -----> Fim da escrita no arquivo de Debug:
 
@@ -2177,6 +2188,7 @@ module FlashExtras
         dNegativeTPDCriteriaToUse = dNegativeTPDCriteria
         bSuccessiveSubstitutionFoundNegativeTPD = .false.
         bSuccessiveSubstitutionConverged = .false.
+        bTPDRelChangeBelowTol = .false.
 
         ! Calcular os "di" (eq 3 do Cap 9 da referência - atentar que a eq 43 do Cap 10 tem um pequeno erro em "di"):
         calcDi: do i = 1, iNComp
@@ -2194,6 +2206,7 @@ module FlashExtras
         successiveSubstMainLoop: do iIter = 1, iSuccessiveSubstitutionMaxAttempts
 
             ! Armazenar o resultado da iteração anterior:
+            dPreviousWTPD = dCurrentWTPD
             oPreviousWLnFug = oCurrentWLnFug
 
             ! Calcular os coeficientes de fugacidade do "W atual":
@@ -2229,14 +2242,20 @@ module FlashExtras
                 end if chooseErrorContribution
             end do calcErrorLoop
 
+            calcRelChangeInTPD: if((iIter.ge.2).AND.bCheckTPDRelChangeInSS) then
+                dTPDRelChange = abs((dPreviousWTPD - dCurrentWTPD) / dPreviousWTPD)
+                bTPDRelChangeBelowTol = (dTPDRelChange.lt.dTPDRelChangeInSSTolerance)
+            end if calcRelChangeInTPD
+
             ! --------------> Escrita no arquivo de debug
-            write(sDebugFileLine, '("            Iteração ", I3, " da Subst. Suc no Teste Estab: dError = ", E12.5, " ; dCurrentWTPD = ", E12.5)') &
-                iIter, dError, dCurrentWTPD
+            write(sDebugFileLine, &
+                '("            Iteração ", I3, " da Subst. Suc no Teste Estab: dError = ", E12.5, " ; dCurrentWTPD = ", E12.5, " ; dTPDRelChange = ", E12.5)') &
+                iIter, dError, dCurrentWTPD, dTPDRelChange
             call WriteDebugFileLine(sDebugFileLine, bConfirmWriteLine = bWriteToDebugFile)
             ! --------------> Fim da escrita no arquivo de debug
 
             ! Erro dentro da convergência?
-            bSuccessiveSubstitutionConverged = (dError.lt.dDefaultRelativeTol)
+            bSuccessiveSubstitutionConverged = (dError.lt.dDefaultRelativeTol).OR.(bTPDRelChangeBelowTol)
             checkSSConvergence: if(bSuccessiveSubstitutionConverged) then
                 ! Encerrar, pois o resultado já foi encontrado.
                 exit successiveSubstMainLoop

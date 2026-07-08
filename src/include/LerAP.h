@@ -416,12 +416,12 @@ class APara {
     casoVEC *sequenciaAP;
     genericoVEC *genericoAP;
 
-    double resultadosVec[21 + 1];
+    double resultadosVec[22 + 1];
     double **saidaBHP;
     double **saidaVazLiq;
     int nthrdAP;
     int *vecParSerie;
-    int varSeq[22];
+    int varSeq[23];
     int vfp;
     varGlob1D *vg1dSP;
     int ncel;

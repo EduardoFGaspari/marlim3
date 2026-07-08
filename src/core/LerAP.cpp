@@ -1667,23 +1667,22 @@ void APara::lerArq() {
         constroiVecParSerie();
         inicializaSequen(0, 0);
         traduzSeq();
-    } else if (vfp == 0) {
+    }
+    else if (vfp == 0) {
         constroiVecParSerieImex();
         inicializaSequen(0, 0);
         traduzSeqImex();
     }
-
-	    else if(vfp==2){ //alteracao aditivo
-	    	constroiVecParSerieImex();
-	    	inicializaSequen(0,0);
-	    	traduzSeqImex();
+	else if(vfp==2){ //alteracao aditivo
+	    constroiVecParSerieImex();
+	    inicializaSequen(0,0);
+	    traduzSeqImex();
 	    }
-
-	    if(vfp==3){
-	    	constroiVecParSerie();
-	    	inicializaSequen(0,0);
-	    	traduzSeq();
-	    }
+	else if(vfp==3){
+	    constroiVecParSerie();
+	    inicializaSequen(0,0);
+	    traduzSeq();
+	}
     if (tipoAP == 1) {
         saidaBHP = new double *[nVariaveis];
         saidaVazLiq = new double *[nVariaveis];
@@ -2209,7 +2208,7 @@ void APara::constroiVecParSerieImex() {
         }
     }
     if (listaV.vmbcs == 1) {
-        for (int indBCS = 0; indBCS < nAPBCS; indBCS++) {
+        for (int indBCS = 0; indBCS < nAPMBCS; indBCS++) {
             if (APMBCS[indBCS].parserieFreq > 0) {
                 vecParSerie[locdim] = APMBCS[indBCS].parserieFreq;
                 locdim++;
@@ -7009,6 +7008,15 @@ void APara::tabelaGenericaCabecalho() {
 		}
 		escreveIni1 << "\n" << endl;
 		}
+		if (nAPMBCS>0&&nAPMBCS<10) {
+			escreveIni1 << "** Modo de operacao :" << " Elevacao por BCS " << endl; //add entrada QGI_VALV  = 225600.0
+		for (int i = 0; i < nAPMBCS; ++i) {
+		   // int icel = bcs[ ASBCS[i].indBCS ].posicP;  // mapeia Ã­ndice da AS â†’ posiÃ§Ã£o na malha
+		    escreveIni1 << "** Profundidade BCS: " << celp[mbcs[ APMBCS[i].indBCS ].posicP].profundiM << endl;
+		    escreveIni1 << "** Frequencia da BCS (Hz): " << APMBCS->freq[i] << endl;
+		}
+		escreveIni1 << "\n" << endl;
+		}
 
 //		escreveIni1 << "\n" << endl;
 
@@ -7121,6 +7129,15 @@ void APara::tabelaGenericaCabecalho() {
 			   // int icel = bcs[ ASBCS[i].indBCS ].posicP;  // mapeia Ã­ndice da AS â†’ posiÃ§Ã£o na malha
 			    escreveIni3 << "** Profundidade BCS: " << celp[bcs[ APBCS[i].indBCS ].posicP].profundiM << endl;
 			    escreveIni3 << "** Frequencia da BCS (Hz): " << APBCS->freq[i] << endl;
+			}
+			escreveIni3 << "\n" << endl;
+			}
+			if (nAPMBCS>0&&nAPMBCS<10) {
+				escreveIni3 << "** Modo de operacao :" << " Elevacao por BCS " << endl; //add entrada QGI_VALV  = 225600.0
+			for (int i = 0; i < nAPMBCS; ++i) {
+			   // int icel = bcs[ ASBCS[i].indBCS ].posicP;  // mapeia Ã­ndice da AS â†’ posiÃ§Ã£o na malha
+			    escreveIni3 << "** Profundidade BCS: " << celp[mbcs[ APMBCS[i].indBCS ].posicP].profundiM << endl;
+			    escreveIni3 << "** Frequencia da BCS (Hz): " << APMBCS->freq[i] << endl;
 			}
 			escreveIni3 << "\n" << endl;
 			}
@@ -7262,6 +7279,11 @@ void APara::tabelaGenericaCabecalho() {
 					escreveIni4 << "-- Profundidade Medida BCS: " << celp[bcs[ APBCS[i].indBCS ].posicP].profundiM << endl;
 				}
 				}
+				if (nAPMBCS>0&&nAPMBCS<10) {
+				for (int i = 0; i < nAPMBCS; ++i) {
+					escreveIni4 << "-- Profundidade Medida BCS: " << celp[mbcs[ APMBCS[i].indBCS ].posicP].profundiM << endl;
+				}
+				}
 
 				if (nAPFG>0&&nAPFG<10) {
 				for (int i = 0; i < nAPFG; ++i) {
@@ -7332,6 +7354,16 @@ void APara::tabelaGenericaCabecalho() {
 				    }
 		    	    escreveIni4 << "   / " << APBCS->parserieFreq << " ALQ value(s) m3/d " << endl;
 			    }
+			    if (nAPMBCS>0&&nAPMBCS<10) {
+			    	//escreveIni2 << "-- GRAT (Hz)" << endl;
+				    for (int i = 0; i < APMBCS->parserieFreq; ++i) {
+				        escreveIni4 << APMBCS->freq[i];
+				        if (i < APMBCS->parserieFreq - 1) {
+				            escreveIni4 << " ";
+				        }
+				    }
+		    	    escreveIni4 << "   / " << APMBCS->parserieFreq << " ALQ value(s) m3/d " << endl;
+			    }
 			    if (nAPFG>0&&nAPFG<10) {
 			    	//escreveIni2 << "-- GRAT (m3/d)" << endl;
 				    for (int i = 0; i < APFonGas->parserieVazG; ++i) {
@@ -7373,6 +7405,11 @@ void APara::tabelaGenericaCabecalho() {
         if (nAPBCS > 0 && nAPBCS < 10) {
             for (int i = 0; i < nAPBCS; ++i) {
                 escreveIni2 << "-- Profundidade Medida BCS: " << celp[bcs[APBCS[i].indBCS].posicP].profundiM << endl;
+            }
+        }
+        if (nAPMBCS > 0 && nAPMBCS < 10) {
+            for (int i = 0; i < nAPMBCS; ++i) {
+                escreveIni2 << "-- Profundidade Medida BCS: " << celp[bcs[APMBCS[i].indBCS].posicP].profundiM << endl;
             }
         }
 
@@ -7433,6 +7470,16 @@ void APara::tabelaGenericaCabecalho() {
             for (int i = 0; i < APBCS->parserieFreq; ++i) {
                 escreveIni2 << APBCS->freq[i];
                 if (i < APBCS->parserieFreq - 1) {
+                    escreveIni2 << " ";
+                }
+            }
+            escreveIni2 << "   /" << endl;
+        }
+        if (nAPMBCS > 0 && nAPMBCS < 10) {
+            escreveIni2 << "-- GRAT (Hz)" << endl;
+            for (int i = 0; i < APMBCS->parserieFreq; ++i) {
+                escreveIni2 << APMBCS->freq[i];
+                if (i < APMBCS->parserieFreq - 1) {
                     escreveIni2 << " ";
                 }
             }
@@ -7631,6 +7678,23 @@ void APara::tabelaGenericaCabecalho() {
                 konta1++;
             }
             if (APBCS[indBCS].parserieEstag > 0) {
+                escreveIni << " indice BCS = " << konta2 << " N Estagios ;";
+                konta2++;
+            }
+        }
+    }
+    if (listaV.vmbcs == 1) {
+        int konta1 = 0;
+        int konta2 = 0;
+        for (int indBCS = 0; indBCS < nAPMBCS; indBCS++) {
+            if (APMBCS[indBCS].parserieFreq > 0) {
+                escreveIni << " indice BCS = " << konta1 << " Frequencia ;";
+                if (vfp == 1) {
+                    escreveIni2 << "nfreq  ";
+                }
+                konta1++;
+            }
+            if (APMBCS[indBCS].parserieEstag > 0) {
                 escreveIni << " indice BCS = " << konta2 << " N Estagios ;";
                 konta2++;
             }
