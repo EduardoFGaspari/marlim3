@@ -304,18 +304,14 @@ $$
 Adding the gas mass conservation equation Equation \eqref{eq:gas_balance_rearran} with the holdup evolution equation Equation \eqref{eq:holdup_evolution} yields:
 
 $$
-\frac{\alpha}{\rho_g}\left(\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \left.\frac{\partial \rho_g}{\partial T}\right|_p \frac{\partial T}{\partial t}\right) + \frac{1}{A\rho_g}\frac{\partial \dot{M}_g}{\partial x} + \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} + \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} =
-\\
-\frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} + \frac{\psi}{A\rho_g} - \frac{\psi}{A\rho_{lp}} - \left(\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right)
+\frac{\alpha}{\rho_g}\left(\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \left.\frac{\partial \rho_g}{\partial T}\right|_p \frac{\partial T}{\partial t}\right) + \frac{1}{A\rho_g}\frac{\partial \dot{M}_g}{\partial x} + \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} + \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} = \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} + \frac{\psi}{A\rho_g} - \frac{\psi}{A\rho_{lp}} - \left(\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right)
 \label{eq:summing_holdupEv_gasCons}
 $$
 
 As discussed, gas compressibility cannot be neglected — slow gas accumulation phenomena depend critically on the pressure derivative of gas density — however, the influence of the temperature derivative of $\rho_g$ on the temporal evolution is small. It is therefore moved to the bracketed "deferred" terms on the right-hand side of Equation \eqref{eq:summing_holdupEv_gasCons}, to be either discarded or updated iteratively, yielding:
 
 $$
-\frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \frac{1}{A\rho_g}\frac{\partial \dot{M}_g}{\partial x} + \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} + \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} + \frac{1}{A}\left(\frac{1}{\rho_{lp}} - \frac{1}{\rho_g}\right)\psi =
-\\
-\frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} - \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} + \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial T}\right|_p \frac{\partial T}{\partial t}\right]
+\frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \frac{1}{A\rho_g}\frac{\partial \dot{M}_g}{\partial x} + \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} + \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} + \frac{1}{A}\left(\frac{1}{\rho_{lp}} - \frac{1}{\rho_g}\right)\psi = \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} - \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} + \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial T}\right|_p \frac{\partial T}{\partial t}\right]
 \label{eq:final_mass_conservation}
 $$
 
@@ -365,15 +361,11 @@ The bracketed deferred terms on the last line collect the pressure-sensitive bla
 
 Which leads to:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L} - A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\beta\frac{\partial(1-\alpha)}{\partial t}$$
-
-$$- (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} - \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]$$
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L} - A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\beta\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} - \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]$$
 
 Grouping the terms containing temporal derivatives of the holdup:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}$$
-
-$$- \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L}$$
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}- \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L}$$
 
 $$- \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]$$
 
@@ -381,24 +373,12 @@ Note that after grouping, the two holdup temporal derivative terms — originall
 
 Substituting (60) into (50) yields the final holdup evolution equation:
 
-$$\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}$$
-
-$$- \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L} =$$
-
-$$- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}$$
-
-$$- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]$$
+$$\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}- \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L} =- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]$$
 
 This equation now expresses the temporal evolution of the liquid holdup $(1-\alpha)$ in a form suitable for **explicit numerical integration**: the left-hand side groups the dominant holdup and flux terms — including the interphase mass-transfer coupling through the black-oil dissolved-gas terms — while the right-hand side collects the phase flux divergences, mass sources, and all deferred compressibility and black-oil property correction terms within the bracket.
 
 Rearranging (61):
 
-$$\left[1 - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}(1-\beta)\right]\frac{\partial(1-\alpha)}{\partial t} =$$
-
-$$- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\left[1-(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}\right]\frac{\partial \dot{M}_c}{\partial x}$$
-
-$$+ \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + \left[1-(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}\right]\frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}$$
-
-$$- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]$$
+$$\left[1 - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}(1-\beta)\right]\frac{\partial(1-\alpha)}{\partial t} =- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\left[1-(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}\right]\frac{\partial \dot{M}_c}{\partial x}+ \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + \left[1-(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}\right]\frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]$$
 
 This rearrangement makes the structure of the **explicit holdup update** particularly clear: the left-hand side contains a single effective coefficient multiplying $\partial(1-\alpha)/\partial t$, which accounts for the dissolved-gas feedback on holdup dynamics through the black-oil parameters $R_s$, $B_o$ and $F_w$. The right-hand side groups the flux divergences, mass sources, and deferred correction terms in a form directly amenable to explicit time integration.
