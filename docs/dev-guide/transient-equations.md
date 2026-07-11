@@ -93,20 +93,32 @@ where:
 For the calculation of mixture properties, the following relations are used:
 
 **Liquid mixture density**
-$\rho_l = (1-\beta)\rho_{lp} + \beta\rho_{lc}
-\label{eq:rho_l}$
+
+$$
+\rho_l = (1-\beta)\rho_{lp} + \beta\rho_{lc}
+\label{eq:rho_l}
+$$
 
 **Fluid mixture density**
-$\rho_m = (1-\alpha)\rho_l + \alpha\rho_g
-\label{eq:rho_m}$
+
+$$
+\rho_m = (1-\alpha)\rho_l + \alpha\rho_g
+\label{eq:rho_m}
+$$
 
 **Liquid mixture dynamic viscosity**
-$\mu_l = (1-\beta)\mu_{lp} + \beta\mu_{lc}
-\label{eq:mu_l}$
+
+$$
+\mu_l = (1-\beta)\mu_{lp} + \beta\mu_{lc}
+\label{eq:mu_l}
+$$
 
 **Fluid mixture dynamic viscosity**
-$\mu_m = (1-\alpha)\mu_l + \alpha\mu_g
-\label{eq:mu_m}$
+
+$$
+\mu_m = (1-\alpha)\mu_l + \alpha\mu_g
+\label{eq:mu_m}
+$$
 
 Where:
 

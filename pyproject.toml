@@ -69,6 +69,7 @@ desktop = [
 ]
 docs = [
     "mkdocs-material>=9.5",
+    "mkdocs-jupyter>=0.24",
 ]
 tutorials = [
     "scipy",
