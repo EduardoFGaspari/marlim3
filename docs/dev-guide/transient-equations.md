@@ -334,7 +334,7 @@ This approach yields a numerical framework that is simple to implement, robust, 
 
 The interphase mass-transfer term $\psi$ was not yet made explicit in Equations \eqref{eq:holdup_evolution} and \eqref{eq:final_mass_conservation}. Before doing so, some adjustments to Equation \eqref{eq:psi_blackoil} are required. The most immediate one concerns the temporal variation of pressure-dependent quantities. The mass-transfer equation is derived from a mass balance of the light component dissolved in the dead oil — i.e., the light component in the liquid state — which accounts for most of the pressure dependence of the liquid phase density. Consistently with the treatment applied to the produced liquid mass conservation equation, the pressure-dependent temporal derivative will be separated as a deferred term that may or may not be discarded. Expanding the temporal derivative of Equation \eqref{eq:psi_blackoil}:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t} - A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x}$$
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t} - A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} \label{eq:mass_transfer_expanded}$$
 
 Which, separating the pressure-sensitive temporal term into the deferred bracket, gives:
 
@@ -342,7 +342,10 @@ $$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\frac{\partial(1-\alp
 \label{eq:psi_expanded}$$
 
 The bracketed term may or may not be discarded depending on whether an iterative time-advancement procedure is adopted.
+
 A brief clarification on the numerical treatment: $\psi$ is handled differently in Equations \eqref{eq:holdup_evolution} and \eqref{eq:final_mass_conservation}. In Equation \eqref{eq:holdup_evolution}, which governs holdup evolution, the mass source and mass flow rate terms are treated **explicitly**. In Equation \eqref{eq:final_mass_conservation}, used in the coupled pressure–mass flow rate system, the mass flow rate terms are treated **implicitly** — noting that the holdup temporal derivative is already available at that stage. While this may appear numerically inconsistent when no iterative procedure is used, this methodology has proven robust and effective for the time-step ranges typical of a semi-implicit scheme.
+
+### Final holdup evolution equation
 
 In preparing Equation \eqref{eq:psi_expanded} for substitution into Equation \eqref{eq:holdup_evolution}, the variable $\beta$ must be factored out of the temporal derivative; otherwise, the holdup and $\beta$ evolution equations would need to be solved in a coupled fashion, which is impractical. The algebraic steps are as follows.
 
@@ -375,3 +378,38 @@ Rearranging Equation \eqref{eq:holdup_evolution_semifinal}:
 $$\left[1 - (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}(1-\beta)\right]\frac{\partial(1-\alpha)}{\partial t} =- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\left[1-(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}\right]\frac{\partial \dot{M}_c}{\partial x}+ \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} + \left[1-(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}\right]\frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t}\right] \label{eq:holdup_evolution_final}$$
 
 This rearrangement makes the structure of the **explicit holdup update** particularly clear: the left-hand side contains a single effective coefficient multiplying $\partial(1-\alpha)/\partial t$, which accounts for the dissolved-gas feedback on holdup dynamics through the black-oil parameters $R_s$, $B_o$ and $F_w$. The right-hand side groups the flux divergences, mass sources, and deferred correction terms in a form directly amenable to explicit time integration. Therefore, Equation \eqref{eq:holdup_evolution_final} is the holdup evolution equation used in `Marlim3` transient model.
+
+### Final mixture mass flow rate equation
+
+As previously stated, for Equation \eqref{eq:final_mass_conservation} the mass-transfer term is treated differently, since the holdup and $\beta$ profiles are assumed to have already been obtained for the current time level. Applying the mass-transfer equation \eqref{eq:mass_transfer_expanded} into \eqref{eq:final_mass_conservation} yields:
+
+$$\frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \frac{1}{A\rho_g}\frac{\partial \dot{M}g}{\partial x} + \frac{1}{A\rho{lp}}\frac{\partial \dot{M}p}{\partial x} + \frac{1}{A\rho{lc}}\frac{\partial \dot{M}_c}{\partial x}
++ \frac{1}{A}\left(\frac{1}{\rho_{lp}} - \frac{1}{\rho_g}\right)
+\left\{
+-A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}
+\frac{\partial(1-\alpha)(1-\beta)}{\partial t}
+-
+\frac{\partial\left((1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l\right)}{\partial x}
+-
+\left[
+A(1-\alpha)(1-\beta)
+\frac{\partial\left((1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\right)}{\partial t}
+\right]
+\right\}
+= \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} - \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} + \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial T}\right|_p \frac{\partial T}{\partial t}\right]$$
+
+Rearranging:
+
+$$\frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \frac{1}{A\rho_g}\frac{\partial \dot{M}g}{\partial x} + \frac{1}{A\rho{lp}}\frac{\partial \dot{M}p}{\partial x} + \frac{1}{A\rho{lc}}\frac{\partial \dot{M}_c}{\partial x}+ \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} =\frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} - \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} + \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial T}\right|p \frac{\partial T}{\partial t} + \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho{lp}}\right)A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right] \label{eq:final_mass_conservation_rearran}$$
+
+Note that the temporal derivatives of the liquid volumetric fractions remain on the right-hand side of \eqref{eq:final_mass_conservation_rearran}, as they are treated as source terms in the numerical approach.
+
+Furthermore, in \eqref{eq:final_mass_conservation_rearran} it is convenient to express all flow rate derivatives in terms of the **gas mass flow rate** $\dot{M}_g$ and the **liquid mixture mass flow rate** $\dot{M}_l$, since equation \eqref{eq:final_mass_conservation_rearran} will be used in the numerical scheme to obtain $\dot{M}_m$, from which $\dot{M}_g$ and $\dot{M}_l$ are recovered via equations \eqref{eq:M_l_from_M_m} and \eqref{eq:M_g_from_M_m}. Therefore:
+
+$$\frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \frac{1}{A\rho_g}\frac{\partial \dot{M}_g}{\partial x} + \frac{1}{A\rho_{lp}}\frac{\partial \rho_{lp}(1-\beta)\frac{\dot{M}_l}{\rho_l}}{\partial x} + \frac{1}{A\rho_{lc}}\frac{\partial \rho_{lc}\beta\frac{\dot{M}_l}{\rho_l}}{\partial x}+ \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\dot{M}_l}{\rho_l}}{\partial x} =\frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} - \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)\left[A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t}\right]- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} + \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial T}\right|_p \frac{\partial T}{\partial t} + \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]$$
+
+It should be noted that the flow rates of interest are not $\dot{M}_g$ and $\dot{M}_l$ individually, but rather the **mixture mass flow rate** $\dot{M}_m$. Using equations \eqref{eq:M_l_from_M_m}, \eqref{eq:M_g_from_M_m}, \eqref{eq:T1} and \eqref{eq:T2} the more appropriate form for the pressure–mixture mass flow rate coupling is:
+
+$$\frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \frac{1}{A\rho_g}\frac{\partial (1-T_1)\dot{M}_m - T_2}{\partial x} + \frac{1}{A\rho_{lp}}\frac{\partial \rho_{lp}(1-\beta)\frac{T_1\dot{M}_m+T_2}{\rho_l}}{\partial x} + \frac{1}{A\rho_{lc}}\frac{\partial \rho_{lc}\beta\frac{T_1\dot{M}_m+T_2}{\rho_l}}{\partial x}+ \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{T_1\dot{M}_m+T_2}{\rho_l}}{\partial x} =\frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} - \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)\left[A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t}\right]-\left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} + \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial T}\right|_p\frac{\partial T}{\partial t} + \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]$$
+
+With all flux divergence terms now expressed exclusively in terms of $\dot{M}_m$ through the drift-flux coefficients $T_1$ and $T_2$, this equation — together with the simplified momentum equation \eqref{eq:simplified_momentum} — forms the **closed system** to be solved implicitly for the pressure and mixture mass flow rate profiles at each time step.
