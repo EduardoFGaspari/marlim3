@@ -197,7 +197,7 @@ Where
 - $h_{\mathrm{Source,g}}$ is the enthalpy associated with the gas source;
 - $h_{\mathrm{Source,lp}}$ is the enthalpy associated with the produced liquid source;
 - $h_{\mathrm{Source,lc}}$ is the enthalpy associated with the complementary liquid source;
-- $Q_w$ is the heat flux (heat transfer rate term).
+- $Q_w$ is the heat flux.
 
 ### Interphase mass-transfer
 
@@ -227,7 +227,7 @@ Where:
 - $F_w^{std}$ is the water fraction in the produced liquid phase at standard conditions, which is generally equal to the BSW (Basic Sediment and Water) when sediments are not considered.
 It is worth noting that in the derivation of this expression, the possibility of gas dissolution in the water phase was not taken into account.
 
-## Simplifications of the Governing Equations for Implementatios
+## Simplifications of the Governing Equations for Implementation
 
 The equations presented in the previous sections are not exactly those implemented in `Marlim3`. A set of simplifications has been introduced with the primary goal of improving computational efficiency, without compromising the ability to resolve the physical problems `Marlim3` was designed for, and while maintaining acceptable numerical robustness — a particularly critical requirement for multiphase flow simulators intended for petroleum industry applications.
 
@@ -260,7 +260,7 @@ $$
 \label{eq:gas_balance_rearran}
 $$
 
-For equations (Equations \eqref{eq:prod_liquid_balance_rearran} and \eqref{eq:comp_liquid_balance1}), the liquid density derivative terms are moved to the right-hand side and treated as source terms within the convergence iteration of the numerical scheme, to be included whenever deemed necessary:
+For Equations \eqref{eq:prod_liquid_balance_rearran} and \eqref{eq:comp_liquid_balance1_rearran}, the liquid density derivative terms are moved to the right-hand side and treated as source terms within the convergence iteration of the numerical scheme, to be included whenever deemed necessary:
 
 **Produced liquid**:
 
@@ -283,9 +283,7 @@ $$
 \label{eq:holdup_evolution}
 $$
 
-This equation now expresses the temporal evolution of the liquid holdup $(1-\alpha)$ in a form suitable for **explicit numerical integration**: the left-hand side groups the dominant holdup and flux terms — including the interphase mass-transfer coupling through the black-oil dissolved-gas terms — while the right-hand side collects the phase flux divergences, mass sources, and all deferred compressibility and black-oil property correction terms within the bracket.
-
-For Equation \eqref{eq:holdup_evolution} to be treated as a direct holdup evolution expression, the parenthesized liquid compressibility terms must either be **discarded** — yielding a fully explicit, single-pass update — or Equation \eqref{eq:holdup_evolution} must be solved **iteratively**, re-evaluating those terms at each iteration. The second option, while more accurate, carries a computational performance penalty.
+For Equation \eqref{eq:holdup_evolution} to be treated as a direct holdup evolution expression, the parenthesized liquid compressibility terms must either be **discarded** — yielding a fully explicit, single-pass update — or Equation \eqref{eq:holdup_evolution} must be solved **iteratively**, re-evaluating those terms at each iteration. The second option, while more accurate, carries a computational performance penalty. This equation is always the first to be integrated, yielding the holdup profile prior to advancing the remaining equations. This is particularly advantageous, as it allows one to identify, in advance, the locations along the domain where a transition from multiphase to single-phase flow may occur (which ultimately constitutes a singularity in the model), thereby enabling the necessary corrections and adjustments to be made before proceeding with the solution of the problem.
 
 The evolution equation for $\beta$ can be derived directly from Equation \eqref{eq:comp_liquid_balance_rearran2}. In the numerical scheme it is solved immediately after Equation \eqref{eq:holdup_evolution}, so the updated holdup profile is already available. The resolution is also explicit:
 
@@ -308,7 +306,7 @@ $$
 \label{eq:summing_holdupEv_gasCons}
 $$
 
-As discussed, gas compressibility cannot be neglected — slow gas accumulation phenomena depend critically on the pressure derivative of gas density — however, the influence of the temperature derivative of $\rho_g$ on the temporal evolution is small. It is therefore moved to the bracketed "deferred" terms on the right-hand side of Equation \eqref{eq:summing_holdupEv_gasCons}, to be either discarded or updated iteratively, yielding:
+As discussed, gas compressibility cannot be neglected — slow gas accumulation phenomena depend critically on the pressure derivative of gas density — however, the influence of the temperature derivative of $\rho_g$ on the temporal evolution is small. It is therefore moved to the "deferred" terms on the right-hand side of Equation \eqref{eq:summing_holdupEv_gasCons}, to be either discarded or updated iteratively, yielding:
 
 $$
 \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \frac{1}{A\rho_g}\frac{\partial \dot{M}_g}{\partial x} + \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} + \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} + \frac{1}{A}\left(\frac{1}{\rho_{lp}} - \frac{1}{\rho_g}\right)\psi = \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} - \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} + \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial T}\right|_p \frac{\partial T}{\partial t}\right]
@@ -319,67 +317,61 @@ The left-hand side now retains only the **pressure-compressibility** term for th
 
 ### Momentum equation
 
-In the momentum equation, the dynamic (acceleration) terms are expected to be of minor relevance for the class of phenomena Marlim3 is designed to simulate. Removing all acceleration terms from Equation \eqref{eq:mixture_momentum1} would render the model very similar to the well-known NPW scheme.
-
-Equation \eqref{eq:final_mass_conservation} is essentially the mixture mass conservation equation and, together with the mixture momentum equation, forms the basis for the **pressure–mass flow rate coupling** procedure.
+In the momentum equation, the dynamic (acceleration) terms are expected to be of minor relevance for the class of phenomena `Marlim3 is designed to simulate. Removing all acceleration terms from Equation \eqref{eq:mixture_momentum1} would render the model very similar to the well-known NPW scheme. Therefore, we will retain the $\partial \dot{M}_g / \partial t$ term in Equation \eqref{eq:mixture_momentum1}, yielding:
 
 $$
 \frac{\partial \dot{M}_g}{\partial t} + A_t \frac{\partial p}{\partial x} = f_m \frac{\rho_m j^2}{2} S_w + \rho_m g A_t \sin(\theta)
 \label{eq:simplified_momentum}
 $$
 
-By retaining the $\partial \dot{M}_g / \partial t$ term, Marlim3 harmonizes the pressure–velocity coupling between Equations \eqref{eq:final_mass_conservation} and \eqref{eq:simplified_momentum}, which is sufficient to stabilize the semi-implicit scheme without reintroducing the full set of acceleration terms.
+The mixture momentum equation, together with Equation \eqref{eq:final_mass_conservation} (which is essentially the mixture mass conservation equation), forms the basis for the **pressure–mass flow rate coupling** procedure. By retaining the $\partial \dot{M}_g / \partial t$ term, `Marlim3` harmonizes the pressure–velocity coupling between Equations \eqref{eq:final_mass_conservation} and \eqref{eq:simplified_momentum}, which is sufficient to stabilize the semi-implicit scheme without reintroducing the full set of acceleration terms.
 
 From the perspective of the problem at hand, the equation pair Equations \eqref{eq:final_mass_conservation}–\eqref{eq:simplified_momentum} is directly tied to the resolution of the pressure profile. Since pressure is closely linked to the fastest wave families, both equations must be solved in a **fully implicit** manner to avoid CFL-based time-step restrictions. This means the pressure and mixture mass flow rate profiles are solved **simultaneously**, leading to a matrix system — a simple banded matrix that is straightforward to assemble and solve.
 
 This approach yields a numerical framework that is simple to implement, robust, and — provided the deferred terms in Equations \eqref{eq:holdup_evolution}, \eqref{eq:beta_evolution_2} and \eqref{eq:final_mass_conservation} are discarded — free of iterative loops, with good computational performance.
 
+### Interphase mass-transfer
+
 The interphase mass-transfer term $\psi$ was not yet made explicit in Equations \eqref{eq:holdup_evolution} and \eqref{eq:final_mass_conservation}. Before doing so, some adjustments to Equation \eqref{eq:psi_blackoil} are required. The most immediate one concerns the temporal variation of pressure-dependent quantities. The mass-transfer equation is derived from a mass balance of the light component dissolved in the dead oil — i.e., the light component in the liquid state — which accounts for most of the pressure dependence of the liquid phase density. Consistently with the treatment applied to the produced liquid mass conservation equation, the pressure-dependent temporal derivative will be separated as a deferred term that may or may not be discarded. Expanding the temporal derivative of Equation \eqref{eq:psi_blackoil}:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t} - A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x}$$
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t} - A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x}$$
 
 Which, separating the pressure-sensitive temporal term into the deferred bracket, gives:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} - \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} - \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t} \right]
 \label{eq:psi_expanded}$$
 
-The bracketed term on the right-hand side captures the variation of the dissolved-gas black-oil properties $(R_s, B_o, F_w)$ with time — driven primarily by pressure changes — and is treated as a deferred correction, consistent with the strategy adopted for the liquid compressibility terms throughout the formulation.
-
 The bracketed term may or may not be discarded depending on whether an iterative time-advancement procedure is adopted.
-A brief clarification on the numerical treatment: $\psi$ is handled differently in Equations \eqref{eq:holdup_evolution} and \eqref{eq:final_mass_conservation}. In Equation \eqref{eq:holdup_evolution}, which governs holdup evolution, the mass source and mass flow rate terms are treated **explicitly**. In Equation \eqref{eq:final_mass_conservation}, used in the coupled pressure–mass flow rate system, the mass flow rate terms are treated **implicitly** — noting that the void fraction temporal derivative is already available at that stage. While this may appear numerically inconsistent when no iterative procedure is used, this methodology has proven robust and effective for the time-step ranges typical of a semi-implicit scheme, at least for the test cases examined to date.
+A brief clarification on the numerical treatment: $\psi$ is handled differently in Equations \eqref{eq:holdup_evolution} and \eqref{eq:final_mass_conservation}. In Equation \eqref{eq:holdup_evolution}, which governs holdup evolution, the mass source and mass flow rate terms are treated **explicitly**. In Equation \eqref{eq:final_mass_conservation}, used in the coupled pressure–mass flow rate system, the mass flow rate terms are treated **implicitly** — noting that the holdup temporal derivative is already available at that stage. While this may appear numerically inconsistent when no iterative procedure is used, this methodology has proven robust and effective for the time-step ranges typical of a semi-implicit scheme.
 
-In preparing Equation \eqref{eq:psi_expanded} for substitution into Equation \eqref{eq:holdup_evolution}, the variable $\beta$ must be factored out of the temporal derivative — otherwise the holdup and $\beta$ evolution equations would need to be solved in a coupled fashion, which is impractical. The algebraic steps are as follows.
+In preparing Equation \eqref{eq:psi_expanded} for substitution into Equation \eqref{eq:holdup_evolution}, the variable $\beta$ must be factored out of the temporal derivative; otherwise, the holdup and $\beta$ evolution equations would need to be solved in a coupled fashion, which is impractical. The algebraic steps are as follows.
 
 Applying the chain rule to $\dfrac{\partial(1-\alpha)(1-\beta)}{\partial t}$:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\partial \beta}{\partial t} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x}$$
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\alpha)\frac{\partial \beta}{\partial t} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x}-\left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t}\right]$$
 
 The term $(1-\alpha)\dfrac{\partial \beta}{\partial t}$ is then replaced using Equation \eqref{eq:beta_evolution_2}:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\left[\frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} - \beta\frac{\partial(1-\alpha)}{\partial t} - \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}\right] - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} - \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]$$
-
-The bracketed deferred terms on the last line collect the pressure-sensitive black-oil property variations and the liquid compressibility contribution of the conditioning phase — both candidates for simplification depending on whether an iterative correction loop is employed.
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\left[\frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} - \beta\frac{\partial(1-\alpha)}{\partial t} - \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}\right] - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} - \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]$$
 
 Which leads to:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L} - A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\beta\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} - \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]$$
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} + (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L} - A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\beta\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} - \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} - \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]$$
 
 Grouping the terms containing temporal derivatives of the holdup:
 
-$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}- \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L}- \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]
+$$\psi = -A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{A\rho_{lp}B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}- \frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} + (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{A\rho_{lp}B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L}- \left[A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t} + A(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t}\right]
 \label{eq:psi_grouped}$$
 
 Note that after grouping, the two holdup temporal derivative terms — originally separated by the chain-rule expansion — recombine into a single $(1-\beta)\,\partial(1-\alpha)/\partial t$ contribution, while the $\beta\,\partial(1-\alpha)/\partial t$ terms cancel. The deferred bracket retains the black-oil property and liquid compressibility corrections, consistent with the treatment adopted throughout.
 
-Substituting Equation \eqref{eq:psi_grouped} into Equation \eqref{eq:holdup_evolution} yields the final holdup evolution equation:
+Substituting Equation \eqref{eq:psi_grouped} into Equation \eqref{eq:holdup_evolution} yields:
 
-$$\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}- \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{A\rho_{lp}B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L} =- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]
-\label{eq:holdup_evolution_final}$$
+$$\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}(1-\beta)\frac{\partial(1-\alpha)}{\partial t} - (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{A\rho_{lp}B_o}\frac{1}{\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x}- \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} + (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{A\rho_{lp}B_o}\frac{\Gamma_{cp}}{\rho_{lc}\Delta L} =- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t}\right]
+\label{eq:holdup_evolution_semifinal}$$
 
-This equation now expresses the temporal evolution of the liquid holdup $(1-\alpha)$ in a form suitable for **explicit numerical integration**: the left-hand side groups the dominant holdup and flux terms — including the interphase mass-transfer coupling through the black-oil dissolved-gas terms — while the right-hand side collects the phase flux divergences, mass sources, and all deferred compressibility and black-oil property correction terms within the bracket.
+Rearranging Equation \eqref{eq:holdup_evolution_semifinal}:
 
-Rearranging Equation \eqref{eq:holdup_evolution_final}:
+$$\left[1 - (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}(1-\beta)\right]\frac{\partial(1-\alpha)}{\partial t} =- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\left[1-(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}\right]\frac{\partial \dot{M}_c}{\partial x}+ \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} + \left[1-(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}\right]\frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t}\right] \label{eq:holdup_evolution_final}$$
 
-$$\left[1 - (1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}(1-\beta)\right]\frac{\partial(1-\alpha)}{\partial t} =- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\left[1-(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}\right]\frac{\partial \dot{M}_c}{\partial x}+ \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}Q_l}{\partial x} + \left[1-(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{\rho_{lp}B_o}\right]\frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]$$
-
-This rearrangement makes the structure of the **explicit holdup update** particularly clear: the left-hand side contains a single effective coefficient multiplying $\partial(1-\alpha)/\partial t$, which accounts for the dissolved-gas feedback on holdup dynamics through the black-oil parameters $R_s$, $B_o$ and $F_w$. The right-hand side groups the flux divergences, mass sources, and deferred correction terms in a form directly amenable to explicit time integration.
+This rearrangement makes the structure of the **explicit holdup update** particularly clear: the left-hand side contains a single effective coefficient multiplying $\partial(1-\alpha)/\partial t$, which accounts for the dissolved-gas feedback on holdup dynamics through the black-oil parameters $R_s$, $B_o$ and $F_w$. The right-hand side groups the flux divergences, mass sources, and deferred correction terms in a form directly amenable to explicit time integration. Therefore, Equation \eqref{eq:holdup_evolution_final} is the holdup evolution equation used in `Marlim3` transient model.
