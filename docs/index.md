@@ -37,8 +37,8 @@ For installation instructions and usage guidelines in any of these settings, ple
 | Section | Content |
 |---------|---------|
 | [Tutorials](tutorials/index.md) | Step-by-step notebook-based workflows for common simulation tasks |
-| [Single-Branch Model Reference](single-branch-model-reference/fluids.md) | Full field catalog for fluids, pipes, accessories, boundary conditions, and more |
-| [Theoretical Reference](theoretical-reference/mass-momentum-balances.md) | Mathematical foundations: mass/momentum/energy balances and discretization |
+| [Single-Branch Model Reference](single-branch-model-reference/index.md) | Full field catalog for fluids, pipes, accessories, boundary conditions, and more |
+| [Theoretical Reference](theoretical-reference/index.md) | Mathematical foundations: mass/momentum/energy balances and discretization |
 | [Developer Guide](dev-guide/index.md) | Internal architecture, domain classes, solvers, and extension points |
 
 ## Build This Documentation
