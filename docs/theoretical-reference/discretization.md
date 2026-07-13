@@ -1,6 +1,6 @@
 A discretização das equações seguirá a clássica abordagem de volumes finitos com malha desencontrada.
 
-![malha_desencontrada](malha_marlim3.png)
+![malha_desencontrada](../img/malha_marlim3.png)
 
 As células com traço cheio são as células em que as leis de conservação de massa e evolução de holdup e beta são resolvidas. Já a célula tracejada é onde a equação de quantidade de movimento é resolvida. A equação de energia é um caso especial, já que é apresentada na sua forma não-conservativa, não faz muito sentido uma abordagem de volumes finitos, neste caso, se utilizará um esquema de diferenças adaptado. Ainda tomando como referência a figura anterior, variáveis como holdup, beta, pressão, temperatura, taxa de transferência de massa, volume de fração leve, densidade de gás, fração de CO2, RGO com escorregamento, fontes de massa, entalpias, fluxo de calor são todas armazenadas nos pontos de índice inteiro. Já as variáveis relacionadas com os fluxos, vazão mássica da mistura, vazão mássica do líquido, vazão mássica do gás, arranjos, parâmetros de escorregamento, velocidades superficiais são avaliadas nas posições de índice fracionário, o que, para o esquema, significa as fronteiras do volume de controle onde se dá o balanço de massa, como no teorema de transporte de Reynolds.
 
