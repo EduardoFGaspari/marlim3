@@ -1905,7 +1905,7 @@ class JSON_entrada_tendP_Item : public JSONObject {
     JSON_entrada_tendP_Item_masstrans &masstrans();
     JSON_entrada_tendP_Item_QLstd &QLstd();
     JSON_entrada_tendP_Item_QLWstd &QLWstd();
-    JSON_entrada_tendP_Item_QLstd &QOstd();
+    JSON_entrada_tendP_Item_QOstd &QOstd();
     JSON_entrada_tendP_Item_QLWstd &QOWstd();
     JSON_entrada_tendP_Item_QLstdTotal &QLstdTotal();
     JSON_entrada_tendP_Item_QGstd &QGstd();
@@ -2179,6 +2179,7 @@ class JSON_entrada_gasInj : public JSONObject {
 #define JSON_entrada_perfilProducao_cpgas JSONBoolean
 #define JSON_entrada_perfilProducao_cpliq JSONBoolean
 #define JSON_entrada_perfilProducao_QLstd JSONBoolean
+#define JSON_entrada_perfilProducao_QOstd JSONBoolean
 #define JSON_entrada_perfilProducao_QLWstd JSONBoolean
 #define JSON_entrada_perfilProducao_QLstdTotal JSONBoolean
 #define JSON_entrada_perfilProducao_QGstd JSONBoolean
@@ -2259,6 +2260,7 @@ class JSON_entrada_perfilProducao : public JSONObject {
     JSON_entrada_perfilProducao_cpgas &cpgas();
     JSON_entrada_perfilProducao_cpliq &cpliq();
     JSON_entrada_perfilProducao_QLstd &QLstd();
+    JSON_entrada_perfilProducao_QOstd &QOstd();
     JSON_entrada_perfilProducao_QLWstd &QLWstd();
     JSON_entrada_perfilProducao_QLstdTotal &QLstdTotal();
     JSON_entrada_perfilProducao_QGstd &QGstd();

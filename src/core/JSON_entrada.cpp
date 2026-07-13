@@ -3429,6 +3429,7 @@ JSON_entrada_perfilProducao::JSON_entrada_perfilProducao(){
 	contents["cpgas"] = make_shared<JSON_entrada_perfilProducao_cpgas>();
 	contents["cpliq"] = make_shared<JSON_entrada_perfilProducao_cpliq>();
 	contents["QLstd"] = make_shared<JSON_entrada_perfilProducao_QLstd>();
+	contents["QOstd"] = make_shared<JSON_entrada_perfilProducao_QOstd>();
 	contents["QLWstd"] = make_shared<JSON_entrada_perfilProducao_QLWstd>();
 	contents["QLstdTotal"] = make_shared<JSON_entrada_perfilProducao_QLstdTotal>();
 	contents["QGstd"] = make_shared<JSON_entrada_perfilProducao_QGstd>();
@@ -3596,6 +3597,10 @@ JSON_entrada_perfilProducao_cpliq& JSON_entrada_perfilProducao::cpliq(){
 
 JSON_entrada_perfilProducao_QLstd& JSON_entrada_perfilProducao::QLstd(){
 	return static_cast<JSON_entrada_perfilProducao_QLstd&>(*contents["QLstd"].get());
+}
+
+JSON_entrada_perfilProducao_QOstd& JSON_entrada_perfilProducao::QOstd(){
+	return static_cast<JSON_entrada_perfilProducao_QOstd&>(*contents["QOstd"].get());
 }
 
 JSON_entrada_perfilProducao_QLWstd& JSON_entrada_perfilProducao::QLWstd(){
