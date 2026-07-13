@@ -88,7 +88,7 @@ $$\rho_g\alpha A\left[\frac{\partial\left(e_g+\frac{u_g^2}{2}\right)}{\partial t
 
 $$\rho_l\left(1-\alpha\right)A\left[\frac{\partial\left(e_l+\frac{u_l^2}{2}\right)}{\partial t}+u_l\frac{\partial\left(h_l+\frac{u_l^2}{2}\right)}{\partial x}\right]+\frac{p}{\rho_l}\frac{\partial\rho_lu_l\left(1-\alpha\right)A}{\partial x}=-\left(e_l+\frac{u_l^2}{2}\right)\left(\frac{\mathrm{\Gamma}_{lp}+\mathrm{\Gamma}_{cp}}{\mathrm{\Delta L}}-\psi\right)-\rho_lu_l\left(1-\alpha\right)Ag+Q_l+\frac{\left(h_{Flp}\mathrm{\Gamma}_{lp}+h_{Flc}\mathrm{\Gamma}_{lc}\right)}{\mathrm{\Delta l}}-h_t\psi_g$$
 
-At this moment, it becomes convenient to add the two energy equations, since in the simulator it will be assumed that the pressure and temperature of each phase are identical:
+At this moment, it becomes convenient to add the two energy equations, since in `Marlim3` it will be assumed that the pressure and temperature of each phase are identical:
 
 $$\rho_g\alpha A\left[\frac{\partial\left(e_g+\frac{u_g^2}{2}\right)}{\partial t}+u_g\frac{\partial\left(h_g+\frac{u_g^2}{2}\right)}{\partial x}\right]+\rho_l\left(1-\alpha\right)A\left[\frac{\partial\left(e_l+\frac{u_l^2}{2}\right)}{\partial t}+u_l\frac{\partial\left(h_l+\frac{u_l^2}{2}\right)}{\partial x}\right]+\frac{p}{\rho_g}\frac{\partial\rho_gu_g\alpha A}{\partial x}+\frac{p}{\rho_l}\frac{\partial\rho_lu_l\left(1-\alpha\right)A}{\partial x}=-\left(e_g+\frac{u_g^2}{2}\right)\left(\frac{\mathrm{\Gamma}_g}{\mathrm{\Delta L}}+\psi\right)-\left(e_l+\frac{u_l^2}{2}\right)\left(\frac{\mathrm{\Gamma}_{lp}+\mathrm{\Gamma}_{cp}}{\mathrm{\Delta L}}-\psi\right)-\left(\rho_gu_g\alpha_g\right)Ag-\rho_lu_l\left(1-\alpha\right)Ag+Q_w+\frac{h_{Fg}\mathrm{\Gamma}_g}{\mathrm{\Delta l}}+\frac{\left(h_{Flp}\mathrm{\Gamma}_{lp}+h_{Flc}\mathrm{\Gamma}_{lc}\right)}{\mathrm{\Delta l}} \label{eq:energy_sum}$$
 
@@ -122,7 +122,7 @@ $$\rho_g\alpha A\left[\frac{\partial\left(e_g+\frac{u_g^2}{2}\right)}{\partial t
 
 In \eqref{eq:energy_111}, a term directly related to the rate of mass transfer between phases appears, $\left(h_g-h_l+\frac{u_g^2}{2}-\frac{u_l^2}{2}\right)\psi$. Note that this term is different from the original term of the energy conservation equation for each phase $h_t\psi_g$. It arises only in the non-conservative system and is a direct result of the manipulation of the term $\frac{p}{\rho_g}\frac{\partial\rho_gu_g\alpha A}{\partial x}+\frac{p}{\rho_l}\frac{\partial\rho_lu_l\left(1-\alpha\right)A}{\partial x}$. That is, it only makes sense to use this term in the non-conservative relations for energy transport.
 
-As stated earlier, in the simulator, it was preferred to work with direct relations of pressure and temperature, one must now use the thermodynamic relations between enthalpy and internal energy with pressure and temperature to finally obtain the final form of the energy transport equation used in `Marlim3`.
+As stated earlier, in `Marlim3`, it was preferred to work with direct relations of pressure and temperature, one must now use the thermodynamic relations between enthalpy and internal energy with pressure and temperature to finally obtain the final form of the energy transport equation used in `Marlim3`.
 
 From Van Wylen & Sonntag:
 
@@ -243,4 +243,4 @@ Reorganizing:
 
 $$\left[\rho_g\alpha A c_{vg}^\prime+\rho_l\left(1-\alpha\right)Ac_{vl}\right]\frac{\partial T}{\partial t}+\rho_g\alpha A\frac{1}{z\rho_g}\left(z+T\left.\frac{\partial z}{\partial T}\right|_p\right)\frac{\partial p}{\partial t}+\left[\rho_g\alpha A u_gc_{pg}+\rho_l\left(1-\alpha\right)Au_lc_{pl}\right]\frac{\partial T}{\partial x}-\left[\rho_g\alpha A u_gJ_g+\rho_l\left(1-\alpha\right)Au_lJ_l\right]\frac{\partial p}{\partial x}+\left(\rho_g\alpha A\right)\left(\frac{\partial\frac{u_g^2}{2}}{\partial t}+u_g^2\frac{\partial u_g}{\partial x}\right)+\left[\rho_l\left(1-\alpha\right)A\right]\left(\frac{\partial\frac{u_l^2}{2}}{\partial t}+u_l^2\frac{\partial u_l}{\partial x}\right)=\left(h_{Fg}-h_g\right)\frac{\mathrm{\Gamma}_g}{\mathrm{\Delta L}}+\left(h_{Flp}-h_l\right)\frac{\mathrm{\Gamma}_{lp}}{\mathrm{\Delta l}}+\left(h_{Flc}-h_l\right)\frac{\mathrm{\Gamma}_{lc}}{\mathrm{\Delta l}}-\left(h_g-h_l\right)\psi-\left[\rho_gu_g\alpha_g+\rho_lu_l\left(1-\alpha\right)\right]Ag+Q_w-\frac{A}{\rho_l}p\left(1-\alpha\right)\left(\rho_{lc}-\rho_{lp}\right)\frac{\partial\beta}{\partial t} \label{eq:energy_final}$$
 
-\eqref{eq:energy_final} is the current form of the equation being used in the simulator for calculating temperature in transient processes.
+\eqref{eq:energy_final} is the current form of the equation being used in `Marlim3` for calculating temperature in transient processes.
