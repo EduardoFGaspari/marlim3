@@ -104,7 +104,7 @@ using namespace std;
 
 #define ARQUIVO_RELATORIO_PERFIS "resultado.log"
 
-const char *saidaTexto[15] = {"                          Post Coitum Omine Animal Triste Est                   ",
+const char *saidaTexto[16] = {"                          Post Coitum Omine Animal Triste Est                   ",
                               "           'Ouca-me. O fim quase nunca esta longe, em nenhum momento!'          ",
                               "      So nos curamos de um sofrimento depois de o haver suportado ate o fim.    ",
                               "                   Infeliz e o espirito ansioso pelo futuro.                    ",
@@ -118,8 +118,9 @@ const char *saidaTexto[15] = {"                          Post Coitum Omine Anima
                               "                 Nao importa o quanto voce va devagar, desde que nao pare                ",
                               "Um simulador que resolve uma parada de producao, comeca avancando pequenos incrementos de tempo",
                               "                            Nada e permanente, exceto a mudanca                           ",
-                              "                  Uma jornada de mil quilometros come�a com um unico passo                "};
-const char *saidaSubTexto[15] = {
+                              "                  Uma jornada de mil quilometros comeca com um unico passo                ",
+"Seja paciente. Espere ate que a lama assente e a agua fique limpa. Permaneça imovel ate que a acao correta suja por si so"};
+const char *saidaSubTexto[16] = {
     "                         Galeno de Pergamo do Transiente Longo                          ",
     "                     J. California Cooper depois da simulacao divergir                  ",
     "                                Marcel Proust no CrossFit                               ",
@@ -134,7 +135,8 @@ const char *saidaSubTexto[15] = {
     "                             Confucio vendo a simulacao emperrar                       ",
     "                               Confucio das simulacoes sem fim                         ",
     "          Heraclito de Efeso vendo tudo mudar a cada incremento de tempo                ",
-    "    Lao-Tse tomando coragem para simular um caso de parafinacao em dutos de producao    "};
+    "    Lao-Tse tomando coragem para simular um caso de parafinacao em dutos de producao    ",
+    "            Lao-Tse, vendo o incremento de tempo ficar cada vez menor                   "};
 
 detTempo tempVF;
 detProp prop;
@@ -592,7 +594,7 @@ void preProcRede(Rede &arqRede, int narq) {
 void WriteSnapShot(SProd &sis, double porc = 10, int tramo = -1) {
 
     srand(time(NULL));
-    int frase = rand() % 15;
+    int frase = rand() % 16;
 
     if (sis.arq.HISEP == 0) {
         ostringstream saidaS;
@@ -8080,7 +8082,7 @@ double SolveTramoSolteiro(SProd &sistem1, double chute0 = -1.) {
         }
         if (sistem1.arq.saidaClassica == 1) {
             srand(time(NULL));
-            int frase = rand() % 15;
+            int frase = rand() % 16;
             escreveIni << "*******************************************************************************" << endl;
             escreveIni << "                                  UFA!!!!!!!!                                  " << endl;
             escreveIni << saidaTexto[frase] << endl;
@@ -8271,6 +8273,16 @@ void leituraAPparalelo(string nomeArquivoAP, string nomeArquivoLog, tipoValidaca
     		}
     	}
     }
+    int resolvido[analisePara.nVariaveis];
+    double presFundo[analisePara.nVariaveis];
+    double QGFundo[analisePara.nVariaveis];
+    double QLFundo[analisePara.nVariaveis];
+    for(int iSeq=0;iSeq<analisePara.nVariaveis;iSeq++){
+        resolvido[iSeq]=0;
+        presFundo[iSeq]=0;
+        QGFundo[iSeq]=0;
+        QLFundo[iSeq]=0;
+    }
     #pragma omp parallel for num_threads(analisePara.nthrdAP)
 	for(int iSeq=0;iSeq<analisePara.nVariaveis;iSeq++){//laco onde e calculado o permanente de cada combinacao
 		//algumas variaveis ja se encontram na condicao correta para se apolicar no sistema de simulacao,
@@ -8363,18 +8375,80 @@ void leituraAPparalelo(string nomeArquivoAP, string nomeArquivoLog, tipoValidaca
         }
 		#pragma omp critical
 			cout<<"Resolvendo Sequencia "<<iSeq<<" da analise de sensibilidade"<< endl;
+			double chuteSeq1=-1;
+			double chuteSeq2=-1;
+			double chuteSeq3=-1;
+			double chuteSeq1b=-1;
 		falha=SolveTramoSolteiro(sistem2,chute);
 		if(fabs(falha)>(0.9e10) && chute!=-1){
-			falha=SolveTramoSolteiro(sistem2);
+				falha=SolveTramoSolteiro(sistem2);
+		}
+		if(iSeq>0 && fabs(falha)>(0.9e10)){
+			if(indfalha[iSeq-1]==1){
+	    		if(sistem2.arq.ConContEntrada==0)chuteSeq1=presFundo[iSeq-1];
+	    		else{
+	    			if(sistem2.celula[0].acsr.tipo==1)
+	    				chuteSeq1=QGFundo[iSeq-1];
+	    			else if(sistem2.celula[0].acsr.tipo==2)
+	    				chuteSeq1=QLFundo[iSeq-1];
+	    		}
+	    		falha=SolveTramoSolteiro(sistem2,chuteSeq1);
+			}
+		}
+		if(iSeq<analisePara.nVariaveis-1 && fabs(falha)>(0.9e10)){
+			if(indfalha[iSeq+1]==1){
+		    	if(sistem2.arq.ConContEntrada==0)chuteSeq2=presFundo[iSeq+1];
+		    	else{
+		    		if(sistem2.celula[0].acsr.tipo==1)
+		    			chuteSeq2=QGFundo[iSeq+1];
+		    		else if(sistem2.celula[0].acsr.tipo==2)
+		    			chuteSeq2=QLFundo[iSeq+1];
+		    	}
+		    	if(chuteSeq2!=-1)falha=SolveTramoSolteiro(sistem2,chuteSeq2);
+			}
+		}
+		if(fabs(falha)>(0.9e10) && iSeq>1){
+			if(indfalha[iSeq-2]==1){
+		    		if(sistem2.arq.ConContEntrada==0)chuteSeq1b=presFundo[iSeq-2];
+		    		else{
+		    			if(sistem2.celula[0].acsr.tipo==1)
+		    				chuteSeq1b=QGFundo[iSeq-2];
+		    			else if(sistem2.celula[0].acsr.tipo==2)
+		    				chuteSeq1b=QLFundo[iSeq-2];
+		    		}
+		    		falha=SolveTramoSolteiro(sistem2,chuteSeq1b);
+				}
+		}
+		if(fabs(falha)>(0.9e10)){
+			int testaI=0;
+			while((indfalha[testaI]!=1 || testaI!=iSeq-1 || testaI!=iSeq+1 || testaI!=iSeq-2) &&
+					testaI<analisePara.nVariaveis)testaI++;
+			if(indfalha[testaI]==1){
+		    	if(sistem2.arq.ConContEntrada==0)chuteSeq3=presFundo[testaI];
+		    	else{
+		    		if(sistem2.celula[0].acsr.tipo==1)
+		    			chuteSeq3=QGFundo[testaI];
+		    		else if(sistem2.celula[0].acsr.tipo==2)
+		    			chuteSeq3=QLFundo[testaI];
+		    	}
+		    	if(chuteSeq3!=-1)falha=SolveTramoSolteiro(sistem2,chuteSeq3);
+			}
 		}
 		if(fabs(falha)>1e9){
 			//caso ocorre uma falha nma busca da solucao para um caso da analise de sensibilidade
 			#pragma omp critical
-				cout<<"----------------------------- falha no caso -------------------------------"<<endl;
+				cout<<"----------------------------- falha no caso "<<iSeq<<" -------------------------------"<<endl;
 		}
 
-        if (fabs(falha) < 1e9)
+        if (fabs(falha) < 1e9){
+			double presSeq=sistem2.celula[0].pres;
+			double tempSeq=sistem2.celula[0].temp;
             indfalha[iSeq] = 1;
+            resolvido[iSeq]=1;
+            presFundo[iSeq]=presSeq;
+            QGFundo[iSeq]=sistem2.celula[0].QG*86400*sistem1.celula[0].flui.MasEspGas(presSeq, tempSeq)/(sistem2.celula[0].flui.Deng*1.229);
+            QLFundo[iSeq]=sistem2.celula[0].QL*86400*sistem1.celula[0].flui.MasEspLiq(presSeq, tempSeq)/(sistem2.celula[0].flui.MasEspLiq(1.0, 20));
+        }
         else
             indfalha[iSeq] = -1;
 
@@ -8437,7 +8511,7 @@ void leituraAPparalelo(string nomeArquivoAP, string nomeArquivoLog, tipoValidaca
         double vazE;
         int indChk;
         imprime = 1;
-        if (analisePara.vfp == 1) // analise de sensibilidade para problemas padrao ou para a curva de fundo Eclipse
+        if (analisePara.vfp == 1 || analisePara.vfp == 3) // analise de sensibilidade para problemas padrao ou para a curva de fundo Eclipse
             analisePara.selecaoAP(sistem1.ncelGas, sistem1.chokeSup, sistem1.celula, sistem1.celulaG, sistem1.arq.flup,
                                   sistem1.arq.IPRS, sistem1.arq.valv, sistem1.arq.fonteg,
                                   sistem1.arq.fontel, sistem1.arq.fontem, sistem1.arq.furo, sistem1.arq.bcs,
@@ -8445,7 +8519,7 @@ void leituraAPparalelo(string nomeArquivoAP, string nomeArquivoLog, tipoValidaca
                                   sistem1.pGSup, sistem1.temperatura, sistem1.presiniG, sistem1.tempiniG, vazgasG,
                                   presE, tempE, titE, betaE, vazE, iSeq, indChk, sistem1.arq.correcao.dPdLHidro, sistem1.arq.correcao.dPdLFric,
                                   sistem1.arq.correcao.dTdL, imprime);
-        else if (analisePara.vfp == 0) // anaslise de sensibilidade para curva de pressao de fundo Imex
+        else if (analisePara.vfp == 0 || analisePara.vfp == 2) // anaslise de sensibilidade para curva de pressao de fundo Imex
             analisePara.selecaoAPImex(sistem1.ncelGas, sistem1.chokeSup, sistem1.celula, sistem1.celulaG, sistem1.arq.flup,
                                       sistem1.arq.IPRS, sistem1.arq.valv, sistem1.arq.fonteg,
                                       sistem1.arq.fontel, sistem1.arq.fontem, sistem1.arq.furo, sistem1.arq.bcs,
@@ -9903,7 +9977,7 @@ void solveRedeProd(SProd *malha, Rede &arqRede, int narq,
         string tmp = saidaRede.str();
         ofstream escreveIni(tmp.c_str(), ios_base::app);
         srand(time(NULL));
-        int frase = rand() % 15;
+        int frase = rand() % 16;
         escreveIni << "                                  Rede interna = " << nrede << endl;
         escreveIni << "*******************************************************************************" << endl;
         escreveIni << "                                  UFA!!!!!!!!                                  " << endl;
@@ -12512,7 +12586,7 @@ int main(int argc, char **argv) {
      * Processamento dos argumentos de entrada
      */
     srand(time(NULL));
-    int frase = rand() % 15;
+    int frase = rand() % 16;
 
     // percorrer a lista de parametros de entrada
     for (int i = 1; i < argc; ++i) {

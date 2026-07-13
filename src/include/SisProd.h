@@ -999,7 +999,7 @@ class SProd {
 
     vector<int> kontaTempoCelUni;
 
-    const char *saidaTextoSis[15] = {"                          Post Coitum Omine Animal Triste Est                   ",
+    const char *saidaTextoSis[16] = {"                          Post Coitum Omine Animal Triste Est                   ",
                                      "           'Ouca-me. O fim quase nunca esta longe, em nenhum momento!'          ",
                                      "      So nos curamos de um sofrimento depois de o haver suportado ate o fim.    ",
                                      "                   Infeliz e o espirito ansioso pelo futuro.                    ",
@@ -1013,8 +1013,9 @@ class SProd {
                                      "                 Nao importa o quanto voce va devagar, desde que nao pare                ",
                                      "Um simulador que resolve uma parada de producao, comeca avancando pequenos incrementos de tempo",
                                      "                            Nada e permanente, exceto a mudanca                           ",
-                                     "                  Uma jornada de mil quilometros comeca com um unico passo                "};
-    const char *saidaSubTextoSis[15] = {
+                                     "                  Uma jornada de mil quilometros comeca com um unico passo                ",
+									 "Seja paciente. Espere ate que a lama assente e a agua fique limpa. Permaneça imovel ate que a acao correta suja por si so"};
+    const char *saidaSubTextoSis[16] = {
         "                         Galeno de Pergamo do Transiente Longo                          ",
         "                     J. California Cooper depois da simulacao divergir                  ",
         "                                Marcel Proust no CrossFit                               ",
@@ -1029,7 +1030,8 @@ class SProd {
         "                             Confucio vendo a simulacao emperrar                       ",
         "                               Confucio das simulacoes sem fim                         ",
         "          Heraclito de Efeso vendo tudo mudar a cada incremento de tempo                ",
-        "    Lao-Tse tomando coragem para simular um caso de parafinacao em dutos de producao    "};
+        "    Lao-Tse tomando coragem para simular um caso de parafinacao em dutos de producao    ",
+	    "            Lao-Tse, vendo o incremento de tempo ficar cada vez menor                   "};
 
     /// Constructs and initializes a production-system simulation from the input and log files.
     SProd(string nomeArquivoEntrada, string nomeArquivoLog, tipoValidacaoJson_t validacaoJson,
