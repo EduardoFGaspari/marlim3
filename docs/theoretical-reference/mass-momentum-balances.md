@@ -260,7 +260,7 @@ $$
 \label{eq:gas_balance_rearran}
 $$
 
-For Equations \eqref{eq:prod_liquid_balance_rearran} and \eqref{eq:comp_liquid_balance1_rearran}, the liquid density derivative terms are moved to the right-hand side and treated as source terms within the convergence iteration of the numerical scheme, to be included whenever deemed necessary:
+For Equations \eqref{eq:prod_liquid_balance_rearran} and \eqref{eq:comp_liquid_balance_rearran}, the liquid density derivative terms are moved to the right-hand side and treated as source terms within the convergence iteration of the numerical scheme, to be included whenever deemed necessary:
 
 **Produced liquid**:
 
@@ -317,7 +317,7 @@ The left-hand side now retains only the **pressure-compressibility** term for th
 
 ### Momentum equation
 
-In the momentum equation, the dynamic (acceleration) terms are expected to be of minor relevance for the class of phenomena `Marlim3 is designed to simulate. Removing all acceleration terms from Equation \eqref{eq:mixture_momentum1} would render the model very similar to the well-known NPW scheme. Therefore, we will retain the $\partial \dot{M}_g / \partial t$ term in Equation \eqref{eq:mixture_momentum1}, yielding:
+In the momentum equation, the dynamic (acceleration) terms are expected to be of minor relevance for the class of phenomena `Marlim3` is designed to simulate. Removing all acceleration terms from Equation \eqref{eq:mixture_momentum1} would render the model very similar to the well-known NPW scheme. Therefore, we will retain the $\partial \dot{M}_g / \partial t$ term in Equation \eqref{eq:mixture_momentum1}, yielding:
 
 $$
 \frac{\partial \dot{M}_g}{\partial t} + A_t \frac{\partial p}{\partial x} = f_m \frac{\rho_m j^2}{2} S_w + \rho_m g A_t \sin(\theta)
@@ -413,5 +413,3 @@ It should be noted that the flow rates of interest are not $\dot{M}_g$ and $\dot
 $$\frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\partial p}{\partial t} + \frac{1}{A\rho_g}\frac{\partial (1-T_1)\dot{M}_m - T_2}{\partial x} + \frac{1}{A\rho_{lp}}\frac{\partial \rho_{lp}(1-\beta)\frac{T_1\dot{M}_m+T_2}{\rho_l}}{\partial x} + \frac{1}{A\rho_{lc}}\frac{\partial \rho_{lc}\beta\frac{T_1\dot{M}_m+T_2}{\rho_l}}{\partial x}+ \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{T_1\dot{M}_m+T_2}{\rho_l}}{\partial x} =\frac{\Gamma_{lp}}{A\rho_{lp}\Delta L} + \frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_g}{A\rho_g\Delta L} - \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)\left[A(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}\frac{\partial(1-\alpha)(1-\beta)}{\partial t}\right]-\left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} + \frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial T}\right|_p\frac{\partial T}{\partial t} + \frac{1}{A}\left(\frac{1}{\rho_g} - \frac{1}{\rho_{lp}}\right)A(1-\alpha)(1-\beta)\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{ar}^{std}}{B_o}}{\partial t}\right]$$
 
 With all flux divergence terms now expressed exclusively in terms of $\dot{M}_m$ through the drift-flux coefficients $T_1$ and $T_2$, this equation — together with the simplified momentum equation \eqref{eq:simplified_momentum} — forms the **closed system** to be solved implicitly for the pressure and mixture mass flow rate profiles at each time step.
-
-$$\psi=-A\frac{\partial\left(1-\alpha\right)\left(1-\beta\right)\left(1-F_w\right)\frac{R_s\gamma_g\rho_{\mathrm{ar}}^{\mathrm{std}}}{B_o}}{\partial t}-\frac{\partial\left(1-\beta\right)\left(1-F_w\right)\frac{R_s\gamma_g\rho_{\mathrm{ar}}^{\mathrm{std}}}{B_o}Q_l}{\partial x}$$
