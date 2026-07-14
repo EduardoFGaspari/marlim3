@@ -355,15 +355,15 @@ $$\tau_D = \frac{4 \, t_{\text{prod}} \cdot 86400 \cdot \alpha_f}{D_{\text{ext}}
 
 where $t_{\text{prod}}$ is in days and $\alpha_f$ is the formation thermal diffusivity.
 
-**Time function** (piecewise):
+**Time function used in the current implementation** (piecewise):
 
 $$f(\tau_D) = \begin{cases}
 1.1281\sqrt{\tau_D}\,(1 - 0.3\sqrt{\tau_D}) & \tau_D \le 1 \\[4pt]
-0.432 + 0.4792\tau - 0.127\tau^2 + 0.0201\tau^3 - 0.0013\tau^4 & \tau_D \le 4.5 \\[4pt]
+0.432 + 0.4792\tau_D - 0.127\tau_D^2 + 0.0201\tau_D^3 - 0.0013\tau_D^4 & \tau_D \le 4.5 \\[4pt]
 (0.4063 + 0.5\ln\tau_D)(1 + 0.6/\tau_D) & \tau_D > 4.5
 \end{cases}$$
 
-where $\tau = \ln\tau_D$ in the middle range.
+**Important note:** the middle branch above is written exactly as implemented in `ResForm()`. In many references the intermediate polynomial is expressed using $\ln(\tau_D)$ instead of $\tau_D$, so this branch should be interpreted as the **current code behavior**, not necessarily the canonical published form. As the implementation is dated, it is currently under investigation to determine whether this constitutes a bug or an intentional modification.
 
 **Formation resistance:**
 
@@ -373,38 +373,42 @@ $$R_{\text{form}} = \frac{f(\tau_D)}{2\pi \, k_f}$$
 
 ## Ambient Fluid Properties
 
-### Seawater
+### Seawater / External Liquid
 
-When `ambext == 1`, external fluid properties are computed automatically at the film temperature $T_f = 0.5(T_{\text{ext}} + T_{\text{wall,outer}})$:
+When `ambext == 1`, external liquid properties are updated automatically at the film temperature $T_f = 0.5(T_{\text{ext}} + T_{\text{wall,outer}})$.
 
-| Property | Correlation |
-|----------|-------------|
-| Density | McCain brine volume factor: $B_w = 1 + 1.2 \times 10^{-4}(T_F - 60) + 10^{-6}(T_F - 60)^2 - 3.33 \times 10^{-6} P_{\text{psi}}$ |
-| Viscosity | $\mu = 2.414 \times 10^{-5} \cdot 10^{247.8/(T+133.15)}$ Pa·s |
+The current implementation uses a simplified water/brine-style set of correlations:
+
+| Property | Correlation used in code |
+|----------|---------------------------|
+| Density | McCain-style brine-volume-factor expression |
+| Viscosity | $\mu = 2.414 \times 10^{-5} \cdot 10^{247.8/(T+133.15)}$ with internal unit conversion before storage in Pa·s |
 | Conductivity | $k = 0.565 + 1.75 \times 10^{-3} T - 6.21 \times 10^{-6} T^2$ W/(m·K) |
-| Specific heat | Piecewise polynomial in $T_K$ (split at 410 K) |
+| Specific heat | Piecewise polynomial in temperature |
+
+**Implementation detail:** despite the documentation shorthand "seawater", the routine `MasEspLiq()` currently sets salinity fraction to zero internally, so the behavior is closer to a simplified water / weak-brine property model than to a full seawater model.
 
 ### Air
 
-When `ambext == 2`, air properties at 1 atm:
+When `ambext == 2`, air properties are updated from fitted correlations:
 
 | Property | Correlation |
-|----------|-------------|
-| Density | Ideal gas: $\rho = \dfrac{101325 \cdot 28.97}{8314.46 \cdot (T + 273.15)}$ kg/m³ |
+|----------|---------------------------|
+| Density | $\rho = \dfrac{101325 \cdot 28.97}{8314.46 \cdot (T + 273.15)}$ kg/m³ |
 | Viscosity | $\mu = 1.799 \times 10^{-5} + 1.000 \times 10^{-7} T - 1.370 \times 10^{-9} T^2 + 6.96 \times 10^{-12} T^3$ Pa·s |
 | Conductivity | $k = 0.0241 + 7.586 \times 10^{-5} T$ W/(m·K) |
 | Specific heat | $c_p = 1000(1.005 + 1.096 \times 10^{-5} T + 4.600 \times 10^{-7} T^2)$ J/(kg·K) |
 
 ### Gas / Nitrogen (Annulus)
 
-For gas-filled annular layers (`tipomat == 3`), properties are computed as compressed gas:
+For gas-filled annular layers (`tipomat == 3`), the implementation uses internal fitted correlations for compressed-gas density, heat capacity, conductivity, and viscosity.
 
-| Property | Formula |
-|----------|---------|
-| Density | $\rho_g = \dfrac{\gamma_g \cdot 28.96 \cdot P \cdot 98066.5}{8046.5 \cdot Z(P_R, T_R) \cdot (T + 273)}$ with $\gamma_g = 0.9669$ |
-| Specific heat | $c_p = (1.88 + 1.712\gamma_g)T + 2651 - 897.2\gamma_g$ |
-| Conductivity | Pressure-corrected polynomial using Stiel-Thodos form |
-| Viscosity | Lee-Gonzalez-Eakin |
+| Property | Formula / model family used in code |
+|----------|-------------------------------------|
+| Density | $\rho_g = \dfrac{\gamma_g \cdot 28.96 \cdot P \cdot 98066.5}{8046.5 \cdot Z(P_R, T_R) \cdot (T + 273)}$ with implementation-specific constants |
+| Specific heat | Linear temperature fit with gas-gravity dependence |
+| Conductivity | Pressure-corrected empirical polynomial |
+| Viscosity | Lee-Gonzalez-Eakin-style empirical form |
 
 The Z-factor is computed by the Gopal correlation (`ZGopal`), using the 48-coefficient piecewise polynomial table `CoefGopalHT[]`:
 
@@ -420,32 +424,9 @@ $$Z = P_R(0.711 + 3.66 \, T_R)^{-1.4667} - \frac{1.637}{0.319 \, T_R + 0.522} + 
 
 $$\beta = -\frac{1}{\rho}\frac{\partial\rho}{\partial T} \approx -\frac{1}{\rho(T)}\frac{\rho(T + \delta T) - \rho(T)}{\delta T}$$
 
-where $\delta T = 0.01 T$ (or 0.1 if $T \approx 0$). Type: 1 = seawater, 2 = gas, 3 = air.
+where $\delta T = 0.01 T$ (or 0.1 if $T \approx 0$). Type: 1 = external liquid, 2 = gas, 3 = air.
 
 ---
-
-## Radial Resistance Network
-
-The pipe wall is modeled as a series of concentric cylindrical thermal resistances:
-
-```
-Fluid (Tint) ──h_i──[Layer 0]──[Layer 1]── ... ──[Layer N-1]──h_e── Environment (Textern)
-                ↑        ↑          ↑                   ↑         ↑
-           convective  solid or   solid or          solid or  convective
-              BC       fluid      fluid             fluid        BC
-```
-
-### Layer Resistance Types
-
-For each layer, the resistance type depends on `tipomat[j]`:
-
-| `tipomat` | Type | Thermal Resistance (per unit length) |
-|-----------|------|--------------------------------------|
-| 0 | Solid | $R = \dfrac{\ln(D_{\text{out}} / D_{\text{in}})}{2\pi k}$ |
-| 2 | Liquid (stagnant) | Natural convection: $R = \dfrac{\ln(D_o / D_i)}{\pi(D_o - D_i) h_{\text{conv}}}$ |
-| 2 | Liquid (flowing, `Vconf > 0`) | Forced convection in annulus (Petukhov with hydraulic diameter) |
-| 3 | Gas (stagnant) | Natural convection (same as liquid but gas properties) |
-| 3 | Gas (flowing) | Forced convection in annulus |
 
 ### Internal Convection Coefficient — hInt()
 
@@ -454,45 +435,51 @@ if Re > 2400:
     Nu = nussPet(Re, Pr, ε, μ_b, μ_w)           ← Petukhov-Gnielinski
 else:
     compute Ra_internal
-    if Ra < 1000 or mixed convection:
-        Nu = 3.6                                   ← Laminar pipe flow
+    if Ra < 1000 or mixed-convection suppression criterion is active:
+        Nu = 3.6
     else:
-        Nu = 0.22·(Pr·Ra/(0.2+Pr))^0.28 · 3.5^(-0.25)  ← Natural convection in pipe
-    For lined pipe (revest = 1):
-        Uses confined natural convection (NussConf2)
+        Nu = 0.22·(Ra/0.2)^0.28 · 3.5^(-0.25)   ← code form used for natural convection branch
+    For lined pipe (revest = 1) in transient local assembly:
+        confined natural convection may be used through NussConf2
 
 h_i = Nu · k_int / D_inner
 ```
 
-If `novoHi > 0`, the user-specified value overrides the computed $h_i$.
+**Implementation note:** `novoHi` does **not** generally override `hInt()`. It is only used in the prescribed-wall-temperature branch of `transcel()` (`condiTparede == 1`), where a user-specified boundary coefficient can replace the default large penalty coefficient.
 
 ### External Convection Coefficient — hExt()
 
 ```
 if formacPoc == 0 (pipe in fluid):
-    if ambext == 1: update seawater properties at film T
+    if ambext == 1: update external-liquid properties at film T
     if ambext == 2: update air properties at film T
 
     if dirconvExt == 0 (cross-flow):
-        Nu = nussChuBer(Re, Pr)                    ← Churchill-Bernstein
+        Nu = nussChuBer(Re, Pr)
     else (parallel flow):
-        Nu = nussPet(Re, Pr, ε, μ_b, μ_w)         ← Petukhov
+        Nu = nussPet(Re, Pr, ε, μ_b, μ_w)
 
     h_e = Nu · k_ext / D_outer
 
 if formacPoc == 1 (wellbore):
-    h_e = 1 / (π · D_outer · R_formation)          ← Ramey formation resistance
+    h_e = 1 / (π · D_outer · R_formation)
 ```
+
+For cross-flow cases, an additional natural-convection contribution is added only in the specific branches where the code evaluates mixed external convection, namely when the outer region is fluid (`formacPoc == 0`), `dirconvExt == 0`, and the relevant steady/transient branch enables the low-Reynolds correction.
 
 ### Wall Conductance — condParede()
 
-Builds the per-unit-length thermal conductance `tec[j]` for each layer:
+Builds the per-unit-length thermal conductance `tec[j]` for each wall layer or intermediate annular region:
 
-- **Solid layers:** $\text{tec}_j = \dfrac{2\pi k}{\ln(D_o / D_i)}$
+- **Solid layers:**
 
-- **Fluid layers (no flow):** compute $\mathrm{Gr}$, $\mathrm{Ra}$, $\mathrm{Nu}_{\text{conf}}$ from the confined convection model, then $\text{tec}_j = \dfrac{\pi(D_o - D_i) h}{\ln(D_o / D_i)}$
+$$\text{tec}_j = \frac{2\pi k}{\ln(D_o / D_i)}$$
 
-- **Fluid layers (flow):** forced convection with Petukhov on annular hydraulic diameter $D_h = 4A/P$, then $\text{tec}_j = \pi D_i h$
+- **Fluid layers (stagnant):** compute $\mathrm{Gr}$, $\mathrm{Ra}$, and a confined-convection Nusselt number, then
+
+$$\text{tec}_j = \frac{\pi (D_o - D_i) h}{\ln(D_o / D_i)}$$
+
+- **Fluid layers (forced annular flow):** compute an annular hydraulic diameter $D_h = 4A/P$, apply the internal forced-convection correlation, and convert the result to an equivalent radial conductance.
 
 Returns the overall wall conductance:
 
@@ -502,200 +489,121 @@ $$k_{\text{wall}} = \left(\sum_j \frac{1}{\text{tec}_j}\right)^{-1}$$
 
 ## Steady-State Solver — transperm()
 
-`TransCal::transperm()` computes the steady-state radial heat flux.
+`TransCal::transperm()` computes the steady radial heat flux per unit length.
 
 **Total thermal resistance:**
 
-$$R_{\text{total}} = \frac{1}{\pi D_i h_i} + \sum_{j=0}^{N-1} \frac{1}{\text{tec}_j} + \frac{1}{\pi D_o h_e} + R_{\text{annulus}}$$
+$$R_{\text{total}} = \frac{1}{\pi D_i h_i} + \sum_{j=1}^{N_{\text{layers}}} \frac{1}{\text{tec}_j} + \frac{1}{\pi D_o h_e} + R_{\text{annulus}}$$
+
+where in the implementation:
+- `tec[0] = \pi D_i h_i` is the **inner convective conductance**,
+- `tec[1] ... tec[N]` are the wall / intermediate-layer conductances,
+- `tec[N+1] = \pi D_o h_e` is the **outer convective conductance**.
 
 **Heat flux per unit length:**
 
 $$q = \frac{T_{\text{ext}} - T_{\text{int}}}{R_{\text{total}}} \quad [\text{W/m}]$$
 
-**Interface temperatures** — walking through the resistance chain:
+**Interface-temperature march used in code:**
 
-$$T_{\text{wall,inner}} = T_{\text{int}} + \frac{q}{\text{tec}_0}$$
+$$T_{\text{wall,inner}} = T_{\text{int}} + \frac{q}{\pi D_i h_i} = T_{\text{int}} + \frac{q}{\text{tec}[0]}$$
 
-$$T_k = T_{k-1} + \frac{q}{\text{tec}_k}$$
+For subsequent interfaces, the code advances through the radial chain using the corresponding layer conductances `tec[k]`.
 
-**Iteration for natural convection:** For low external $\mathrm{Re}$ ($\le 5000$) with cross-flow, the code iterates up to 5 passes to converge the natural convection contribution, since $h_e$ depends on $T_{\text{wall,outer}}$ which depends on $q$ which depends on $h_e$.
+**External mixed convection:** in the cross-flow branch, when the implementation is in the low-Reynolds correction path, the natural-convection contribution is evaluated from `RaExt()` and added to the forced-convection Nusselt number only if the code criterion based on $\mathrm{Gr}/\mathrm{Re}^2$ is satisfied.
 
-If `difus2D == 1`, delegates to `transperm2D()`.
+If `difus2D == 1`, the routine delegates the external-soil problem to `transperm2D()` and still uses the 1D wall / interface reconstruction around that coupled result.
 
 ---
 
 ## Transient Solver — transtrans()
 
-`TransCal::transtrans()` solves the transient radial heat equation through the pipe wall.
+`TransCal::transtrans()` solves the transient radial thermal problem across the multilayer wall.
 
-### Radial Discretization
+### Numerical Formulation
 
-The radial heat equation in cylindrical coordinates:
+The underlying physics is the cylindrical transient heat equation,
 
-$$\rho \, c_p \frac{\partial T}{\partial t} = \frac{1}{r} \frac{\partial}{\partial r}\!\left(r \, k \frac{\partial T}{\partial r}\right)$$
+$$\rho \, c_p \frac{\partial T}{\partial t} = \frac{1}{r} \frac{\partial}{\partial r}\!\left(r \, k \frac{\partial T}{\partial r}\right),$$
 
-Discretized with finite differences at node $r_1$ between neighbors $r_0$ and $r_2$:
+but the implementation is assembled in a **mixed temperature / radial-flux form** rather than as a simple temperature-only finite-difference stencil.
 
-$$\rho \, c_p \frac{T^{n+1} - T^n}{\Delta t} = \frac{k}{r_1}\left[\frac{r_1 + r_0}{2} \cdot \frac{T_0 - T_1}{r_1 - r_0} - \frac{r_1 + r_2}{2} \cdot \frac{T_1 - T_2}{r_2 - r_1}\right]$$
+Each radial location contributes two unknowns to the global linear system:
+- temperature,
+- an auxiliary radial heat-flow variable later converted into `Qcamada = 2\pi q`.
 
-Each wall layer is subdivided into `ncamada[i]` radial finite-element nodes with spacing `drcamada[i]`. The total number of global nodes is $1 + \sum_i \text{ncamada}[i]$.
+The total number of algebraic unknowns is therefore:
 
-### Local Element Matrix — transcel()
+$$N_{\text{unk}} = 2\left(1 + \sum_i n_{\text{camada},i}\right).$$
 
-`transcel(icam, idisc)` builds a 2×2 system per radial node pair. The local matrix has 2 DOFs per node (temperature and flux), stored in `localmat[2][6]` and `localvet[2]`:
+### Radial Discretization and Local Assembly
 
-**Interior nodes** (at radii $r_0$, $r_1$):
+`transcel(icam, idisc)` assembles a 2-row local contribution stored in `localmat[2][6]` and `localvet[2]`. The exact coefficients depend on whether the point is:
+- an interior solid node,
+- an inner convective boundary,
+- an outer convective boundary,
+- or an interface adjacent to a fluid annulus treated through an equivalent convective resistance.
 
-$$\text{localmat}[0][1] = \frac{1}{0.5(r_1 + r_0)(r_1 - r_0)}$$
+For interior locations, the transient accumulation term appears explicitly through:
 
-$$\text{localmat}[0][2] = \frac{\rho \, c_p}{\Delta t}$$
+$$\frac{\rho c_p}{\Delta t} T^{n+1} = \frac{\rho c_p}{\Delta t} T^n + \text{radial conductive / convective couplings}.$$
 
-$$\text{localvet}[0] = T^n_{i,j} \cdot \frac{\rho \, c_p}{\Delta t}$$
-
-**Inner boundary** ($i_{\text{cam}} = 0$, $i_{\text{disc}} = 0$):
-
-$$\text{localmat}[0][2] = -(h_i \cdot r_a + k_0 \cdot r_a / \delta r)$$
-
-$$\text{localvet}[0] = -h_i \cdot r_a \cdot T_{\text{int}}$$
-
-**Outer boundary** (last layer, last node):
-
-$$\text{localmat}[1][2] = h_e \cdot r_1$$
-
-$$\text{localvet}[1] = h_e \cdot r_1 \cdot T_{\text{ext}}$$
-
-At **fluid-layer interfaces**, natural or forced convection heat transfer coefficients replace conduction terms, treating the fluid layer as a convective resistance rather than a conduction node.
+At the inner boundary (`icam = 0`, `idisc = 0`), the code imposes a Robin-type condition driven by `h_i`. At the outermost boundary, a Robin condition driven by `h_e` or by the equivalent formation resistance is imposed.
 
 ### Global Assembly and Solve
 
 `transtrans()`:
 
-1. Assembles all `transcel()` local matrices into a global banded matrix (`BandMtx` with bandwidth 3,2)
-2. Solves via Gauss elimination with partial pivoting
-3. Extracts new temperatures $T^{n+1}_{i,j}$ and heat fluxes $Q^{n+1}_{i,j} = 2\pi \cdot q_{i,j}$
-4. Updates layer interface continuity conditions
+1. assembles all local contributions into a banded matrix,
+2. solves the global linear system with Gaussian elimination,
+3. stores temperatures back into `Tcamada`,
+4. stores radial heat-flow variables back into `Qcamada` after multiplying by $2\pi$,
+5. updates `fluxIni` and `fluxFim` from the first and last solved radial fluxes.
 
-The global system has $2(N_{\text{global}} + 1)$ unknowns (temperature + flux at each node).
+Thus the transient solver should be understood as a **coupled mixed radial conduction problem**, not merely as a scalar explicit finite-difference temperature update.
 
-**`FeiticoDoTempo()`** — restores all `Tcamada`/`Qcamada` to their `Tini`/`Qini` values. Used for iteration rollback in the coupled flow-thermal solver.
+**`FeiticoDoTempo()`** restores all `Tcamada` and `Qcamada` values from `Tini` and `Qini`, enabling rollback during outer coupled iterations.
 
-If `difus2D == 1`, delegates to `transtrans2D()`.
-
----
-
-## Axial Energy Equation
-
-The axial energy balance is evaluated in [`SisProd.cpp`](../../src/SisProd.cpp) for each 1D cell. Temperature is updated explicitly:
-
-$$T^{new} = \frac{(\rho c_v)_{mix} A \cdot T / \Delta t + \text{RHS}}{(\rho c_v)_{mix} A / \Delta t}$$
-
-### Energy Balance Terms
-
-| Term | Expression | Physical meaning |
-|------|-----------|-----------------|
-| **Pressure work** | $-c_{p,\text{press}} \cdot (P - P^0) \cdot 98066.5 / \Delta t$ | $\partial P/\partial t$ coupling |
-| **Advection** | $-(\rho_l u_{ls} c_{p,l} + \rho_g u_{gs} c_{p,g}) A \cdot dT/dx$ | Temperature advection (upwind) |
-| **Joule-Thomson** | $+(\rho_l u_{ls} \mu_{JT,l} + \rho_g u_{gs} \mu_{JT,g}) A \cdot dP/dx$ | J-T cooling/heating |
-| **Kinetic energy** | $-\text{cinetico}$ | Kinetic energy change |
-| **Hydrostatic** | $-\text{hidro}$ | Gravity heating/cooling |
-| **Pump power** | $+\text{potTermo} / dx_{\text{med}}$ | BCS/pump dissipation |
-| **External source** | $+\text{fonteCal} / dx_{\text{med}}$ | Volumetric heat source |
-| **Mass sources** | $+\text{fontemassL} + \text{fontemassG}$ | Enthalpy of injected fluids |
-| **Radial heat** | $+\text{fluxcal}$ | **Coupling term from TransCal** |
-| **Latent heat** | $-\text{latente}$ | Phase-change enthalpy |
-
-The **advection velocity** for temperature:
-
-$$V_{\text{Temper}} = \frac{\rho_l u_{ls} c_{p,l} + \rho_g u_{gs} c_{p,g}}{(\rho c_v)_{mix}}$$
-
-The spatial derivative $dT/dx$ uses **upwinding** based on the sign of $V_{\text{Temper}}$.
-
-The computed $dT/dt = (T^{new} - T^{old})/\Delta t$ is fed back into the mass conservation equation as a thermal expansion coupling term.
-
-### Coupling: Radial Heat Flux → Axial Solver
-
-The coupling chain:
-
-```
-SisProd.cpp energy loop (for each cell i):
-  │
-  ├─ Update calor properties: calor.Tint, calor.Textern1, calor.rhoint, ...
-  │
-  ├─ if modoDifus3D == 0:           (standard 1D or 2D)
-  │     if modoPerm == 0:
-  │         fluxcal = calor.transtrans()     ← transient radial
-  │     else:
-  │         fluxcal = calor.transperm()      ← steady-state radial
-  │
-  ├─ elif modoDifus3D == 1:          (3D Poisson for soil)
-  │     fluxcal = -arq.celAcop[].FE * poisson3D.dados.qTotal[] / dx
-  │
-  ├─ celula[i].fluxcalmed = fluxcal  ← stored for diagnostics/output
-  │
-  └─ Explicit temperature update: T += ... + fluxcal + ...
-```
-
----
-
-## Thermal Members in Cell Classes
-
-### Cel (celula3.h) — Main Multiphase Cell
-
-| Member | Description |
-|--------|-------------|
-| `TransCal calor` | Radial heat transfer object |
-| `temp`, `tempL`, `tempR` | Center, left, right temperatures [°C] |
-| `tempini`, `tempLini`, `tempRini` | Previous time step values |
-| `dTdt`, `dTdtIni`, `dTdtL` | $\partial T/\partial t$ — for energy equation coupling |
-| `VTemper`, `VTemperini` | Advection velocity for energy transport [m/s] |
-| `fluxcalmed` | Radial heat flux [W/m] |
-| `fluxCal2D` | 2D heat flux (burial) |
-| `fonteCal` | Volumetric heat source [W/m] |
-| `fluxcalAcopRedeP`, `resAcopRedeP` | Network thermal coupling |
-| `potB`, `potBT`, `potTermo` | BCS pump power / thermal power |
-| `deltaPar`, `porosoPar`, `MW_wax`, `rhoWaxLiq`, `Sum_dCwaxdT` | Wax deposition thermal parameters |
-
-### CelG (celulaGas.h) — Gas-Lift Service Line Cell
-
-| Member | Description |
-|--------|-------------|
-| `TransCal calor` | Radial heat transfer object |
-| `temp`, `tempL`, `tempR` / `tempini` | Temperatures and previous step |
-| `fluxcal` | Heat flux [W/m] |
-
-### CelVap (celulaVapor.h) — Steam/Vapor Cell
-
-| Member | Description |
-|--------|-------------|
-| `TransCal calor` | Radial heat transfer object |
-| `temp`, `tempL`, `tempR`, `tempini` | Temperatures |
-| `VTemper` | Advection velocity |
+If `difus2D == 1`, the routine delegates the soil-side problem to `transtrans2D()`.
 
 ---
 
 ## 2D Buried-Pipe Solver (Poisson)
 
-When `difus2D == 1`, the 1D radial model is replaced by a 2D finite-volume solver for the soil surrounding a buried or trenched pipeline. The solver is contained in the `solverP` class.
+When `difus2D == 1`, the external buried-soil problem is handled by a 2D finite-volume Poisson / diffusion solver, while the pipe wall and internal convection remain represented through equivalent 1D conductances.
+
+### Coupling Philosophy
+
+This is not a full replacement of the entire radial thermal model by a 2D mesh. Instead:
+
+1. the inner convection coefficient `hI` is still computed from the 1D `TransCal` correlations,
+2. the multilayer wall is condensed into equivalent conductances through `condParede()` and `condParedeLocal()`,
+3. the external environment / soil is solved in 2D,
+4. the resulting total heat flux is then mapped back to the 1D wall-temperature reconstruction.
+
+The quantities passed from `TransCal` to the Poisson solver are explicitly:
+
+```text
+poisson2D.dados.tInt    = Tint
+poisson2D.dados.tAmb    = Textern1
+poisson2D.dados.condGlob = condParede()
+poisson2D.dados.condLoc  = condParedeLocal()
+poisson2D.dados.hE       = hExt()
+poisson2D.dados.hI       = hInt()
+```
 
 ### Mesh and Elements
 
-The 2D solver uses a **cell-centered Finite Volume Method (FVM)** on **unstructured triangular meshes**.
+The 2D solver uses a cell-centered finite-volume formulation on unstructured triangular meshes.
 
 **Key classes:**
 
 | Class | File | Role |
 |-------|------|------|
-| `elementoPoisson` | [`estruturasPoisson.h`](../../src/estruturasPoisson.h) | Per-element data: vertex coordinates, centroid, face areas/normals, interpolation factors, temperature field, material properties |
-| `elem2dPoisson` | [`Elem2DPoisson.h`](../../src/Elem2DPoisson.h) | Element wrapper with neighbor pointers, boundary conditions, local matrix assembly |
-| `malha2d` | [`Malha2DPoisson.h`](../../src/Malha2DPoisson.h) | Mesh container (`vector<elem2dPoisson>`), neighbor linking, face detail computation |
-| `solverP` | `solverPoisson.h` | Top-level: `dadosP` data + `malha2d` mesh + sparse matrix (`SparseMtx`) + GMRES solver |
-
-**Mesh input formats:**
-
-- **Triangle format** (`.ele` + `.node` files) when `unv == 0`
-- **UNV (Salome/Ideas) format** when `unv == 1` — parses nodes, edges/faces, triangular elements, and named boundary groups
-
-Material properties (`cond`, `cp`, `rho`) and initial conditions are assigned region-by-region via bounding boxes.
+| `elementoPoisson` | [`estruturasPoisson.h`](../../src/estruturasPoisson.h) | Element geometry, centroids, face data, temperature, conductivity, density, specific heat |
+| `elem2dPoisson` | [`Elem2DPoisson.h`](../../src/Elem2DPoisson.h) | Neighbor connectivity, local assembly, Green-Gauss gradients, thermal BC handling |
+| `malha2d` | [`Malha2DPoisson.h`](../../src/Malha2DPoisson.h) | Mesh container and geometric preprocessing |
+| `solverP` | `solverPoisson.h` | Global data, sparse assembly, steady/transient iterations |
 
 ### Boundary Conditions
 
@@ -703,195 +611,235 @@ Defined in [`estruturasPoisson.h`](../../src/estruturasPoisson.h):
 
 | BC Type | Structure | Description |
 |---------|-----------|-------------|
-| **Dirichlet** | `detDiriPoisson` | Prescribed temperature, time-varying series |
-| **Von Neumann** | `detVNPoisson` | Prescribed heat flux, time-varying series |
-| **Richardson** | `detRicPoisson` | Convective: $h_{\text{amb}}$ and $T_{\text{amb}}$ time series |
-| **Coupled** | `rotuloAcop` | Robin condition at the pipe interface: $T_{\text{amb}}$ = pipe wall temperature, $h$ = local wall conductance |
-
-`tipoCC()` classifies each boundary face. `atualizaCC()` interpolates time-varying BC values.
+| **Dirichlet** | `detDiriPoisson` | Prescribed temperature |
+| **Von Neumann** | `detVNPoisson` | Prescribed heat flux |
+| **Richardson** | `detRicPoisson` | Convective boundary condition |
+| **Coupled** | `rotuloAcop` | Coupling between buried-soil domain and equivalent pipe-wall model |
 
 ### Assembly — GeraLocal()
 
-In [`Elem2DPoisson.cpp`](../../src/Elem2DPoisson.cpp), for each triangular element:
+For each element, `GeraLocal()` assembles:
+- orthogonal diffusion between neighboring cells,
+- non-orthogonal correction terms from Green-Gauss gradients,
+- transient accumulation terms when transient mode is active,
+- source terms and boundary contributions.
 
-**Internal faces** (neighbor exists):
-
-1. Harmonic conductivity: $k_h = 1 / (g/k_C + (1-g)/k_{\text{viz}})$
-2. Orthogonal diffusion: $k_h \cdot (\vec{e} \cdot \vec{S}_f) / |\vec{e}|$
-3. Cross-diffusion correction via Green-Gauss gradient reconstruction
-
-**Dirichlet faces:** diffusion flux using ghost-cell approach.
-
-**Richardson / Coupled faces:** combined conduction + convection resistance, creating effective $\text{coefTHRC}$ and $\text{fonteTHR}$.
-
-**Von Neumann faces:** prescribed flux added directly to RHS.
-
-**Transient term** (when steady-state flag is off):
-
-$$\text{RHS} += V_{\text{elem}} \cdot \rho \cdot c_p \cdot T^0 / \Delta t + \text{FonteT} \cdot V_{\text{elem}}$$
-
-$$\text{diag} += V_{\text{elem}} \cdot (\rho \cdot c_p / \Delta t - \partial\text{FonteT} / \partial T)$$
+The method uses a face-based finite-volume balance, with conductivity interpolation and boundary-condition-specific source / coefficient terms.
 
 ### Gradient Reconstruction — Green-Gauss
 
-`calcGradGreen()` uses the **Green-Gauss method** with a minimum-correction approach for non-orthogonal meshes:
-
-1. Interpolate face temperature using distance-weighted factor `fatG`
-2. Correct face gradient: $\nabla T_f = \nabla T_{\text{interp}} + (dT/dn_{\text{chord}} - \nabla T_{\text{interp}} \cdot \hat{e}) \cdot \hat{e}$
-3. **Distortion filter:** if $|\cos(\angle(\vec{E}, \vec{S}))| < 0.9$, the cross-diffusion correction is zeroed
+`calcGradGreen()` reconstructs temperature gradients from face values using a Green-Gauss approach with non-orthogonality correction. Distortion filtering is applied when the angle between centroid-connecting vectors and face-area vectors becomes unfavorable.
 
 ### Linear Solve
 
-The global sparse matrix is assembled in CRS format. Both `permanentePoisson()` and `transientePoisson()` iterate:
+The global sparse system is assembled and solved iteratively in both steady and transient modes. The solver workflow includes:
 
-1. Copy gradient → `gradGreenTI`
-2. `calcGradGreen()` on all elements (OpenMP parallelized)
-3. `GeraLocal()` on all elements (OpenMP parallelized)
-4. Assemble into CRS
-5. Solve with **GMRES** (or FGMRES / BiCGStab), with optional **ILU(k) preconditioning**
-6. Update temperatures, check convergence ($\|T - T_{\text{old}}\| / N_{\text{ele}} < 10^{-5}$)
-7. If coupled, recompute $q_{\text{acop}}$, $q_{\text{total}}$, $T_{\text{wall}}$, update coupled BC values
+1. gradient reconstruction,
+2. local assembly,
+3. sparse global assembly,
+4. Krylov linear solve,
+5. temperature update,
+6. convergence check,
+7. coupled-boundary heat-flux update when required.
 
 ### Coupling to 1D Flow
 
-**`transperm2D()`** (steady-state buried pipe):
+**`transperm2D()`**:
 
-1. Sets `poisson2D.dados.tInt = Tint`, `tAmb = Textern1`, `hI`, `hE`, `condGlob`, `condLoc`
-2. Initializes all 2D elements to $T_{\text{extern}}$
-3. Iterates with **pseudo-transient acceleration**: `transientePoissonDummy(deltFic)` with doubling time steps until $|q_{\text{total}} - q_{\text{total,old}}| < 0.1$
-4. Switches to `permanentePoisson()`
-5. Returns $q = -\text{poisson2D.dados.qTotal}$ [W/m]
-6. Updates 1D wall layer temperatures from the computed flux
+1. updates `tInt`, `tAmb`, `condGlob`, `condLoc`, `hE`, and `hI`,
+2. initializes the 2D field,
+3. applies a pseudo-transient acceleration loop through `transientePoissonDummy(deltFic)` until the wall heat flux stabilizes,
+4. solves the final steady 2D problem,
+5. returns
 
-**`transtrans2D()`** (transient buried pipe):
+$$q = -q_{\text{Total,2D}}.$$
 
-1. At $t = 0$, switches all 2D elements from permanent to transient mode
-2. Updates Richardson BC with current `tAmb`, `hE`
-3. Calls `poisson2D.transientePoisson(dt)` with the current flow solver time step
-4. Returns $q = -\text{poisson2D.dados.qTotal}$ [W/m]
+**`transtrans2D()`**:
 
-The **coupling BC on the pipe inner wall** is a Robin condition: for faces labeled `rotuloAcop`:
-- $h_{\text{face}} = \text{condLoc}$ (local pipe wall conductance including internal convection)
-- $T_{\text{amb,face}} = T_{\text{wall}}$ (pipe wall temperature from flux balance)
+1. switches the 2D model to transient mode when needed,
+2. updates convective Richardson boundary data from the current ambient state,
+3. advances the 2D thermal field with the current 1D time step,
+4. returns
 
-Total heat flux: $q_{\text{total}} = q_{\text{acop}} + q_{\text{desacop}}$, where $q_{\text{acop}}$ is integrated over coupled faces and $q_{\text{desacop}}$ accounts for the non-buried arc of the pipe.
+$$q = -q_{\text{Total,2D}}.$$
+
+After either call, `TransCal` still reconstructs the 1D wall-interface temperatures using the equivalent radial conductance chain and the returned total heat flux.
 
 ---
 
 ## 3D Soil Diffusion Solver
 
-The 3D capability mirrors the 2D architecture for full volumetric soil conduction:
+The 3D thermal-diffusion capability extends the buried-pipe concept to a fully three-dimensional surrounding domain. In the codebase, this functionality is centered on `dadosP3D`, `Elem3DPoisson`, `Malha3DPoisson`, and `solverP3D`.
 
-| Component | 3D Class | Header |
-|-----------|---------|--------|
-| Data structures | `detTempoPoisson3D`, `detPropPoisson3D`, `detCCPoisson3D` | [`estruturasPoisson3D.h`](../../src/estruturasPoisson3D.h) |
-| Data / parser | `dadosP3D` | [`dados3DPoisson.h`](../../src/dados3DPoisson.h) |
-| Element | `Elem3DPoisson` | [`Elem3DPoisson.h`](../../src/Elem3DPoisson.h) |
-| Mesh | `malha3d` | `Malha3DPoisson.h` |
-| Solver | `solverP3D` | `solver3DPoisson.h` |
+### Main role in the coupled thermal model
 
-**Key differences from 2D:**
+When the global configuration enables 3D diffusion (`modoDifus3D == 1`), the surrounding thermal field is no longer represented only by the 1D radial resistance chain or by the 2D buried-soil model. Instead, the external domain is solved in 3D and the resulting heat exchange is coupled back into the 1D axial energy balance.
 
-- **Material regions by name** (`string *regiao`) instead of bounding boxes
-- **Multiple coupled boundaries** (`nAcop` array of named labels, vs. single `rotuloAcop` in 2D) — supporting multiple pipes in the same soil domain
-- Per-boundary arrays: `tParede[]`, `tInt[]`, `hI[]`, `hE[]`, `qAcop[]`, `qTotal[]`, `diamRef[]`
-- **Dynamic material regions** (`detMudaRegiao3D`) — supports changing material properties during simulation
-- Full material catalog (`materialPoisson3D`) including solid/fluid types (water/air) with viscosity and expansivity for natural convection
-- Pipe cross-section definitions (`cortedutoPoisson3D`) with multi-layer, annular geometry, discretization per layer
-- Reads **UNV format** with named physical groups
+In `SisProd.cpp`, this contribution appears through the total heat-flow array produced by the 3D solver, which is converted to the axial source term used by each 1D cell.
 
-**3D activation** in `SisProd.cpp`: when `modoDifus3D == 1`, the energy loop uses:
+### Main 3D data structures
 
-$$\text{fluxcal} = -\text{arq.celAcop}[i].\text{FE} \cdot \text{poisson3D.dados.qTotal}[i_{\text{acop}}] / dx$$
+`dadosP3D` stores, among other quantities:
 
-replacing the 1D/2D heat transfer model entirely. The scaling factor `FE` maps the 3D flux to the 1D cell.
+- transient / steady flags in `temp`
+- material and region definitions in `prop`
+- coupling and boundary-condition information in `CC`
+- mesh connectivity in `noEle`
+- node coordinates in `xcoor`
+- per-coupling-location thermal data such as:
+  - `tParede[]`
+  - `tInt[]`
+  - `hE[]`
+  - `hI[]`
+  - `qAcop[]`
+  - `qTotal[]`
+  - `diamRef[]`
+
+This organization shows that the 3D model supports multiple coupled surfaces or thermal interfaces simultaneously.
+
+### Coupling interpretation
+
+Conceptually, the 3D solver plays the same role as the 2D buried-pipe solver, but over a full volumetric domain:
+
+1. internal-fluid and wall-side quantities are still provided by the 1D / radial thermal model,
+2. the external environment is solved in 3D,
+3. the total exchanged heat is returned to the axial energy equation.
+
+Thus, the 3D model should be understood as a **surrounding-domain thermal solver coupled to the 1D flow model**, not as a replacement for all internal radial wall physics.
 
 ---
 
 ## Special Configurations
 
+The heat-transfer model supports several special configurations that modify geometry interpretation, boundary conditions, or the way radial and external thermal resistances are assembled.
+
 ### Subsea Pipelines
 
-When `ambext == 1`:
+For subsea pipelines, the outer environment is typically handled as an external liquid domain. In this case:
 
-- External fluid properties are **automatically computed** as seawater at the film temperature
-- Cross-flow external convection (Churchill-Bernstein) with **natural convection augmentation** at low currents
-- Typical wall layers: steel + insulation + concrete coating
+- `ambext == 1` activates automatic external-liquid property updates,
+- `dirconvExt` selects cross-flow or parallel-flow treatment,
+- mixed external convection may be added in the appropriate cross-flow branches,
+- the radial chain remains the default representation unless 2D or 3D external diffusion is enabled.
+
+This is the standard use case for the outer convective coefficient `hExt()` together with the multilayer wall resistance chain.
 
 ### Risers and Wellbores
 
-When `formacPoc == 1`:
+The well / formation case is activated through `formacPoc == 1`.
 
-- External boundary condition replaced by **Ramey formation resistance**
-- Time-dependent: $R_{\text{form}}(\tau_D)$ increases with production time
-- No external convection coefficient — formation conduction dominates
-- Formation diffusivity: $\alpha_f = k_f / (\rho_f \, c_{p,f})$
+In this configuration:
+
+- the outer environment is not treated as a free external fluid,
+- `ResForm()` computes an equivalent formation resistance,
+- the outer thermal boundary is converted into
+
+$$h_e = \frac{1}{\pi D_{\text{outer}} R_{\text{form}}}.$$
+
+This is the main mechanism used to represent radial heat exchange with the formation in wellbore-like configurations.
 
 ### Buried / Trenched Pipelines
 
-When `difus2D == 1` or `modoDifus3D == 1`:
+For buried or trenched pipelines, the external thermal domain can be treated in two different ways:
 
-- The 1D radial model is replaced by a 2D or 3D Poisson solver
-- `transperm2D()`: iterative pseudo-transient solve to reach steady state
-- `transtrans2D()`: true transient 2D soil conduction around the pipe
-- Wall conductance and convection coefficients are still computed 1D and passed as boundary conditions to the 2D/3D domain
+- **2D external diffusion** through `difus2D == 1`, using `transperm2D()` / `transtrans2D()`;
+- **3D external diffusion** through the global 3D mode.
+
+In both cases, the pipe wall itself is still represented through equivalent 1D conductances, while the surrounding soil is handled by the external Poisson / diffusion solver.
 
 ### Lined / Annular Pipes
 
-When `revest == 1`:
+Annular or lined geometries are identified by `geom.revest == 1`.
 
-- Inner boundary uses **confined natural convection** (`NussConf2`) between the inner tubing and the outer casing
-- Hydraulic diameter: $D_h = 4A/P = \dfrac{4\pi(a^2 - b^2)}{4\pi(a + b)}$
-- Inner Grashof uses the annular gap $(a - b)/2$ as the characteristic length
+For these cases:
+
+- `DadosGeo` interprets the geometry using both `a` and `b`,
+- the hydraulic diameter is computed from annular area and wetted perimeter,
+- internal natural-convection treatment may differ from the simple circular-pipe branch,
+- confined-convection correlations can be used in annular thermal gaps.
+
+This is especially important when the internal region between `a` and `b` must be treated as an annular thermal space rather than as a single circular conduit.
 
 ### Annulus with Forced Flow
 
-When `Vconf > 0`:
+If an intermediate layer is a fluid (`tipomat != 0`) and the annular velocity `Vconf` is non-negligible, the model switches from stagnant-gap natural convection to a forced-convection treatment.
 
-- Any fluid layer in the wall uses **forced convection** (Petukhov with annulus hydraulic diameter) instead of natural convection
-- Applicable for gas-lift annulus or completion fluid circulation
+The code then:
+
+1. computes annular area and wetted perimeter,
+2. derives an annular hydraulic diameter,
+3. evaluates a Reynolds number for the annular flow,
+4. applies the forced-convection correlation,
+5. converts the result into an equivalent radial conductance.
+
+This affects both `condParede()` / `condParedeLocal()` and the transient local assembly when the fluid annulus is part of the multilayer wall representation.
 
 ### Column Configuration
 
-When `coluna == 1`:
+`TransCal` also includes the flags `coluna` and `colunaDia`, which alter the reference diameter used in some external-convection branches.
 
-- External convection reference diameter is replaced by `colunaDia`
-- Used when the pipe is inside a wellbore casing of known diameter
-- Supports both natural and forced convection selection for the outer annulus
+This configuration is relevant when the external thermal exchange should be referenced to a column-like surrounding geometry rather than directly to the last pipe-wall diameter. In those cases, `colunaDia` can become the characteristic diameter for the external convection calculation.
 
 ### Prescribed Wall Temperature
 
-When `condiTparede == 1`:
+The flag `condiTparede` controls whether the inner wall uses:
 
-- Internal convection coefficient is set to $h_i = 50000 \cdot k_{\text{wall}} \cdot r_a / \delta r$ (effectively infinite — Dirichlet BC)
-- Or user-specified via `novoHi`
+- a convective boundary condition (`condiTparede == 0`), or
+- a prescribed-wall-temperature style enforcement branch (`condiTparede == 1`) in the transient local assembly.
+
+In the prescribed-wall-temperature branch, the model replaces the regular inner convective treatment by a large equivalent coefficient, and `novoHi` may optionally provide a user-specified substitute value for that coefficient.
 
 ### Wax Deposition Layer
 
-The `atualiza()` method can add a new innermost layer (wax deposit) by resizing the radial mesh. `atualiza2()` updates only the first layer thickness. Thermal properties of the wax layer affect the overall resistance network. Key parameters from the cell:
+Wax-related thermal coupling appears mainly through the main 1D cell model rather than inside `TransCal` alone.
 
-- `deltaPar` — wax layer thickness
-- `porosoPar` — wax porosity
-- `MW_wax` — molecular weight of wax
-- `rhoWaxLiq` — wax liquid density
-- `Sum_dCwaxdT` — temperature derivative of wax concentration
+The `Cel` class stores wax-deposition-related quantities such as:
+
+- `MW_wax`
+- `rhoWaxLiq`
+- `Sum_dCwaxdT`
+- `detalhaParafina`
+
+and auxiliary deposition quantities including:
+
+- interfacial deposition temperature
+- wax diffusivity
+- concentration gradient
+- mass flux terms
+- deposition conductivity-like parameter `kDep`
+
+From a heat-transfer perspective, wax matters because it can alter the effective thermal response near the wall and introduces additional thermo-compositional coupling in the axial energy model.
 
 ---
 
 ## Summary of Named Correlations
 
-| Correlation | Method | Application |
-|-------------|--------|-------------|
-| **Petukhov-Gnielinski** | `nussPet()` | Turbulent internal forced convection |
-| **Sleicher-Rouse** | `nussPet()` (high $\mu_w/\mu_b$ branch) | High viscosity ratio internal convection |
-| **Churchill-Bernstein (1977)** | `nussChuBer()` | External cross-flow over cylinder |
-| **Churchill-Chu (1975)** | `nussNatExt()` | External natural convection from cylinder |
-| **Hollands et al. (1976)** | `NussConf2()` ($\theta < 60°$) | Inclined cavity natural convection |
-| **Catton** | `NussConf2()` ($\theta = 90°$) | Vertical cavity natural convection |
-| **Haaland (1983)** | `fric()` | Turbulent friction factor |
-| **Ramey (1962)** | `ResForm()` | Wellbore formation thermal resistance |
-| **Gopal** | `ZGopal()` | Gas compressibility factor (annulus) |
-| **McCain** | seawater density | Brine formation volume factor |
-| **Lee-Gonzalez-Eakin** | annulus gas viscosity | Gas viscosity |
-| **Stiel-Thodos** | annulus gas conductivity | Gas thermal conductivity |
-| **Baker-Swerdloff** | seawater surface tension | (inherited from ProFlu) |
+The table below summarizes the main named correlations and implementation models referenced in this document.
+
+| Topic | Function / mechanism | Main use in code |
+|------|-----------------------|------------------|
+| Internal forced convection | `nussPet()` | Pipe-side and annular forced convection |
+| Turbulent friction factor | `fric()` | Input to Petukhov/Gnielinski-style heat transfer |
+| External cross-flow convection | `nussChuBer()` | Cylinder in external cross-flow |
+| External natural convection | `nussNatExt()` | Low-Re / mixed external convection correction |
+| Confined natural convection | `NussConf2()` | Inclined annular or gap natural convection |
+| Fallback confined-convection coefficients | `defineConf()` | Power-law constants for confined convection |
+| Heating/cooling viscosity exponent | `definePet()` | Selects exponent in `nussPet()` |
+| Wellbore formation resistance | `ResForm()` | Equivalent outer thermal resistance in formation |
+| External liquid properties | `MasEspLiq()`, `VisLiq()`, `CondLiq()`, `CalorLiq()` | Auto-updated outer liquid properties |
+| External air properties | `MasEspAr()`, `VisAr()`, `CondAr()`, `CalorAr()` | Auto-updated outer air properties |
+| Gas / annulus properties | `MasEspGas()`, `ViscGas()`, `CondGas()`, `CalorGas()`, `ZGopal()` | Gas-filled annular regions |
+| Thermal expansion | `beta()` | Buoyancy and Rayleigh-number evaluation |
+| 1D steady radial model | `transperm()` | Steady multilayer radial heat flux |
+| 1D transient radial model | `transtrans()` | Transient multilayer radial heat flux |
+| 2D buried-soil model | `transperm2D()`, `transtrans2D()` | External soil diffusion around buried pipe |
+| 3D surrounding-domain model | `solverP3D`, `dadosP3D` | Full 3D external thermal diffusion |
+
+Together, these models form a layered thermal architecture:
+
+1. internal-fluid convection,
+2. multilayer radial wall / annulus resistance,
+3. external environment exchange by direct convection, formation resistance, 2D buried diffusion, or 3D diffusion,
+4. feedback of the resulting radial heat flux into the axial energy equation.
+
+---

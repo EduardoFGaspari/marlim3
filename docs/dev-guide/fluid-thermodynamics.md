@@ -6,22 +6,22 @@ This document describes the fluid property modeling framework in Marlim3 — fro
 
 | File | Role |
 |------|------|
-| [`src/PropFlu.h`](../../src/PropFlu.h) / [`PropFlu.cpp`](../../src/PropFlu.cpp) | `ProFlu` class — main hydrocarbon fluid: black-oil, PVTSim tables, and compositional hooks |
-| [`src/PropFluCol.h`](../../src/PropFluCol.h) / [`PropFluCol.cpp`](../../src/PropFluCol.cpp) | `ProFluCol` class — complementary fluid (water / injection) |
-| [`src/PropFluColVF.h`](../../src/PropFluColVF.h) / [`PropFluColVF.cpp`](../../src/PropFluColVF.cpp) | `ProFluColVF` class — complementary fluid with vapor-fraction and non-Newtonian support |
-| [`src/PropVapor.h`](../../src/PropVapor.h) / [`PropVapor.cpp`](../../src/PropVapor.cpp) | `ProVap` class — pure water/steam (IAPWS-style tables) |
-| [`src/MarlimComposicional.f90`](../../src/MarlimComposicional.f90) | Fortran compositional module — flash + all EOS property calculations |
-| [`src/MarlimComposicional.h`](../../src/MarlimComposicional.h) | C/Fortran interface (bind(C) declarations) |
-| [`src/VLECalculations.f90`](../../src/VLECalculations.f90) | VLE flash algorithms, cubic EOS, fugacity coefficients |
-| [`src/PhaseProperties.f90`](../../src/PhaseProperties.f90) | Density, enthalpy, Cp, surface tension from cubic EOS |
-| [`src/FlashExtras.f90`](../../src/FlashExtras.f90) | Rigorous flash: SS + DEM + TPD stability + Newton |
-| [`src/Newton.f90`](../../src/Newton.f90) | Newton 2nd-order minimiser for flash and stability |
-| [`src/BlackOilModels.f90`](../../src/BlackOilModels.f90) | Black-oil Rs correlations in Fortran |
-| [`src/BlackOilFromCompositional.f90`](../../src/BlackOilFromCompositional.f90) | Derive Rs, Bo, GOR from compositional flash results |
-| [`src/ViscosityCalculationModule.f90`](../../src/ViscosityCalculationModule.f90) | Pedersen CSP viscosity model |
-| [`src/Constants.f90`](../../src/Constants.f90) | Physical constants and enumerations |
-| [`src/PvtSimCTMFileImport.f90`](../../src/PvtSimCTMFileImport.f90) | PVTSIM CTM fluid file parser |
-| [`src/PvtSimWAXFileImport.f90`](../../src/PvtSimWAXFileImport.f90) | PVTSIM WAX file parser |
+| [`src/include/PropFlu.h`](../../src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](../../src/core/PropFlu.cpp) | `ProFlu` class — main hydrocarbon fluid: black-oil, PVTSim tables, and compositional hooks |
+| [`src/include/PropFluCol.h`](../../src/include/PropFluCol.h) / [`src/core/PropFluCol.cpp`](../../src/core/PropFluCol.cpp) | `ProFluCol` class — complementary fluid property model |
+| [`src/include/PropFluColVF.h`](../../src/include/PropFluColVF.h) / [`src/core/PropFluColVF.cpp`](../../src/core/PropFluColVF.cpp) | `ProFluColVF` class — complementary-fluid model used by the VF formulation, with gas-viscosity and non-Newtonian viscosity support |
+| [`src/include/PropVapor.h`](../../src/include/PropVapor.h) / [`src/core/PropVapor.cpp`](../../src/core/PropVapor.cpp) | `ProVap` class — pure water/steam table-based property package |
+| [`src/fortran/MarlimComposicional.f90`](../../src/fortran/MarlimComposicional.f90) | Fortran compositional module — flash + all EOS property calculations |
+| [`src/include/MarlimComposicional.h`](../../src/include/MarlimComposicional.h) | C/Fortran interface (bind(C) declarations) |
+| [`src/fortran/VLECalculations.f90`](../../src/fortran/VLECalculations.f90) | VLE flash algorithms, cubic EOS, fugacity coefficients |
+| [`src/fortran/PhaseProperties.f90`](../../src/fortran/PhaseProperties.f90) | Density, enthalpy, Cp, surface tension from cubic EOS |
+| [`src/fortran/FlashExtras.f90`](../../src/fortran/FlashExtras.f90) | Rigorous flash: SS + DEM + TPD stability + Newton |
+| [`src/fortran/Newton.f90`](../../src/fortran/Newton.f90) | Newton 2nd-order minimiser for flash and stability |
+| [`src/fortran/BlackOilModels.f90`](../../src/fortran/BlackOilModels.f90) | Black-oil Rs correlations in Fortran |
+| [`src/fortran/BlackOilFromCompositional.f90`](../../src/fortran/BlackOilFromCompositional.f90) | Derive Rs, Bo, GOR from compositional flash results |
+| [`src/fortran/ViscosityCalculationModule.f90`](../../src/fortran/ViscosityCalculationModule.f90) | Pedersen CSP viscosity model |
+| [`src/fortran/Constants.f90`](../../src/fortran/Constants.f90) | Physical constants and enumerations |
+| [`src/fortran/PvtSimCTMFileImport.f90`](../../src/fortran/PvtSimCTMFileImport.f90) | PVTSIM CTM fluid file parser |
+| [`src/fortran/PvtSimWAXFileImport.f90`](../../src/fortran/PvtSimWAXFileImport.f90) | PVTSIM WAX file parser |
 
 ---
 
@@ -68,7 +68,7 @@ This document describes the fluid property modeling framework in Marlim3 — fro
 
 ## Overview — Three Fluid Modeling Modes
 
-The `ProFlu` class supports three modeling modes, controlled by the `flashCompleto` flag:
+The `ProFlu` class supports three main modeling modes, controlled primarily by the `flashCompleto` flag:
 
 | `flashCompleto` | Mode | Description |
 |-----------------|------|-------------|
@@ -76,13 +76,13 @@ The `ProFlu` class supports three modeling modes, controlled by the `flashComple
 | 1 | **PVTSim Tables** | Bilinear interpolation on pre-computed 2D (P × T) tables exported from PVTSIM |
 | 2 | **Compositional** | Cubic EOS (PR78 or SRK with Peneloux volume shift) via Fortran routines |
 
-Nearly every property method dispatches: `if (flashCompleto==0 || 3) → correlation; else if (==1) → table; else → Fortran EOS call`.
+This flag is the main dispatcher, but actual property evaluation is more nuanced than a single `if/else` split. In several methods the final path also depends on flags such as `tab`, `viscBlackOil`, `tabelaDinamica`, and transient-mode state (`modoTransiente`). In particular, some compositional paths can fall back to black-oil-style calculations or to precomputed dynamic tables.
 
 ---
 
 ## The ProFlu Class
 
-`ProFlu` (defined in [`PropFlu.h`](../../src/PropFlu.h) / [`PropFlu.cpp`](../../src/PropFlu.cpp)) is the central fluid-property engine. Each simulation cell holds one `ProFlu` object (`flui`).
+`ProFlu` (defined in [`src/include/PropFlu.h`](../../src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](../../src/core/PropFlu.cpp)) is the central fluid-property engine. Each simulation cell holds one `ProFlu` object (`flui`).
 
 ### Key member variables
 
@@ -122,7 +122,7 @@ Nearly every property method dispatches: `if (flashCompleto==0 || 3) → correla
 
 Recalculates all derived constants when primary inputs change:
 
-1. Recomputes `FAC`, `SG100vb`, `Avb`/`Bvb`/`Cvb` (API-dependent)
+1. Recomputes `FAC`, `SG100vb`, `Avb`/`Bvb`/`Cvb` (API-dependent), applying the same methane-floor clamp `SG100vb >= 0.5538` used during construction
 2. Converts `RGO` → `IRGO`
 3. Recomputes gas critical properties `PC`, `TC` via selected correlation
 4. Recalculates ASTM coefficients `bASTM1`, `bASTM2`
@@ -142,9 +142,11 @@ Recalculates all derived constants when primary inputs change:
 | 1 | **Lasater (1958)** | Tabulated BPPF vs GMF vectors; inverts effective molecular weight from API |
 | 2 | **Standing (1947)** | $R_s = \gamma_g \left[\left(1.4 + \frac{P}{18.2}\right) \cdot 10^A\right]^{1/0.83}$, $A = 0.0125 \cdot \text{API} - 0.00091 \cdot T_F$ |
 | 3 | **Glasø (1980)** | Log-log: $P_b = 10^{(5.17967 - (0.60436 \cdot \log_{10} A^* - 1.7447)^2) / 1.20872}$, inverted for Rs |
-| 4 | **Lívia (custom)** | 18-coefficient parametric model with CO₂-corrected gas gravity: $R_{sr} = a_1 P_r^{a_2} + (1 - a_1) P_r^{a_3}$ |
+| 4 | **Lívia (custom, C++ black-oil path)** | 18-coefficient parametric model with CO₂-corrected gas gravity: $R_{sr} = a_1 P_r^{a_2} + (1 - a_1) P_r^{a_3}$ |
 
-For compositional mode: calls `Marlim_CalculateSolutionGasOilRatio(...)` or interpolates from dynamic tables.
+For compositional mode, `RS()` may call `Marlim_CalculateSolutionGasOilRatio(...)`, use dynamic-table interpolation (`tabDin`), or use mini-table interpolation (`miniTabDin`) in transient updates, depending on solver state.
+
+> **Implementation note:** the Fortran enum table in `src/fortran/Constants.f90` defines only four named Rs correlations (`Vazquez-Beggs`, `Lasater`, `Standing`, `Glaso`). The Lívia correlation exists in the C++ black-oil implementation and is not represented in that Fortran enum set.
 
 ### Bubble Point Pressure (Pb)
 
@@ -154,7 +156,17 @@ Each `corrSat` implements the corresponding Pb equation consistent with its Rs m
 
 $$P_b = \left[\frac{B_{vb} \cdot \text{IRGO}}{SG_{100} \cdot 10^{C_{vb} \cdot \text{API} / T_R}}\right]^{1/A_{vb}}$$
 
-For the Lívia correlation with high CO₂ ($y_{CO_2} \ge 0.1$), a dedicated $P_b^*$ correction uses four $b$-coefficients and CO₂/N₂/H₂S correction factors.
+For the Lívia branch (`corrSat == 4`), the bubble-point pressure calculation uses a **two-path dispatch** based on CO₂ content:
+
+- **`yco2 < 0.1` (low CO₂):** falls back to the **Standing** bubble-point equation:
+  $$P_b = 18.2\left[\left(\frac{\text{IRGO}}{\gamma_g}\right)^{0.83} \cdot 10^{-A} - 1.4\right], \quad A = 0.0125 \cdot \text{API} - 0.00091 \cdot T_F$$
+  (or reads from the pre-loaded `tabRSPB` table if available)
+
+- **`yco2 ≥ 0.1` (CO₂-rich):** uses the full Lívia Pb correlation with CO₂, N₂, and H₂S correction factors:
+  $$P_b = 10^{1.7669 + 1.7447 \log_{10} P^* - 0.30218 (\log_{10} P^*)^2} \cdot f_{CO_2} \cdot f_{N_2} \cdot f_{H_2S}$$
+  where $P^* = (GOR / \gamma_{g,HC})^{0.816} \cdot T_F^{0.172} / \text{API}^{0.989}$ and the correction factors are functions of the respective mole fractions.
+
+> **Note:** currently `yN2 = 0` and `yH2S = 0` are hard-coded in the implementation (marked for future correction). The CO₂ threshold of 0.1 is a deliberate design choice — below it, the Standing equation is considered accurate enough and avoids potential numerical issues with small CO₂ values in the correction formula.
 
 ### Oil Formation Volume Factor (Bo)
 
@@ -184,11 +196,11 @@ Two correlations are available:
 
 **Dranchuk-Abou-Kassem (DAK)** — `ZdranOriginal()`:
 
-Solves the DAK EOS implicitly via the **Regula Falsi** method (`FalsaCorda()`). The residual:
+Solves the DAK EOS implicitly via the **Regula Falsi** method (`FalsaCorda()`). The residual function $G(\rho_r)$:
 
-$$F = A\rho_r^6 + B\rho_r^3 + C\rho_r^2 + D\rho_r + E\rho_r^3(1 + F_d\rho_r^2)e^{-F_d\rho_r^2} - 0.27P_r$$
+$$G = A\rho_r^6 + B\rho_r^3 + C\rho_r^2 + D\rho_r + E\rho_r^3(1 + f_d\rho_r^2)e^{-f_d\rho_r^2} - 0.27P_r$$
 
-where $P_r = P / P_c$, $T_r = T / T_c$, and $\rho_r$ is the reduced density.
+where $P_r = P / P_c$, $T_r = T / T_c$, $\rho_r$ is the reduced density, and $f_d = 0.68446549$ is the DAK density coefficient (named `Fdran` in the code).
 
 **Gopal** — `ZGopal()`:
 
@@ -204,14 +216,14 @@ The dispatcher `Zdran()` selects between direct calculation and table interpolat
 
 | `corrOM` | Correlation |
 |----------|-------------|
-| 0 | **ASTM D341** — $\mu_{od} = \rho_l \left[10^{10^{b \cdot \log(T_K/T_{L,K}) + b_2}} - 0.7\right]$ |
+| 0 | **ASTM D341** — $\mu_{od} = \rho_l \left[10^{10^{b \cdot \log_{10}(T_K/T_{L,K}) + b_2}} - 0.7\right]$ |
 | 1 | **Beggs & Robinson** — $x = y \cdot T_F^{-1.163}$; $\mu_{od} = 10^x - 1$ where $y = e^{13.108 - 6.591/SG_o}$ |
 | 2 | **Beggs & Robinson Modified** — $x = 10^z \cdot T_F^{-0.5644}$; $z = 1.8653 - 0.025086 \cdot \text{API}$ |
 | 3 | **Glasø** |
 | 4 | **Kartoatmodjo & Schmidt** |
 | 5 | **Petrosky & Farshad** |
-| 6 | **Beal** — $\mu_{od} = (0.32 + 1.8 \times 10^7 / \text{API}^{4.53}) \cdot (360/(T_F + 200))^z$ |
-| 7 | **User Table** — linear interpolation of `viscTab[]` vs `tempTab[]` |
+| 6 | **Beal** — $\mu_{od} = (0.32 + 1.8 \times 10^7 / \text{API}^{4.53}) \cdot (360/(T_F + 199.67))^z$ where $z = 10^{0.43 + 8.33/\text{API}}$ |
+| 7 | **User Table** — interpolation using paired `viscTab[]` and `tempTab[]` entries from the same table rows |
 
 **Stage 2 — Saturated (live) oil viscosity** (below Pb):
 
@@ -238,11 +250,16 @@ Final viscosity is multiplied by `coefViscWax` (wax correction) and then the emu
 `ProFlu::ViscGas(pres, temp)` — **Lee-Gonzalez-Eakin** correlation:
 
 $$K = \frac{(9.4 + 0.02 M_g) T_R^{1.5}}{209 + 19 M_g + T_R}$$
+
 $$X = 3.5 + \frac{986}{T_R} + 0.01 M_g$$
+
 $$Y = 2.4 - 0.2X$$
+
 $$\mu_g = K \cdot \exp(X \cdot \rho_g^Y) / 10000$$
 
-where $M_g = \gamma_{gL} \cdot \gamma_g \cdot 29$ (molecular weight), $\rho_g$ in g/cm³.
+where $M_g = \gamma_{gL} \cdot \gamma_g \cdot 29$ is the pseudo-molecular-weight of the gas mixture used in the viscosity correlation, $\rho_g$ in g/cm³.
+
+> **Note:** the gas viscosity correlation uses the rounded air MW of **29** g/mol for $M_g$, while gas density (`MasEspGas`) uses the more precise value **28.9625** g/mol. This is an intentional difference that preserves fidelity to the original Lee-Gonzalez-Eakin paper (which uses 29) while keeping the density calculation accurate.
 
 ### Emulsion Viscosity
 
@@ -273,6 +290,8 @@ where $\rho_{std} = 141500 / (131.5 + \text{API})$ kg/m³.
 $$\rho_L = \frac{m_{oil} + m_{water}}{(1 - \text{BSW}) \cdot B_o + \text{BSW} \cdot B_w}$$
 
 where $m_{oil} = (1-\text{BSW})(\rho_{std} + r_{DgD} \gamma_g \cdot 1.225 \cdot R_s \cdot 6.29/35.31)$ and $m_{water} = \text{BSW} \cdot 1000 \cdot \gamma_w$.
+
+> **Implementation note:** in compositional mode, the code does not simply return a pure hydrocarbon EOS liquid density. Depending on branch and solver state, it can blend EOS liquid density with water contribution through `BSW`, `MasEspAgua()`, and `BOFunc()`-based in-situ fraction logic.
 
 ### Gas Density
 
@@ -342,7 +361,9 @@ $$SG_{DG} = \frac{\text{API} + 12.5}{50} - 3.5715 \times 10^{-6} \cdot \text{API
 
 $$SG_{FG} = \gamma_g \cdot \frac{\text{RGO} - r_{DgD} \cdot R_s}{\text{RGO} - R_s}$$
 
-Clamped: $SG_{FG} \in [0.5538, \gamma_g]$ (methane floor to separator gas ceiling).
+`SG_{FG}` is clamped to $[0.5538, \gamma_g]$ (methane floor to separator-gas ceiling).
+
+> **Implementation note:** the code also forces the dissolved-gas gravity estimate `SGDG` to be no lower than separator-gas gravity `Deng` before forming `rDgD`. This clamp is part of the implemented split logic.
 
 **Pseudocritical properties** are available via three correlations (`corrC`): default Marlim2, CO₂-corrected (Wichert-Aziz style), and Stewart-Burkhardt-Voo style.
 
@@ -437,7 +458,7 @@ The flash system has two tiers:
 4. **Tangent Plane Distance (TPD) stability analysis** when SS struggles (Gibbs energy not decreasing or $\beta$ out of bounds)
 5. **Newton's method** fallback (`TryFlashCalcWith2ndOrderMinimizationIfNecessary`) — solves the flash as a 2nd-order minimisation problem if SS + DEM does not converge
 
-**Bubble/dew point calculations** use a bisection method (`SecantMethod_CalculateBubbleOrDewPressure`, max 50 iterations) with bracket search (`FindBubbleOrDewPRootInterval`).
+**Bubble/dew point calculations** use the **secant method** (`SecantMethod_CalculateBubbleOrDewPressure`, max 50 iterations) with bracket search (`FindBubbleOrDewPRootInterval`).
 
 **Pressure-stepping flash** (`CalcPressureStepwiseFlashPTVLE`): starts at low pressure (easy convergence) and advances stepwise to the target pressure using previous results as initial estimates.
 
@@ -532,14 +553,14 @@ $$\text{GOR} = \frac{w_v}{1 - w_v} \cdot \frac{\rho_L}{\rho_V}$$
 
 ## C/Fortran Interface
 
-All compositional routines use `bind(C, name="...")` in Fortran and are declared as `extern "C"` in [`MarlimComposicional.h`](../../src/MarlimComposicional.h). Two C-interop structs are defined:
+All compositional routines use `bind(C, name="...")` in Fortran and are declared as `extern "C"` in [`src/include/MarlimComposicional.h`](../../src/include/MarlimComposicional.h). Two C-interop structs are defined:
 
 - **`ZRhoAndDerivs`** — 15 doubles: Z, Z_Peneloux, dZ/dT, dρ/dT, dZ/dP, dρ/dP for liquid and vapor, plus Peneloux-corrected derivatives
 - **`InputForViscosity`** — 4-element array of PVTSIM CSP viscosity tuning parameters
 
 C pointers (`type(c_ptr)`) are mapped to Fortran arrays via `c_f_pointer`. Matrices are transposed where needed for C row-major vs Fortran column-major layout.
 
-The main entry point is `MarlimCompositionalProps(P, T, NComp, z, MW, Tc, Pc, ω, Kij, Lij, Peneloux, IGcoefs, parachors, models...) → β, x, y, ρ_L, ρ_V, H_L, H_V, Cp_L, Cp_V, σ, Z_V, μ_JT, ZRhoAndDerivs, IER` which performs a flash + all property calculations at a given (P, T). It handles zeroed-component removal/reinsertion to avoid numerical singularities.
+The main entry point is `MarlimComposicionalProps(P, T, NComp, z, MW, Tc, Pc, ω, Kij, Lij, Peneloux, IGcoefs, parachors, models...) → β, x, y, ρ_L, ρ_V, H_L, H_V, Cp_L, Cp_V, σ, Z_V, μ_JT, ZRhoAndDerivs, IER` which performs a flash + all property calculations at a given (P, T). It handles zeroed-component removal/reinsertion to avoid numerical singularities.
 
 ---
 
@@ -575,24 +596,24 @@ When `modoParafina == 1`, `ProFlu::atualizaPropParafina(P, T)` calls the Fortran
 
 ## Complementary Fluid — ProFluCol
 
-`ProFluCol` ([`PropFluCol.h`](../../src/PropFluCol.h) / [`PropFluCol.cpp`](../../src/PropFluCol.cpp)) models the **complementary fluid** in Marlim3's simple three-phase model. In this model, the closure equations focus on gas-liquid slip, but the liquid phase can contain, in addition to hydrocarbons (HC) and water, a third fluid called the complementary fluid.
+`ProFluCol` ([`src/include/PropFluCol.h`](../../src/include/PropFluCol.h) / [`src/core/PropFluCol.cpp`](../../src/core/PropFluCol.cpp)) models the **complementary fluid** used by the simplified flow model. In practice it is a property model/holder for an additional liquid or injected fluid, not a full thermodynamic package with phase equilibrium or dissolution into the hydrocarbon system.
 
-The complementary fluid is **inert**: it has no gas dissolution capacity, and there is no slip between it and the HC + water liquid mixture. Examples include:
+Examples of use in the code include completion/injection fluids, water-like fluids, and fluids represented by imported property tables.
 
-- **Glycol or ethanol** — used to prevent hydrate formation before opening the master valve 1
-- **Chemical inhibitors** — injected for flow assurance
-- **Completion brine** — salt water used during well completion
-- **CO₂** — supercritical injection fluid (from PVTSIM tables)
-- **Drag reducers** — polymeric additives to reduce turbulent friction
+The dispatch is controlled not only by `tipoF`, but also by `injPoc` and `descarga`:
 
-The fluid type is set by the `tipoF` flag:
+- **User-defined fluid branch**: `(injPoc <= 1 || injPoc > 3) && descarga == 0`
+- **Water-like correlation branch**: `injPoc == 2 || descarga == 1 || tipoF == 1`
+- **Interpolated table branch**: typically `injPoc == 3`
 
-| `tipoF` | Mode | Description |
-|---------|------|-------------|
-| 0 | User-defined | Standard density, compressibility, thermal expansivity, surface tension, Cp, and viscosity specified by the user |
-| 1 | Water | Built-in water correlations (density via $B_w$, Arrhenius viscosity, polynomial Cp) |
+The `tipoF` flag is therefore only part of the selection logic:
 
-For CO₂ injection, the properties are handled via PVTSIM 2D (P × T) interpolation tables loaded through the injection well parsing (`injPoc == 3`), rather than through `tipoF`.
+| `tipoF` | Meaning | Notes |
+|---------|---------|-------|
+| 0 | User-defined / generic complementary fluid | Combined with `injPoc` and `descarga` logic |
+| 1 | Water-like handling | Uses built-in water correlations |
+
+For CO₂-rich injection and similar imported cases, properties are obtained from 2D interpolation tables through the `injPoc == 3` path rather than from a dedicated `tipoF` mode.
 
 Each cell stores one `ProFluCol` object as `fluicol`.
 
@@ -615,15 +636,18 @@ All properties from bilinear interpolation of 2D (P × T) tables imported from P
 
 ### ProFluColVF
 
-Extended version for vapor-fraction cells. Adds:
-- `VisGas()` — Lee-Gonzalez-Eakin gas viscosity
-- Non-Newtonian viscosity: 2D bilinear interpolation on a `viscNaoNew[temp][deform]` table for shear-rate-dependent fluids
+`ProFluColVF` is the extended complementary-fluid class used by the VF formulation. Relative to `ProFluCol`, it adds:
+- `VisGas()` — Lee-Gonzalez-Eakin-style gas-viscosity calculation using stored gas-density data
+- non-Newtonian viscosity support through bilinear interpolation on a `viscNaoNew[temp][deform]` table
+- auxiliary gas-density fields (`rhogStd`, `rhog`)
+
+It is best understood as a VF-oriented extension of the complementary-fluid property model, rather than as a separate full vapor-fraction thermodynamic package.
 
 ---
 
 ## Steam Properties — ProVap
 
-`ProVap` ([`PropVapor.h`](../../src/PropVapor.h) / [`PropVapor.cpp`](../../src/PropVapor.cpp)) is a complete thermodynamic package for **pure water/steam**, independent of `ProFlu`. It supports all three regions (compressed liquid, two-phase, superheated vapour) via interpolation on JSON-format steam tables.
+`ProVap` ([`src/include/PropVapor.h`](../../src/include/PropVapor.h) / [`src/core/PropVapor.cpp`](../../src/core/PropVapor.cpp)) is a thermodynamic package for **pure water/steam**, independent of `ProFlu`. It supports compressed liquid, two-phase, and superheated-vapour regions through interpolation on JSON-format steam tables.
 
 ### Data tables (loaded by `LerArqVap()`)
 
@@ -634,6 +658,8 @@ Extended version for vapor-fraction cells. Adds:
 | `AguaComp.json` | Compressed liquid: per-pressure arrays of (T, $v_l$, $u_l$, $h_l$, $s_l$) |
 | Conductivity/viscosity files | Separate tables for liquid and gas |
 
+This is a **table-based** water/steam package. It does not implement IAPWS equations directly in the code shown here.
+
 ### Phase determination (`verificaFase`)
 
 - Critical point: 220.9 bar, 374.1 °C
@@ -642,7 +668,7 @@ Extended version for vapor-fraction cells. Adds:
 
 ### Properties
 
-All properties are obtained by binary search + bilinear interpolation. Thermodynamic derivatives ($\partial \rho/\partial T$, $\partial \rho/\partial P$, $\partial Z/\partial T$, etc.) are computed via **1 % finite differences**.
+All primary properties are obtained by binary search + interpolation in the loaded tables. Several derived quantities and some thermodynamic derivatives are then evaluated numerically, commonly with finite-difference perturbations of about 1% in the local routines.
 
 Derived quantities include: $C_v$, $C_p$, isentropic exponent $\kappa$, Joule-Thomson coefficient, steam quality $x = (h - h_l)/(h_v - h_l)$, mixture energy density $(1-\alpha)\rho_l u_l + \alpha \rho_g u_g$.
 
@@ -650,12 +676,14 @@ Derived quantities include: $C_v$, $C_p$, isentropic exponent $\kappa$, Joule-Th
 
 | Variable | Controls | Values |
 |----------|----------|--------|
-| `corrSat` | Rs / Pb | 0 = Vasquez-Beggs, 1 = Lasater, 2 = Standing, 3 = Glasø, 4 = Lívia |
+| `corrSat` | Rs / Pb | 0 = Vasquez-Beggs, 1 = Lasater, 2 = Standing, 3 = Glasø, 4 = Lívia *(C++ black-oil path; not represented in the Fortran Rs enum constants)* |
 | `corrOM` | Dead-oil μ | 0 = ASTM, 1 = Beggs-Robinson, 2 = B-R Modified, 3 = Glasø, 4 = Kartoatmodjo-Schmidt, 5 = Petrosky-Farshad, 6 = Beal, 7 = User table |
 | `corrOV` | Live-oil μ | 0 = Beggs-Robinson, 1 = Kartoatmodjo-Schmidt, 2 = Petrosky-Farshad |
 | `corrOS` | Undersaturated μ | 0 = Vasquez-Beggs, 1 = Kartoatmodjo-Schmidt, 2 = Petrosky-Farshad, 3 = Beal, 4 = Khan |
 | `corrC` | Gas Pc/Tc | 0 = default, 1 = CO₂-corrected (Wichert-Aziz style), 2 = Stewart-Burkhardt-Voo style |
 | `tipoemul` | Emulsion μ | 0 = linear, 1–3 = Woelflin (weak/medium/strong), 4 = exponential, 5 = Pal-Rhodes, 6 = user table, 7 = water regime |
+
+> **Historical note:** one of the `ProFlu` constructors previously contained the undocumented assignment `if(corrSat==1) corrSat=4;`, which silently redirected requests for the Lasater correlation to the Lívia model. This remap was inconsistent with the other constructors and has been removed. All three constructors now honour `corrSat==1` as Lasater.
 
 ---
 
@@ -663,7 +691,7 @@ Derived quantities include: $C_v$, $C_p$, isentropic exponent $\kappa$, Joule-Th
 
 | Property | Authors / Methods |
 |----------|-------------------|
-| Rs / Pb | Vasquez-Beggs, Lasater, Standing, Glasø, Lívia |
+| Rs / Pb | Vasquez-Beggs, Lasater, Standing, Glasø, Lívia *(Lívia implemented in the C++ black-oil branch)* |
 | Bo | Vasquez-Beggs (saturated + undersaturated) |
 | Dead-oil μ | ASTM D341, Beggs-Robinson, B-R Modified, Glasø, Kartoatmodjo-Schmidt, Petrosky-Farshad, Beal |
 | Live-oil μ | Beggs-Robinson, Kartoatmodjo-Schmidt, Petrosky-Farshad |

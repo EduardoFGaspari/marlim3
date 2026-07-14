@@ -17,7 +17,7 @@
    - [main()](#main)
    - [Single-Branch Solvers](#single-tramo-solvers)
    - [Network Simulation](#network-simulation)
-   - [Sensitivity Analysis](#sensitivity-analysis)
+   - [Parametric Analysis](#parametric-analysis)
    - [Utility / Support Functions](#utility--support-functions)
 7. [Output and Restart I/O](#output-and-restart-io)
 8. [Dependencies (Included Headers)](#dependencies-included-headers)
@@ -354,7 +354,7 @@ The entry point of the simulator. See [High-Level Execution Flow](#high-level-ex
 5. Opens the output manifest file (`resultado.log`)
 6. Dispatches to the appropriate solver based on `tipoSimulacao`:
    - **Network** (`REDE`): reads network JSON → `Rede`, determines sub-type (production / injection / gas-lift / parallel), pre-processes topology, solves sub-networks in parallel with OpenMP
-   - **Single branch** (`TRANSIENTE` / `INJETOR`): constructs `SProd`; runs steady-state (`SolveTramoSolteiro` or sensitivity analysis); runs transient  (initialises cell-level densities/viscosities and runs the `SolveTrans` loop)
+   - **Single branch** (`TRANSIENTE` / `INJETOR`): constructs `SProd`; runs steady-state (`SolveTramoSolteiro` or parametric analysis); runs transient  (initialises cell-level densities/viscosities and runs the `SolveTrans` loop)
    - **Natural convection** (`CONVECNAT`): constructs and runs 2D FV solver (`solv2D::resolve`)
 7. Logs "SUCESSO", writes `simulacao.log`, closes `resultado.log`
 
@@ -474,19 +474,19 @@ The single-branch transient simulation is driven by the `SolveTrans()` loop insi
 
 ---
 
-### Sensitivity Analysis
+### Parametric Analysis
 
-#### `leituraAS(string nomeArquivoAS, SProd &sistem1)`
+#### `leituraAP(string nomeArquivoAP, SProd &sistem1)`
 
-Runs a **sequential sensitivity analysis**: reads `leituraAS.json`, iterates over parameter combinations, calls `SolveTramoSolteiro()` for each case.
+Runs a **sequential parametric analysis**: reads `leituraAP.json`, iterates over parameter combinations, calls `SolveTramoSolteiro()` for each case.
 
-#### `leituraASparalelo(string nomeArquivoAS, string nomeArquivoLog, tipoValidacaoJson_t validacaoJson, SProd &sistem1)`
+#### `leituraAPparalelo(string nomeArquivoAP, string nomeArquivoLog, tipoValidacaoJson_t validacaoJson, SProd &sistem1)`
 
-**Parallel sensitivity analysis** using OpenMP. Each parameter case is solved in its own thread with an independent `SProd` copy.
+**Parallel parametric analysis** using OpenMP. Each parameter case is solved in its own thread with an independent `SProd` copy.
 
 #### `leituraASparaleloReserva(...)`
 
-Variant of parallel sensitivity analysis with reservoir-model coupling.
+Variant of parallel parametric analysis with reservoir-model coupling.
 
 ---
 
@@ -672,7 +672,7 @@ Profile files capture the **spatial distribution** of variables along the pipeli
 | `PERFISTRANSP-{t}-{cell}.dat` | `Ler::imprimeProfileTrans()` | Radial thermal profile (radius, temperature, heat flux) |
 | `PerfisPocoRadial-{t}-{pos}.dat` | Num4Main | Radial porous-medium well profile (pressure, flow rates, saturations) |
 
-Network branches prepend `Tramo{T}-R-{nrede}-` to the filename; sensitivity-analysis runs insert `seqAS-{seq}-`.
+Network branches prepend `Tramo{T}-R-{nrede}-` to the filename; parametric-analysis runs insert `seqAP-{seq}-`.
 
 Format: text matrix, semicolon-delimited. A header line lists column names with units and an `F`/`C` annotation (face / centre). **Columns are user-configurable** via boolean flags in the input JSON (`profp.*`); the code conditionally includes each column in both the header and data rows.
 
@@ -700,8 +700,8 @@ Format: text matrix, semicolon-delimited, `width=20`, `precision=19`. Three comm
 | **`relatorioSucessoRede.dat`** | Network convergence report: header `# RedeInterna ; # Tramo ; Permanente ; Ativo`, one row per branch indicating success/failure. |
 | **`LogEvento.dat`** | Human-readable event log per internal network (date, time, duration, version, motivational quote). Written in append mode. |
 | **`RedeInterna-{N}.json`** | JSON topology file for each internal sub-network (produced by `gravaRedeInterna()`). |
-| **`sucessoAS.dat`** | Sensitivity-analysis success/failure report (colon-delimited). |
-| **`variaveisInteresseAS.dat`** | Sensitivity-analysis variables of interest (sequence, status, inlet pressure, outlet temperature). |
+| **`sucessoAP.dat`** | Parametric-analysis success/failure report (colon-delimited). |
+| **`variaveisInteresseAP.dat`** | Parametric-analysis variables of interest (sequence, status, inlet pressure, outlet temperature). |
 
 ---
 
@@ -716,7 +716,7 @@ The file includes headers organized into the following groups:
 | `SisProd.h` | `SProd` — production system class |
 | `LerRede.h` | `Rede` — network reader |
 | `Leitura.h` | Input file parsing, enums |
-| `LerAS.h` | Sensitivity analysis reader |
+| `LerAP.h` | Parametric analysis reader |
 | `variaveisGlobais1D.h` | `varGlob1D` — shared simulation state |
 | `Log.h` | `Logger` — structured logging |
 
