@@ -15,7 +15,7 @@
 5. [Local Data Structures](#local-data-structures)
 6. [Key Functions](#key-functions)
    - [main()](#main)
-   - [Single-Tramo Solvers](#single-tramo-solvers)
+   - [Single-Branch Solvers](#single-tramo-solvers)
    - [Network Simulation](#network-simulation)
    - [Sensitivity Analysis](#sensitivity-analysis)
    - [Utility / Support Functions](#utility--support-functions)
@@ -32,7 +32,7 @@ The simulator accepts the following arguments (parsed in `main()`):
 | Flag | Long Form | Description |
 |------|-----------|-------------|
 | `-h` | `--help` | Show usage information |
-| `-i` | `--input FILE` | Input JSON file (default: `teste1.json` for single tramo, `rede.json` for network) |
+| `-i` | `--input FILE` | Input JSON file (default: `teste1.json` for single branch, `rede.json` for network) |
 | `-o` | `--output FILE` | Log output file (default: `output/simulacao.log`) |
 | `-d` | `--dir DIR` | Output directory for results |
 | `-p` | `--path PATH` | Path to external input files (e.g. PVTSIM tables) |
@@ -266,8 +266,8 @@ Tracks convergence state at a network node during steady-state iterations.
 
 ```cpp
 struct noRede {
-    int naflu;           // Number of upstream (affluent) tramos
-    int ncole;           // Number of downstream (collector) tramos
+    int naflu;           // Number of upstream (affluent) branches
+    int ncole;           // Number of downstream (collector) branches
     int aflu[40];        // Indices of upstream branches (max 40)
     int cole[40];        // Indices of downstream branches (max 40)
     double normaP1;      // Pressure norm at current iteration

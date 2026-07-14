@@ -10,7 +10,7 @@ This document describes how the Marlim3 simulator reads a JSON input file, valid
 | [`src/JSON_entrada.h`](../../src/JSON_entrada.h) / [`JSON_entrada.cpp`](../../src/JSON_entrada.cpp) | Typed JSON schema — macro-based class hierarchy mirroring JSON structure |
 | [`src/Leitura.h`](../../src/Leitura.h) / [`Leitura.cpp`](../../src/Leitura.cpp) | `Ler` class — reads JSON, populates C structs, builds geometry and cells (~21,400 lines) |
 | [`src/LeituraVapor.h`](../../src/LeituraVapor.h) / [`LeituraVapor.cpp`](../../src/LeituraVapor.cpp) | `LerVap` class — variant for steam injection simulations |
-| [`src/LerAS.h`](../../src/LerAS.h) / [`LerAS.cpp`](../../src/LerAS.cpp) | `ASens` class — sensitivity analysis input reader |
+| [`src/LerAP.h`](../../src/LerAP.h) / [`LerAP.cpp`](../../src/LerAP.cpp) | `APara` class — parametric analysis input reader |
 | [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` class — simulation engine; constructor invokes `Ler` and `montasistema()` |
 | [`src/estruturas.h`](../../src/estruturas.h) | Core data structs (`corteduto`, `detduto`, `detcelp`, etc.) |
 | [`src/celula3.h`](../../src/celula3.h) / [`celula3.cpp`](../../src/celula3.cpp) | `Cel` class — per-cell simulation state |
@@ -37,7 +37,7 @@ This document describes how the Marlim3 simulator reads a JSON input file, valid
 13. [montasistema — Building the Simulation Mesh](#montasistema--building-the-simulation-mesh)
 14. [Time-Dependent BC Updates (atualiza)](#time-dependent-bc-updates-atualiza)
 15. [Output Methods on Ler](#output-methods-on-ler)
-16. [Sensitivity Analysis (ASens)](#sensitivity-analysis-asens)
+16. [Parametric Analysis (APara)](#parametric-analysis-apara)
 17. [Steam Injection Variant (LerVap)](#steam-injection-variant-lervap)
 18. [JSON Input Structure Reference](#json-input-structure-reference)
 19. [Summary of Key Methods](#summary-of-key-methods)
@@ -690,14 +690,14 @@ Writes a row per time step for a monitored cell:
 
 ---
 
-## Sensitivity Analysis (ASens)
+## Parametric Analysis (APara)
 
-> Full documentation: [Sensitivity Analysis](sensitivity-analysis.md)
+> Full documentation: [Parametric Analysis](parametric-analysis.md)
 
-The `ASens` class ([`LerAS.h`](../../src/LerAS.h) / [`LerAS.cpp`](../../src/LerAS.cpp)) reads sensitivity analysis (Análise de Sensibilidade) JSON files. It allows automated parameter sweeps:
+The `APara` class ([`LerAP.h`](../../src/LerAP.h) / [`LerAP.cpp`](../../src/LerAP.cpp)) reads parametric analysis JSON files. It allows automated parameter sweeps:
 
 - Defines per-variable struct arrays (`detIPRAS`, `detBCSAS`, `detFONGASAS`, etc.) with `vector<>` storage for multiple values
-- A `casoVEC` struct holds indices for building the sensitivity case matrix (all combinations)
+- A `casoVEC` struct holds indices for building the parametric case matrix (all combinations)
 - Constructor signature: `ASens(varGlob1D*, string IMPFILE, int vncel, detcelp*, ProFlu*, detBCS*, detFONGAS*)`
 - Used by `Num4Main.cpp` to loop over parameter combinations and call the solver for each case
 
@@ -715,7 +715,7 @@ The `LerVap` class ([`LeituraVapor.h`](../../src/LeituraVapor.h) / [`LeituraVapo
 
 ## JSON Input Structure Reference
 
-The formal JSON schema for a single-tramo input file is maintained in [`docs/schema_tramo.json`](../schema_tramo.json). Refer to that file for the complete list of accepted keys, types, required fields, and allowed values.
+The formal JSON schema for a single-branch input file is maintained in [`docs/schema_tramo.json`](../schema_tramo.json). Refer to that file for the complete list of accepted keys, types, required fields, and allowed values.
 
 ---
 
@@ -755,4 +755,4 @@ The formal JSON schema for a single-tramo input file is maintained in [`docs/sch
 | `Ler::imprimeTrend()` | Leitura.cpp | Write time-series trends |
 | `SProd::SProd()` | SisProd.cpp | Constructor — builds `arq`, sizes matrices, calls `montasistema()` |
 | `SProd::montasistema()` | SisProd.cpp | Build mesh: `geraduto` → `geracelp` → attach accessories |
-| `ASens::ASens()` | LerAS.cpp | Sensitivity analysis reader |
+| `APara::APara()` | LerAP.cpp | Parametric analysis reader |

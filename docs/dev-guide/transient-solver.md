@@ -25,6 +25,7 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 2. [Conservation Equations](#conservation-equations)
 3. [The Drift-Flux Closure Model](#the-drift-flux-closure-model)
 4. [Time Stepping and CFL Condition](#time-stepping-and-cfl-condition)
+   - [Time Step Heuristics](#time-step-heuristics-determinadt)
 5. [SolveTrans — Top-Level Walkthrough](#solvetrans--top-level-walkthrough)
 6. [EvoluiFrac — Void Fraction Evolution](#evoluifrac--void-fraction-evolution)
 7. [SolveAcopPV — Pressure-Velocity Coupling](#solveacoppv--pressure-velocity-coupling)
@@ -33,18 +34,22 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 10. [State Finalization (renova)](#state-finalization-renova)
 11. [Closure-Law Update (renovaterm)](#closurelaw-update-renovaterm)
 12. [Gas-Lift Service Line Coupling](#gas-lift-service-line-coupling)
-13. [PIG Tracking](#pig-tracking)
-14. [Adaptive Model Complexity](#adaptive-model-complexity)
-15. [Time Step Restart Logic](#time-step-restart-logic)
-16. [Compositional and Scalar Transport](#compositional-and-scalar-transport)
-17. [Output and Post-Processing](#output-and-post-processing)
-18. [Summary of Key Methods](#summary-of-key-methods)
+13. [Mass Transfer Model](#mass-transfer-model)
+   - [TMModelL — Model Selection](#tmmodell--mass-transfer-model-selection)
+   - [CritCond — Phase Transition Cutoff](#critcond--phase-transition-cutoff)
+   - [Mass Transfer Attributes](#mass-transfer-attributes-per-cell)
+14. [PIG Tracking](#pig-tracking)
+15. [Adaptive Model Complexity](#adaptive-model-complexity)
+16. [Time Step Restart Logic](#time-step-restart-logic)
+17. [Compositional and Scalar Transport](#compositional-and-scalar-transport)
+18. [Output and Post-Processing](#output-and-post-processing)
+19. [Summary of Key Methods](#summary-of-key-methods)
 
 ---
 
 ## Overview
 
-The transient solver computes the **time evolution of pressure, velocity, void fraction, complementary liquid fraction, and temperature** along a tramo. The algorithm can be summarized as:
+The transient solver computes the **time evolution of pressure, velocity, void fraction, complementary liquid fraction, and temperature** along a branch. The algorithm can be summarized as:
 
 1. **Determine the time step** $\Delta t$ from CFL and operational constraints
 2. **Advance the void fraction** $\alpha$ and complementary liquid fraction $\beta$ explicitly in time (hyperbolic transport)
@@ -144,9 +149,11 @@ The method `SProd::CalcC0Ud()` (`SisProd.cpp`) computes $C_0$ and $u_d$ for each
 
 3. **PIG present**: forces homogeneous flow ($C_0 = 1$, $u_d = 0$) around the PIG location.
 
-4. **Smooth transitions**: when the flow pattern changes between time steps, the code applies a relaxation (blending over a `transic` counter) to avoid abrupt jumps in $C_0$ and $u_d$.
+4. **Smooth transitions**: when the flow pattern changes between time steps, the code applies a relaxation (blending over a `transic` counter) to avoid abrupt jumps in $C_0$ and $u_d$. The counter starts at zero when the flow pattern first changes and is incremented each time step. Only when `transic >= 20` does the blending complete. During the blend, $C_0$ and $u_d$ are linearly interpolated. Additionally, if the flow pattern differs between the left and right faces of a cell, the left-face drift-flux parameters are computed as a weighted average of the two flow-pattern-specific values.
 
 5. **Optional override**: if `escorregaTran == 0` in the input, slip is disabled globally ($C_0 = 1$, $u_d = 0$), reducing the model to a homogeneous mixture.
+
+6. **PIG/BCS enforcement**: at faces where a PIG is present or a BCS pump (tipo 8) is operating, homogeneous flow is forced ($C_0 = 1$, $u_d = 0$) regardless of the flow-pattern classification. This prevents unphysical slip predictions in regions where the physical geometry (PIG, mechanical pump) constrains phase mixing.
 
 The closure is called during the `renovaterm()` phase (step 8 in the main loop), which propagates void fractions to cell faces and then evaluates the drift-flux parameters at each interior face.
 
@@ -170,13 +177,26 @@ where:
 
 This is computed by `determinaDTExpli()`, which loops over all cells and takes the global minimum.
 
-### Additional constraints
+### Time Step Heuristics (`determinaDT`)
 
-- **User-specified maximum**: `arq.dtmax` provides an upper bound
-- **Oscillation penalty**: if a closed valve/choke is detected and spatial oscillation of $\alpha$ is found in 3+ consecutive cells, $\Delta t$ is divided by 10
-- **Porous media**: if radial or 2D porous sub-models are active, their sub-timestep constraints are honoured
-- **Valve events**: `restringeDTporValv()` limits $\Delta t$ during valve opening/closing transients
-- **Moving average attenuation**: `atenuaDtMax()` smoothly adjusts the maximum $\Delta t$ based on recent history
+`SProd::determinaDT()` applies a hierarchy of constraints and operational penalties on top of the CFL limit. Each constraint is evaluated in sequence, and the minimum survives:
+
+1. **Base CFL**: the primary constraint comes from the acoustic speed (gas velocity limit) and thermal advection speed, evaluated separately for the production line and the gas-lift service line
+2. **Maximum user limit**: the Δt is never allowed to exceed the user-defined maximum from the JSON input (`arq.dtmax`)
+3. **Valve opening penalties**: during opening or closing of surface chokes or Master1 valves, if the pressure difference between upstream and downstream is extreme, the solver applies an aggressive Δt penalty until pressures stabilize. This prevents choking-solver oscillations during valve transients
+4. **Choke oscillation penalization**: during production shutdown, the surface choke model can exhibit mass flow oscillations where the liquid flow rate at the choke upstream face flips between positive and negative from one step to the next. When detected, the solver reduces Δt until the oscillation is under control. Without this, time steps can become infinitesimally small and the simulation may stall
+5. **Liquid-piston arrival**: when a liquid piston (slug) reaches the last cell while the surface choke is "active," the solver has difficulty resolving the sudden change in choke flow conditions. A Δt penalty is applied until the solver adapts
+6. **Sub-time-step limit**: if `subtempo > 0`, the solver computes a sub-Δt (typically based on the time for a slug to traverse a cell) and limits Δt accordingly
+
+### Monophase transition band
+
+The simulator uses a transition band to avoid excessive time-step penalization near the monophase boundaries ($\alpha = 0$ or $\alpha = 1$). The threshold is configured via the JSON entry **`Avancado.CriterioMonofasico`** (default `1e-4`), which is internally assigned to `(*vg1dSP).localtiny`. Rather than checking for exact $\alpha = 0$ or $\alpha = 1$, the code applies:
+
+- If $\alpha < \text{localtiny}$: the cell is effectively all-liquid
+- If $\alpha > 1 - \text{localtiny}$: the cell is effectively all-gas
+- Otherwise: true multiphase
+
+This prevents the solver from oscillating around the monophase boundary, which would trigger endless time-step halving. For $\beta$, an analogous check uses a per-cell `localtinyTemp` (defaulting to the global `localtiny` or `1e-9`).
 
 ### Time step restart
 
@@ -242,7 +262,7 @@ while (t < t_final):
 
    11. salvaFonte()              — store source terms
    12. renovaTemp()              — T-dependent property update
-   13. renovaalbetini()          — save α, β as initial for next step
+   13. renovaalbetini()          — save α, β as initial for next step. For cells with PIGs, also calculates PIG average velocity and displacement over Δt, advancing PIG position within the cell and updating sub-cell fractions (alfPigE, alfPigD, betPigE, betPigD) to account for PIG-induced phase separation. The PIG model is simplified: it acts as a physical barrier preventing fluid passage, creating distinct α/β values upstream and downstream of the PIG interface within the same cell.
    14. renovaRGOdgYco2() / renovaFracMol2()  — advect scalars
    15. renovaMasEsp()            — density update
 
@@ -266,6 +286,14 @@ The second pass:
 - Calls `renova()` to finalize
 
 This two-pass scheme provides an **implicit-like coupling** between pressure changes and void fraction evolution, improving stability during rapid transients (e.g., blowdown, slug arrival at surface).
+
+### Key globals and operational notes
+
+- **`chaverede == 0`**: indicates **single-branch mode** (the branch is not part of a network). When `chaverede != 0`, the solver operates as part of a network managed by `Num4Main`.
+- **`BuscaPresInjDesc()`**: if `controDesc == 1` (descent control enabled), the solver applies pressure descent limits at discharge — enforcing `presMaxDesc` (maximum descending injection pressure) and `presMinDesc` (minimum) thresholds. This prevents erratic injection pressure changes when the producer pressure drops rapidly, effectively limiting the injection rate ramp.
+- **`arq.atualiza()`**: called at each time step, this method (in class `Leitura`) evaluates all user-defined time-dependent schedule events — separator pressure changes, Master1 choke opening, BCS frequency changes, surface choke opening profiles, injection pressure schedules, and any other temporal data defined in the JSON input.
+- **`kSP`**: global time-step counter, incremented at each time step.
+- **`lixo5`**: global wall-clock time variable, updated to the current simulation time $t$ at step completion.
 
 When `modeloCompleto == 0` (quasi-steady periods), only one pass is executed, saving roughly half the computational cost.
 
@@ -353,6 +381,28 @@ The local $2 \times 6$ matrices are assembled into a **banded global matrix** `m
 
 `matglobP.GaussElimPP(termolivreP)` solves the banded system using **Gauss elimination with partial pivoting** adapted for the banded structure. The solution vector `termolivreP` contains alternating $(\dot{m}_i, P_i)$ values.
 
+The pressure-velocity coupling may run **multiple passes** controlled by `cicloAcopTerm` (default `0`, i.e., a single pass). When `cicloAcopTerm == 1`:
+
+1. The first pass solves pressure-velocity as described above
+2. The energy equation (`calctemp`) is then solved
+3. If `cicloAcopTerm == 1`, the solver **rewinds** to the start of the step via `FeiticoDoTempo()`, restoring pressure and temperature
+4. Pressure-velocity is re-solved with the updated temperature-dependent properties
+5. This iterative loop continues until convergence
+
+This thermal coupling is important because gas compressibility $\partial \rho_g / \partial T$ is omitted from the mass equation by default. With `cicloAcopTerm == 1`, the temperature feedback is captured iteratively, improving accuracy during strong thermal transients.
+
+### Auxiliary pressure (`presaux`) — pressure BC at cell faces
+
+The auxiliary pressure `presaux` is used to compute $T_1$ and $T_2$ at cell faces for the liquid mass split. The `renova()` method reconstructs it after solution. There are two options controlled by the user input `MedSimpPresFront`:
+
+- **`MedSimpPresFront = 0` (accurate):** `presaux` includes explicit friction and hydrostatic corrections:
+  $$P_{\text{aux}} = P_i + \frac{F_{\text{fric}} + F_{\text{grav}} - \Delta P_B}{98066.5}$$
+  This is more precise but can make the coupled system less stable.
+
+- **`MedSimpPresFront = 1` (simplified):** `presaux` is the arithmetic average of the left and right neighbor cell pressures. This is more numerically stable but less physically accurate.
+
+The default is `true` (simplified averaging).
+
 ---
 
 ## marchaEnergTrans — Transient Energy Equation
@@ -404,6 +454,20 @@ These may be time-varying according to a schedule read from the JSON input (`arq
 3. **Pressure correction**: The outlet pressure is adjusted so that the computed choke mass flow equals the actual mass flow from the last cell
 4. **Joule-Thomson cooling**: The temperature drop across the choke is computed from the quality-weighted JT coefficients
 
+### Choke quality ambiguity
+
+A significant complication in transient choke modeling is defining the gas mass fraction (quality) of the stream entering the choke. The original approach used the cell-level void fraction and densities, but this proved unstable and inconsistent with steady-state results. The current implementation uses the left-face mass flow:
+
+$$
+\text{quality} = \frac{\dot{m}_{g,i}}{\dot{m}_{\text{total},i}}
+$$
+
+**Reverse flow detection:** When a multiphase reverse flow occurs at the last cell face (common during production shutdown), the quality definition becomes ambiguous. The solver detects phase direction reversal and applies a time-step penalty for safety. This prevents choke oscillations caused by incorrect quality estimates from a face not immediately adjacent to the choke.
+
+**Choke-to-local-loss fallback:** When upstream mass flow is positive but the upstream/downstream pressure difference suggests reverse flow through the choke (common during shutdown as pressures equalize), the solver switches the boundary from a choke flow model to a localized pressure-loss model. This avoids choke oscillations near pressure-equalization points.
+
+**Single liquid at choke:** When the quality approaches zero (pure liquid through the choke), the Sachdeva choke model becomes "blind" since it does not account for liquid compressibility. In this case, the solver uses the localized pressure-loss model instead.
+
 ---
 
 ## State Finalization (renova)
@@ -445,6 +509,66 @@ These may be time-varying according to a schedule read from the JSON input (`arq
 - If $\alpha \approx 0$ (all-liquid), gas-related terms are zeroed and the momentum equation is simplified
 - If $\alpha \approx 1$ (all-gas), liquid terms are zeroed
 - PIG presence forces homogeneous flow ($C_0 = 1, u_d = 0$) regardless of flow pattern
+
+**Single-phase heuristics:** Beyond the simple threshold checks, `renovaterm()` employs a logical heuristics sequence that forecasts whether the flow at each face will be single-phase or multiphase:
+- If the flow is predicted to be all-liquid: `term1 = 1`, `term2 = 0` (face carries mixture entirely)
+- If the flow is predicted to be all-gas: `term1 = 0`, `term2 = 0` (no liquid mass flow at face)
+- If the flow is predicted to be multiphase: full $T_1$,$T_2$ calculation proceeds
+
+**Additional single-phase sanity check:** After computing $T_1$,$T_2$ for a face, the solver performs a final validation. Using the newly computed $C_0$ and $u_d$, it estimates a superficial liquid velocity. If this estimate is positive while the left-face void fraction is $1$ (all-gas), the prediction was wrong — the actual flow is all-gas, and $T_1$,$T_2$ are reset. Symmetrically, a negative estimated liquid velocity followed by right-face $\alpha = 1$ also triggers a forced single-phase-gas assignment. This double-check prevents production-shutdown errors in the churn/annular transition region.
+
+**Last-cell homogeneous override:** At the last cell ($i = n_{\text{cel}}$), oscillations in mass flow were observed when the flow pattern changed. These were attributed to $C_0$,$u_d$ sensitivity to pattern boundaries. A configuration option (`homogeneLast` or similar) forces homogeneous slip ($C_0 = 1, u_d = 0$) at the last cell only, which eliminates these numerical oscillations while preserving physically realistic slip in the rest of the pipeline.
+
+**Accessory suppression:** When a cell contains an accessory (BCS, valve, etc.), all interphase transfer terms are zeroed, since the compact geometry of accessories does not support the distributed mass-transfer processes modeled in the regular cells.
+
+---
+
+## Mass Transfer Model
+
+Interphase mass transfer between phases (evaporation, condensation, dissolution) is modeled through source terms that modify the mass fractions in each cell. The transfer terms affect the void fraction evolution (`EvoluiFrac`), the complementary liquid fraction evolution, and the mixture mass equation.
+
+### TMModelL — Mass Transfer Model Selection
+
+The `TMModelL` attribute on each cell controls the mass transfer behavior. This is a per-cell integer that defaults to 0 (complete model) but can vary across cells:
+
+| Value | Mode | Behavior |
+|-------|------|----------|
+| 0 | **Complete implicit** (default) | Mass transfer terms are distributed into the implicit system via `DTransDxR`, `DTransDxL`, `DTransDtR`, `DTransDtL` coefficients. These Jacobian entries couple the transfer terms into the linear solver matrix, improving stability for stiff transfer rates. |
+| 1 | **Fully explicit** | Transfer terms are applied directly as source terms via the standard Equation (166), without distributing into the implicit matrix. Simpler but potentially less stable for fast transfer rates. |
+| 2 | **Simplified** | A simplified (lower-fidelity) transfer model with limited practical relevance. Uses reduced coefficients. |
+| 3 | **No transfer** | All mass transfer is disabled — `FonteMudaFase` is zeroed and all `DTrans*Dx*D` coefficients are set to 0. |
+
+**Accessory cells:** When a cell contains an accessory (BCS, valve, leak, etc.), `TMModelL` is automatically forced to mode 3 (no transfer). The compact geometry of accessories does not support the distributed mass-transfer processes modeled in regular pipeline cells.
+
+### CritCond — Phase Transition Cutoff
+
+Near the monophase boundaries (α = 0 or α = 1), mass transfer terms can become unstable and cause infinite time-step oscillation loops. During evaporation or condensation, the transfer rate may be tiny but sufficient to push α slightly beyond the monophase threshold (e.g., α = 1 + 10⁻¹⁵), triggering a time-step halving that doesn't actually resolve the issue — the next step produces the same tiny overshoot.
+
+To prevent this, `CritCond` defines a **cutoff band** near the monophase limits:
+- If α > 1 − `CritCond`: mass transfer is **zeroed** (the cell is effectively all-gas)
+- If α < `CritCond`: mass transfer is **zeroed** (the cell is effectively all-liquid)
+
+`CritCond` is a global configurable parameter specified in the JSON input file. The default value is the same as `localtiny` (typically 10⁻⁹). This creates a "dead zone" near α = 0 and α = 1 where mass transfer is suppressed, preventing the solver from chasing infinitesimal corrections.
+
+### Mass Transfer Attributes (per cell)
+
+The following `Celula3` attributes store the computed mass transfer quantities:
+
+| Attribute | Description |
+|-----------|-------------|
+| `FonteMudaFase` | Interphase mass transfer rate [kg/s] — the net mass transferred from one phase to another per unit time. This is the source term applied to the mass equations. |
+| `DTransDxR` | Right-face mass transfer contribution to the momentum equation row (implicit Jacobian) |
+| `DTransDxL` | Left-face mass transfer contribution to the momentum equation row (implicit Jacobian) |
+| `DTransDtR` | Right-face mass transfer time-derivative coefficient |
+| `DTransDtL` | Left-face mass transfer time-derivative coefficient |
+| `TransmassL` / `TransmassR` | Left and right face total transfer rates used in the cell mass balance |
+| `DTransDxRp` | Right-face transfer coefficient for pressure derivatives |
+| `DTransDxLp` | Left-face transfer coefficient for pressure derivatives |
+| `DTransDxLinear` | Linear (non-derivative) transfer contribution to the momentum equation |
+| `coefTransBet` | Coefficient for complementary liquid fraction transfer |
+| `coefDtR` / `coefDtL` | Time-derivative coefficients for right/left faces |
+
+These attributes are computed by `renovaterm()` (for implicit models) and applied during `EvoluiFrac` and `GeraLocal` (the momentum equation assembly). The coefficients encode the sensitivity of the mass transfer to pressure and void-fracture changes at each cell face.
 
 ---
 
@@ -506,6 +630,8 @@ The 9-column stencil spans 3 cells (left, center, right) with 3 DOFs each. Bound
 - `CelG::DeVoltaParaoFuturo()` — saves current state into `*ini` copies (commits the time level)
 - `CelG::FeiticoDoTempo()` — restores all state from `*ini` copies (rolls back to the start of the step)
 - `renovaGas()` — scatters the global solution vector `termolivreG[]` back into each cell's pressure and mass flow
+
+**Face convention:** The gas mass flow for each `CelG` cell is stored as `VGasR` at the **right face** of the cell. This consistent right-face convention matches the production-line mass flow convention (`MR` stores to the right face of cell $i$, while `MR` of cell $i-1$ also refers to the same boundary between cells $i-1$ and $i$). The mass fonte (VGL injection source) is also stored as `massfonteCH` on each gas-line cell for trending purposes.
 
 ---
 
@@ -645,6 +771,9 @@ The transient solver produces several types of output at user-specified interval
 | **Log events** | `log.registra()` | Valve events, PIG passage, alarms |
 | **Snapshots** | `salvaArquivoSnap()` | Full state dump for restart |
 | **Progress** | Console output | Time, dt, CFL fraction, iteration count |
+| **Radial thermal profiles** | `imprimeProfileRadial()` | Temperature distribution across the pipe cross-section |
+| **Thermal profiles (spatial)** | `imprimeProfileTrans()` / `imprimeProfileTransG()` | Pipe wall temperature profiles along the pipeline — production line and gas-lift line respectively |
+| **Wall thermal trends** | `imprimeTrendTransP()` / `imprimeTrendTransG()` | Time series of pipe wall temperatures at key radial positions — production line and gas-lift line respectively |
 
 Moving averages of pressure, velocity, and void fraction are maintained for trend output smoothing, using a configurable window.
 
@@ -688,3 +817,10 @@ Moving averages of pressure, velocity, and void fraction are maintained for tren
 | `CelG::FeiticoDoTempo()` | celulaGas.cpp | Gas-line cell-level state rewind |
 | `CelG::DeVoltaParaoFuturo()` | celulaGas.cpp | Gas-line cell-level state commit |
 | `chokeVGL[].massica()` | chokegas.cpp | Compressible gas choke mass-flow model |
+| `renovaalbetini()` | SisProd.cpp | Save α,β initial; calculate PIG velocity/displacement within cell |
+| `areaValvCali()` | SisProd.cpp | IPO valve calibration — calibrated area vs. differential pressure |
+| `buscaPresInjDesc()` | SisProd.cpp | Descent control — enforces presMaxDesc/presMinDesc thresholds |
+| `imprimeProfileTrans()` | SisProd.cpp | Pipe wall temperature profiles along pipeline (production line) |
+| `imprimeTrendTransP()` | SisProd.cpp | Time series of pipe wall temperatures (production line) |
+| `imprimeProfileTransG()` | SisProd.cpp | Pipe wall temperature profiles along gas-lift line |
+| `imprimeTrendTransG()` | SisProd.cpp | Time series of pipe wall temperatures (gas-lift line) |

@@ -1,6 +1,6 @@
-﻿# Steady-State Solution of a Single Tramo
+﻿# Steady-State Solution of a Single Branch
 
-This document describes the logic and algorithms used by the Marlim3 simulator to compute the **steady-state (permanent) solution** of a single pipeline segment (*tramo*). A tramo is the fundamental simulation unit — a 1D sequence of control volumes (cells) representing a pipe or well, including artificial-lift devices, sources, and sinks.
+This document describes the logic and algorithms used by the Marlim3 simulator to compute the **steady-state (permanent) solution** of a single pipeline segment (*branch*). A branch is the fundamental simulation unit — a 1D sequence of control volumes (cells) representing a pipe or well, including artificial-lift devices, sources, and sinks.
 
 **Key source files:**
 
@@ -40,7 +40,7 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 
 ## Overview
 
-The steady-state solver computes the **pressure, temperature, void fraction, and flow-rate profiles** along a tramo under time-invariant conditions. The fundamental approach is:
+The steady-state solver computes the **pressure, temperature, void fraction, and flow-rate profiles** along a branch under time-invariant conditions. The fundamental approach is:
 
 1. **Guess** a boundary value (bottom-hole pressure or inlet mass flow rate)
 2. **March** cell-by-cell from the upstream end to the downstream end, computing pressure, temperature, and mass flow at each cell
@@ -63,7 +63,7 @@ This is a **shooting method**: the unknown boundary value is the "shot", and the
 
 ## Call Hierarchy
 
-The steady-state solution for a single tramo follows this call chain:
+The steady-state solution for a single branch follows this call chain:
 
 ```
 main()
@@ -324,7 +324,7 @@ The residual is the difference between the **imposed downstream pressure** (`pGS
 
 ### Inner Iteration (Gas-Lift Coupling)
 
-If the tramo has gas-lift valves (`arq.lingas > 0`), after the production-line march, the method also:
+If the branch has gas-lift valves (`arq.lingas > 0`), after the production-line march, the method also:
 
 1. **Marches the gas-lift service line** (`marchaGasPerm1` / `buscaGasPresPerm2` / `buscaGasPresPerm3`), solving for gas-injection rate given injection pressure or vice versa
 2. **Connects columns** — gas-lift valve flow rates depend on the differential pressure between the production and service lines at each valve position

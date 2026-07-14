@@ -6,7 +6,7 @@ This document provides a high-level overview of the main classes that compose a 
 
 | File | Role |
 |------|------|
-| [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` — production system (tramo) |
+| [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` — production system (branch) |
 | [`src/celula3.h`](../../src/celula3.h) / [`celula3.cpp`](../../src/celula3.cpp) | `Cel` — cell (control volume) |
 | [`src/Geometria.h`](../../src/Geometria.h) | `DadosGeo` — pipe geometry |
 | [`src/acessorios.h`](../../src/acessorios.h) | `acessorio` — cell accessories |
@@ -32,12 +32,12 @@ This document provides a high-level overview of the main classes that compose a 
 
 ## SProd — Production System
 
-`SProd` ([`SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp)) represents a single **tramo** (pipeline segment) and contains all the methods needed to simulate it. A network is represented as a vector of `SProd` objects.
+`SProd` ([`SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp)) represents a single **branch** (pipeline segment) and contains all the methods needed to simulate it. A network is represented as a vector of `SProd` objects.
 
 In `main()`, the objects are named:
 
-- **`sistem1`** — single tramo (a single `SProd` object)
-- **`malha`** — interconnected tramos, represented as a pointer of pointers (matrix) of `SProd`. The matrix structure allows multiple independent sub-networks
+- **`sistem1`** — single branch (a single `SProd` object)
+- **`malha`** — interconnected branches, represented as a pointer of pointers (matrix) of `SProd`. The matrix structure allows multiple independent sub-networks
 
 The `SProd` constructor performs two critical actions:
 
