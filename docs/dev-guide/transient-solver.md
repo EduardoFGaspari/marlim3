@@ -1,6 +1,6 @@
-﻿# Transient Solver for a Single Tramo
+﻿# Transient Solver for a Single Branch
 
-This document describes the logic and algorithms used by the Marlim3 simulator to compute the **transient (time-dependent) solution** of a single pipeline segment (*branch*). While the [steady-state solver](steady-state-tramo.md) uses a shooting method with cell-by-cell spatial marching, the transient solver advances the entire domain in time, coupling mass, momentum, and energy equations through a **drift-flux two-fluid model** on a staggered grid.
+This document describes the logic and algorithms used by the Marlim3 simulator to compute the **transient (time-dependent) solution** of a single pipeline segment (*branch*). While the [steady-state solver](steady-state-tramo.md) uses a shooting method with cell-by-cell spatial marching, the transient solver advances the entire domain in time, coupling mass, momentum, and energy equations through a **drift-flux multi-phase model** on a staggered grid.
 
 **Key source files:**
 
@@ -31,7 +31,7 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 8. [marchaEnergTrans — Transient Energy Equation](#marchaenergtrans--transient-energy-equation)
 9. [Boundary Conditions](#boundary-conditions)
 10. [State Finalization (renova)](#state-finalization-renova)
-11. [Closure-Law Update (renovaterm)](#closure-law-update-renovaterm)
+11. [Closure-Law Update (renovaterm)](#closurelaw-update-renovaterm)
 12. [Gas-Lift Service Line Coupling](#gas-lift-service-line-coupling)
 13. [PIG Tracking](#pig-tracking)
 14. [Adaptive Model Complexity](#adaptive-model-complexity)
@@ -44,10 +44,10 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 
 ## Overview
 
-The transient solver computes the **time evolution of pressure, velocity, void fraction, water cut, and temperature** along a tramo. The algorithm can be summarized as:
+The transient solver computes the **time evolution of pressure, velocity, void fraction, complementary liquid fraction, and temperature** along a tramo. The algorithm can be summarized as:
 
 1. **Determine the time step** $\Delta t$ from CFL and operational constraints
-2. **Advance the void fraction** $\alpha$ and water cut $\beta$ explicitly in time (hyperbolic transport)
+2. **Advance the void fraction** $\alpha$ and complementary liquid fraction $\beta$ explicitly in time (hyperbolic transport)
 3. **Solve the coupled pressure-velocity system** implicitly via a banded linear system
 4. **March the energy equation** (temperature) semi-implicitly
 5. **Finalize** state variables, update fluid properties, write output, and advance time
@@ -69,8 +69,8 @@ The drift-flux model is **always** used in transient mode (regardless of the `ti
 │    │ 5. EvoluiFrac()        — advance α, β explicitly           │   │
 │    │ 6. AtualizaPig()       — PIG tracking                      │   │
 │    │ 7. calcCCpres()        — outlet pressure BC                │   │
-│    │ 8. renovaterm()        — update drift-flux closure (c₀,ud) │   │
-│    │ 9. SolveAcopPV()       — pressure-velocity coupling        │   │
+│    │ 8. renovaterm()        — update c₀, ud (drift-flux closure) │   │
+│    │ 9. SolveAcopPV()       — solve for P, ṁ
 │    │10. renova()            — extract P, M from solution vector  │   │
 │    │11. marchaEnergTrans()  — energy equation (temperature)      │   │
 │    │12. renovaTemp()        — update T-dependent properties      │   │
@@ -90,45 +90,29 @@ The transient solver solves four conservation equations for a 1D multiphase mixt
 
 ### Mass conservation — gas phase
 
-$$
-\frac{\partial}{\partial t}\left( A \, \alpha \, \rho_g \right) + \frac{\partial}{\partial x}\left( \dot{m}_g \right) = \dot{m}_{g,\text{source}} + \dot{m}_{\text{transfer}}
-$$
+For the full derivation, see [mass-momentum-balances.md](../theoretical-reference/mass-momentum-balances.md). The solver tracks three mass equations: produced liquid ($\dot{M}_p$), complementary (water) liquid ($\dot{M}_c$), and gas ($\dot{M}_g$). The gas mass equation includes interphase mass transfer $\Gamma_g$ from flashing/condensation via the black-oil $R_s$ term. See the theoretical reference (Equation `eq:mass_gas_final`) for the complete form.
 
-where $\alpha$ is the gas void fraction, $\rho_g$ is the gas density, $\dot{m}_g$ is the gas mass flow rate, and $\dot{m}_{\text{transfer}}$ accounts for inter-phase mass transfer (flashing/condensation).
+### Mass conservation — produced liquid and complementary liquid phases
 
-### Mass conservation — liquid phase
+The produced-liquid and complementary-liquid mass equations are coupled through the complementary fraction $\beta$. The liquid density is computed as:
 
 $$
-\frac{\partial}{\partial t}\left( A \, (1-\alpha) \, \rho_l \right) + \frac{\partial}{\partial x}\left( \dot{m}_l \right) = \dot{m}_{l,\text{source}} - \dot{m}_{\text{transfer}}
+\rho_l = (1-\beta)\,\rho_{lp} + \beta\,\rho_{lc}
 $$
 
-The liquid density $\rho_l$ is a weighted average over oil and water:
-
-$$
-\rho_l = (1-\beta)\,\rho_o + \beta\,\rho_w
-$$
-
-where $\beta$ is the water cut (volume fraction of water in the liquid phase).
+where $\rho_{lp}$ is the produced-liquid density (oil + dissolved gas) and $\rho_{lc}$ is the complementary-liquid density (water). See the theoretical reference (Equations `eq:mass_liq_final` and `eq:psi_black oil`) for the complete formulation including interphase transfer terms.
 
 ### Mixture momentum conservation
 
-$$
-\frac{\partial \dot{m}}{\partial t} + \frac{\partial}{\partial x}\left(\frac{\dot{m}_g^2}{A\,\alpha\,\rho_g} + \frac{\dot{m}_l^2}{A\,(1-\alpha)\,\rho_l}\right) = -A\frac{\partial P}{\partial x} - \frac{f\,\rho_m\,|j|\,j\,S}{8} - A\,\rho_m\,g\sin\theta
-$$
-
-where $\dot{m} = \dot{m}_g + \dot{m}_l$ is the total mixture mass flow, $j$ is the mixture superficial velocity, $f$ is the Darcy friction factor, and $\theta$ is the pipe inclination.
+For the full derivation, see [mass-momentum-balances.md](../theoretical-reference/mass-momentum-balances.md). The momentum equation uses the **Fanning** friction factor $f_m$ (not the Darcy factor). In the staggered grid discretization, momentum is solved at cell faces (half-integer indices) while mass variables live at integer-index cells. See the theoretical reference (Equation `eq:momentum_final`) for the complete form with the wetted perimeter $S_w$ formulation.
 
 ### Energy conservation
 
-$$
-\frac{\partial T}{\partial t} + \frac{\dot{m}}{A\,\rho_m\,c_{p,m}} \frac{\partial T}{\partial x} = \frac{1}{A\,\rho_m\,c_{p,m}}\left[\mu_{JT}\frac{\partial P}{\partial t} + \dot{q}_{\text{friction}} + \dot{q}_{\text{hydrostatic}} - \dot{q}_{\text{wall}}\right]
-$$
-
-where $\mu_{JT}$ is the effective Joule-Thomson coefficient (weighted by quality), and $\dot{q}_{\text{wall}}$ represents radial heat loss through pipe layers to the environment.
+For the complete derivation, see [energy-balance.md](../theoretical-reference/energy-balance.md). The solver uses a non-conservative temperature equation derived from the conservative internal energy form. The final equation (Equation `eq:energy_final` in the theoretical reference) relates temperature evolution to advection, Joule-Thomson effects, compression work, interphase enthalpy transfer, and radial heat loss to the wellbore environment.
 
 ### Discretization approach
 
-- **Void fraction** ($\alpha$) and **water cut** ($\beta$) are advanced **explicitly** in time using upwind finite differences (`avancalf`, `avancbet`)
+- **Void fraction** ($\alpha$) and **complementary liquid fraction** ($\beta$) are advanced **explicitly** in time using upwind finite differences (`avancalf`, `avancbet`)
 - **Pressure** ($P$) and **mixture mass flow** ($\dot{m}$) are solved **implicitly** via a coupled banded linear system (`GeraLocal` → `SolveAcopPV`)
 - **Temperature** ($T$) is advanced **semi-implicitly** — the advection is explicit, but heat loss is evaluated at the new time level (`calctemp` inside `marchaEnergTrans`)
 
@@ -289,7 +273,7 @@ When `modeloCompleto == 0` (quasi-steady periods), only one pass is executed, sa
 
 ## EvoluiFrac — Void Fraction Evolution
 
-`SProd::EvoluiFrac()` advances the void fraction $\alpha$ and water cut $\beta$ by one time step. It consists of four OpenMP-parallel loops:
+`SProd::EvoluiFrac()` advances the void fraction $\alpha$ and complementary liquid fraction $\beta$ by one time step. It consists of four OpenMP-parallel loops:
 
 ### Loop 1 — Advance $\alpha$ (`avancalf`)
 
@@ -303,27 +287,23 @@ $$
 \alpha^{n+1}_i = \alpha^n_i + \Delta t \cdot \frac{F_{\alpha}}{1 + K_{\alpha}}
 $$
 
-where $F_{\alpha}$ (`term1Mass`) gathers:
+where $F_{\alpha}$ (`term1Mass`) gathers the flux and source terms from the holdup evolution equation (Equation `eq:holdup_simp` in the theoretical reference). Crucially, it includes the black-oil interphase mass transfer terms:
 
-- **Convective flux**: upwinded liquid mass flow difference $(\dot{m}_{l,i+1/2} - \dot{m}_{l,i-1/2}) / \Delta x$, divided by liquid density
-- **Mass sources**: gas injection, liquid injection, condensate source
-- **Inter-phase transfer**: $\dot{m}_{\text{transfer}} / \rho_l$ (flashing/condensation)
-- **Pressure transient** correction: $-(\partial T_{\text{trans}} / \partial P) \cdot (dP/dt) / \rho_l$ — accounts for density changes due to pressure variation
-- **Temperature transient** correction: $-(\partial T_{\text{trans}} / \partial T) \cdot (dT/dt) / \rho_l$
+- **Convective flux**: upwinded produced-liquid and complementary-liquid mass flow differences divided by their respective densities ($\rho_{lp}$ and $\rho_{lc}$)
+- **Liquid injection sources**: $Q_l$ terms weighted by $(1-\beta)(1-F_w)R_s\gamma_g\rho_{air}^{std}/B_o$
+- **Inter-phase transfer**: $\Gamma_{lp}/(A\rho_{lp})$ and $\Gamma_{cp}/(A\rho_{lc})$ — the full $R_s$, $B_o$, $F_w$ coupling from the black-oil model (see `eq:psi_blackoil` in the theoretical reference)
+- **Source terms**: gas injection, liquid injection, condensate
 
 The divisor $K_{\alpha}$ (`CoefDTR / (rpC * area)`) provides implicit stabilization.
 
-**Bounds enforcement**: if $\alpha^{n+1} < 0$ or $\alpha^{n+1} > 1$, the cell:
-1. Computes the maximum stable sub-step: $\Delta t_{\text{sub}} = -\alpha^n / (F_{\alpha} / (1 + K_{\alpha}))$
-2. Sets `reiniciaAlf = -1` (flags restart needed)
-3. Clamps $\alpha$ to $[0, 1]$
+**Full form note:** The simplified equation above omits the $R_s$, $B_o$, $F_w$ Taylor-expansion terms that the code actually includes. These terms couple void fraction evolution to pressure and temperature changes through the black-oil solution-gas ratio $R_s(P)$ and formation-volume factor $B_o(P,T)$, with $F_w$ controlling the water-cut partitioning of flashed gas. For the full derivation, see the theoretical reference (Equation `eq:holdup_ev_disc1`).
 
 ### Loop 2 — Advance $\beta$ (`avancbet`)
 
-Same structure as $\alpha$, but for the water volume fraction in the liquid phase. The transport equation is:
+Same structure as $\alpha$, but for the complementary liquid fraction. The discrete transport equation corresponds to Equation `eq:beta_disc` in the theoretical reference. The solver uses the already-updated $\alpha^{n+1}$ (from Loop 1) and advances $\beta$ explicitly:
 
 $$
-\beta^{n+1}_i = \beta^n_i + \Delta t \cdot \frac{-\text{convec}_{\beta} + \text{source}_{\beta} + \rho_w A \beta^n (\alpha^{n+1} - \alpha^n) / \Delta t}{\rho_w A (1 - \alpha^n)}
+\beta^{n+1}_i = \beta^n_i + \Delta t \left[ \frac{\Gamma_{cp}}{A(1-\alpha)\rho_{lc}\Delta L} - \frac{\beta}{(1-\alpha)}\frac{\alpha^{n+1}-\alpha^n}{\Delta t} - \frac{1}{A(1-\alpha)\rho_{lc}}\frac{\partial \dot{M}_c}{\partial x} \right]
 $$
 
 If $\alpha \approx 1$ (all-gas cell), $\beta$ is not updated.
@@ -344,26 +324,24 @@ Serial loop that checks if any cell flagged `reiniciaAlf < 0`, `reiniciaBet < 0`
 
 ### Assembly: `Cel::GeraLocal`
 
-For each cell $i$ (OpenMP-parallel), `GeraLocal()` (celula3.cpp) builds a $2 \times 6$ local matrix `local[2][6]` and right-hand side `TL[2]`:
+For each cell $i$ (OpenMP-parallel), `GeraLocal()` (celula3.cpp) builds a $2 \times 6$ local matrix `local[2][6]` and right-hand side `TL[2]`.
 
-**Row 0 — Mass conservation** (combines gas and liquid mass equations, eliminating void fraction):
+**Row 0 — Pressure-velocity coupling equation.** This corresponds to Equation `eq:p_m_acop` in the theoretical reference. The six columns correspond to the stencil $[\dot{m}_{i-2},\; \dot{m}_{i-1},\; P_{i-1},\; \dot{m}_i,\; P_i,\; \dot{m}_{i+1}]$:
 
-The six columns correspond to the stencil $[\dot{m}_{i-2},\; \dot{m}_{i-1},\; P_{i-1},\; \dot{m}_i,\; P_i,\; \dot{m}_{i+1}]$:
-
-- **Pressure derivative terms**: gas compressibility $(\alpha / \rho_g) / (\partial P / \partial \rho_g)$ and liquid compressibility $((1-\alpha)(1-\beta) \, \partial\rho_l/\partial P) / \rho_l$
-- **Mass flow terms**: use `term1` / `term2` (the linear split $\dot{m}_l = \text{term1} \cdot \dot{m} + \text{term2}$, derived from the drift-flux closure)
+- **Pressure derivative terms**: gas compressibility $(\alpha / \rho_g) (\partial \rho_g / \partial P)^{-1}$ and liquid compressibility terms
+- **Mass flow terms**: use $T_1$ / $T_2$ coefficients from the drift-flux decomposition, where $T_1$ is the fraction of mixture mass flow carried by the liquid phase and $T_2$ is the slip-dependent correction. The full pressure equation from the theoretical reference (Equation `eq:p_m_acop`) is discretized with these coefficients multiplying the mass flow terms
 - **Inter-phase transfer**: `DTransDx*` and `DTransDt*` discretize $\partial \dot{m}_{\text{transfer}} / \partial x$ and $\partial \dot{m}_{\text{transfer}} / \partial t$
 - **Sources**: gas injection (`fontemassG`), liquid injection (`fontemassL`), condensate (`fontemassC`), IPR inflow
 
 The right-hand side `TL[0]` contains the known terms evaluated at the current state plus the temporal derivative contribution $A \Delta x (\ldots) P^n / \Delta t$.
 
-**Row 1 — Momentum conservation**:
+**Row 1 — Momentum conservation (simplified).** The full momentum equation (Equation `eq:momentum_final` in the theoretical reference) is simplified in the staggered grid. The solver uses the **Fanning** friction factor $f_m$ with wetted perimeter $S_w$:
 
 $$
-\frac{\dot{m}_i^{n+1} - \dot{m}_i^n}{\Delta t} + \frac{u_g \dot{m}_{g,i+1/2} - u_g \dot{m}_{g,i-1/2}}{\Delta x} + \frac{u_l \dot{m}_{l,i+1/2} - u_l \dot{m}_{l,i-1/2}}{\Delta x} = -A\frac{P_{i+1/2} - P_{i-1/2}}{\Delta x_{\text{med}}} - F_{\text{fric}} - F_{\text{grav}}
+\frac{\dot{m}_i^{n+1} - \dot{m}_i^n}{\Delta t} + \dots = -A \frac{\partial P}{\partial x} - f_m \frac{\rho_m |j| j S_w}{2} - \rho_m g A \sin\theta
 $$
 
-The pressure gradient is treated implicitly (columns 3 and 5 carry $\pm A \cdot 98066.5 / \Delta x_{\text{med}}$). Friction and hydrostatic forces appear in `TL[1]`.
+The pressure gradient is treated implicitly (columns carry $\pm A / \Delta x_{\text{med}}$). Friction and hydrostatic forces appear in `TL[1]`. Note: the momentum equation in transient mode is treated semi-implicitly (evolution of $\dot{m}$), which is less coupled than the mass equation.
 
 ### Global system assembly
 
@@ -385,27 +363,19 @@ The local $2 \times 6$ matrices are assembled into a **banded global matrix** `m
 
 At the outlet cell ($i = n_{\text{cel}}$), if the liquid mass flow is negative (reverse flow), clamp it to zero to prevent unphysical energy transport.
 
-### Inlet temperature
-
-$$
-T_0^{n+1} = \begin{cases} T_E & \text{if inlet BC active (ConContEntrada > 0)} \\ T_{\text{reservoir}} & \text{otherwise} \end{cases}
-$$
-
-The inlet temperature rate $dT/dt$ is computed for use in subsequent cells.
-
 ### Interior cells — `calctemp()`
 
-For each interior cell, `SProd::calctemp()` solves the 1D energy balance:
+For each interior cell, `SProd::calctemp()` calls `celula[i].calctemp()`. The energy equation corresponds to the non-conservative form derived in [energy-balance.md](../theoretical-reference/energy-balance.md) (final form: Equation `eq:energy_final`). The equation is solved for temperature using the relationship between internal energy and enthalpy via $de/dh$ derivatives for real gas and both liquid phases.
+
+The core relation is:
 
 $$
-T_i^{n+1} = T_i^n + \frac{\Delta t}{A \, \rho_m \, c_{p,m}} \left[ \mu_{JT,\text{eff}} \frac{\Delta P}{\Delta t} + \dot{q}_{\text{fric}} + \dot{q}_{\text{hydro}} - \dot{q}_{\text{wall}} - \dot{m} c_{p,m} \frac{T_i - T_{i-1}}{\Delta x} \right]
+\rho c_p \frac{\partial T}{\partial t} + \rho c_p u \frac{\partial T}{\partial x} = \frac{\partial P}{\partial t} \left[ T \left(\frac{\partial \rho}{\partial T}\right)_P - \rho \right] + \dots - \frac{\partial q_{\text{wall}}}{\partial A_{\text{wet}}}
 $$
 
-where:
-- $\mu_{JT,\text{eff}}$ is the quality-weighted effective Joule-Thomson coefficient: $(1-x)\,\mu_{JT,l}/c_{p,l} + x\,\mu_{JT,g}/c_{p,g}$
-- $\dot{q}_{\text{fric}}$ accounts for viscous dissipation
-- $\dot{q}_{\text{hydro}}$ is the hydrostatic work term: $(\rho_l u_{sl} + \rho_g u_{sg}) A g \sin\theta$
-- $\dot{q}_{\text{wall}}$ is the radial heat loss computed by the `TrocaCalor` model (multi-layer: fluid → steel → insulation → concrete → soil/sea)
+where $c_p$ is evaluated separately for gas (using real-gas correlations with compressibility factor $Z$) and each liquid phase (black-oil oil with dissolved gas, water). The $\Gamma_{cp}$ interphase transfer contributes an enthalpy source term proportional to the enthalpy difference between phases.
+
+**Key implementation detail:** The real-gas energy equation uses iterative updates — for each cell, the gas density at the new time step requires solving $P = \rho Z(T, P) R T$ iteratively. The liquid densities use the equation of state for each liquid type (`propOil` for produced-liquid, `propWater` for complementary).
 
 ### 2D/3D heat diffusion
 
@@ -421,29 +391,18 @@ The upstream boundary sets:
 - **Pressure** $P_E$ (or mass flow rate, depending on `ConContEntrada` mode)
 - **Temperature** $T_E$
 - **Gas quality** $\text{tit}_E$ (gas mass fraction)
-- **Water cut** $\beta_E$
+- **Complementary liquid fraction** $\beta_E$
 
 These may be time-varying according to a schedule read from the JSON input (`arq.atualiza()`).
 
 ### Outlet boundary (`calcCCpres`)
 
-`SProd::calcCCpres()` evaluates the downstream pressure condition through a **choke model**:
+`SProd::calcCCpres()` evaluates the downstream pressure condition. The actual code uses the Sachdeva choke model (`FonteMas::vazmassSachd` / `vazmaxSachd`) for critical/subcritical flow computation:
 
-1. **Gas quality** at the outlet: $x = |\dot{m}_g / \dot{m}|$ from the last cell face
-2. **Mixture density**: harmonic mean weighted by quality:
-   $$
-   \rho_m = \left[ \frac{x}{\rho_g} + \frac{1-x}{\rho_l} \right]^{-1}
-   $$
-3. **Choke mass flow** via the critical/subcritical flow model:
-   - Pressure ratio $y = P_{\text{sep}} / P_{\text{upstream}}$
-   - If $y < 1$: forward flow through choke, mass flow computed from the choke area and $\Delta P$
-   - If $y > 1$: reverse flow (sign flip)
-4. **Joule-Thomson cooling** across the choke:
-   $$
-   T_{\text{downstream}} = T_{\text{upstream}} + \left[(1-x)\frac{\mu_{JT,l}}{c_{p,l}} + x\frac{\mu_{JT,g}}{c_{p,g}}\right] (P_{\text{sep}} - P_{\text{upstream}}) \cdot 98066.5
-   $$
-
-The resulting mass flow and pressure are imposed as boundary conditions for the last cell.
+1. **Determine outlet mass flow** from the last cell face
+2. **Call Sachdeva model**: computes critical flow through a choke/orifice using the pressure ratio $y = P_{\text{downstream}} / P_{\text{upstream}}$. If $y$ is below the critical pressure ratio, the flow is choked (maximum mass flow `vazmaxSachd`). Otherwise, use the subcritical formula `vazmassSachd`.
+3. **Pressure correction**: The outlet pressure is adjusted so that the computed choke mass flow equals the actual mass flow from the last cell
+4. **Joule-Thomson cooling**: The temperature drop across the choke is computed from the quality-weighted JT coefficients
 
 ---
 
@@ -463,7 +422,7 @@ The resulting mass flow and pressure are imposed as boundary conditions for the 
    $$
    P_{\text{aux},i} = P_i + \frac{F_{\text{fric}} + F_{\text{grav}} - \Delta P_B}{98066.5}
    $$
-   where friction is $\frac{1}{2} f \rho_m |j| j \cdot S \cdot \Delta x / A$ and gravity is $9.82 \sin\theta \, \rho_m \, \Delta x$.
+   where friction is $\frac{1}{2} f_m \rho_m |j| j \cdot S_w \cdot \Delta x / A$ and gravity is $9.82 \sin\theta \, \rho_m \, \Delta x$.
 
 ---
 
@@ -481,6 +440,11 @@ The resulting mass flow and pressure are imposed as boundary conditions for the 
    \dot{m}_l = \text{term1} \cdot \dot{m} + \text{term2}
    $$
    where `term1` and `term2` encode the drift-flux relation.
+
+**Single-phase detection:** The `renovaterm()` function also contains extensive branching logic to detect single-phase conditions:
+- If $\alpha \approx 0$ (all-liquid), gas-related terms are zeroed and the momentum equation is simplified
+- If $\alpha \approx 1$ (all-gas), liquid terms are zeroed
+- PIG presence forces homogeneous flow ($C_0 = 1, u_d = 0$) regardless of flow pattern
 
 ---
 
@@ -532,7 +496,7 @@ Each `CelG` cell assembles a $3 \times 9$ local matrix and 3-element RHS vector 
 | Row | Equation | Physics |
 |-----|----------|---------|
 | 0 | **Continuity** | $\partial(\rho A)/\partial t + \partial \dot{m}/\partial x = \text{source}$ — uses gas compressibility $\partial\rho/\partial P$, temperature derivative $\partial\rho/\partial T$, VGL extraction `massfonteCH`, master-2 source `fonteM2` |
-| 1 | **Momentum** | $\partial \dot{m}/\partial t + v \cdot \partial \dot{m}/\partial x + A \cdot \partial P/\partial x + F_{\text{fric}} + F_{\text{grav}} = 0$ — Darcy friction via `CelG::fric()` (Haaland + Colebrook), hydrostatic via $\sin\theta$ |
+| 1 | **Momentum** | $\partial \dot{m}/\partial t + v \cdot \partial \dot{m}/\partial x + A \cdot \partial P/\partial x + F_{\text{fric}} + F_{\text{grav}} = 0$ — Fanning friction via `CelG::fric()` (Haaland + Colebrook), hydrostatic via $\sin\theta$ |
 | 2 | **Temperature** | Identity equation $T = T_{\text{current}}$ — temperature is solved separately by `calctempGas()` after the pressure-velocity solve |
 
 The 9-column stencil spans 3 cells (left, center, right) with 3 DOFs each. Boundary conditions: cell 0 applies either pressure or flow BC; the last cell applies zero-flow. Cells below the liquid interface (`celInter`) receive identity equations (frozen state).
@@ -569,9 +533,9 @@ When the PIG crosses a cell boundary:
 - The PIG velocity and index are propagated
 - Upstream/downstream sub-cell fractions (`alfPigE`, `alfPigD`, `betPigE`, `betPigD`) are updated
 
-### Water-cut interface
+### Complementary liquid fraction interface
 
-After PIG update, the upwinded water cut at each face (`betI`) is set accounting for the PIG-partitioned sub-cell values, ensuring that the liquid composition on each side of the PIG is tracked correctly.
+After PIG update, the upwinded complementary liquid fraction at each face (`betI`) is set accounting for the PIG-partitioned sub-cell values, ensuring that the liquid composition on each side of the PIG is tracked correctly.
 
 ---
 
@@ -695,16 +659,16 @@ Moving averages of pressure, velocity, and void fraction are maintained for tren
 | `determinaDTExpli()` | SisProd.cpp | CFL-limited Δt from sound speed + advection |
 | `EvoluiFrac()` | SisProd.cpp | Explicit advance of α, β |
 | `avancalf()` | celula3.cpp | Cell-level void fraction transport |
-| `avancbet()` | celula3.cpp | Cell-level water cut transport |
+| `avancbet()` | celula3.cpp | Cell-level complementary liquid fraction transport |
 | `avancPig()` | celula3.cpp | Cell-level PIG position advance |
 | `SolveAcopPV()` | SisProd.cpp | Pressure-velocity coupling (banded system) |
-| `GeraLocal()` | celula3.cpp | Local 2×6 matrix assembly (mass + momentum) |
+| `GeraLocal()` | celula3.cpp | Local 2×6 matrix assembly (pressure-velocity + momentum) |
 | `marchaEnergTrans()` | SisProd.cpp | Transient energy equation |
 | `calctemp()` | SisProd.cpp | Per-cell temperature advance |
 | `renova()` | SisProd.cpp | Extract solution, update cell state |
-| `renovaterm()` | SisProd.cpp | Update drift-flux closure (c₀, ud) |
+| `renovaterm()` | SisProd.cpp | Update drift-flux closure (c₀, ud, term1, term2) |
 | `CalcC0Ud()` | SisProd.cpp | Flow-pattern-dependent c₀, ud |
-| `calcCCpres()` | SisProd.cpp | Outlet choke boundary condition |
+| `calcCCpres()` | SisProd.cpp | Outlet Sachdeva choke boundary condition |
 | `solveLinGas()` | SisProd.cpp | Gas-lift service line coupling |
 | `AtualizaPig()` | SisProd.cpp | PIG tracking and cell transfer |
 | `avaliaVariaDpDt()` | SisProd.cpp | Adaptive model complexity |
@@ -715,6 +679,7 @@ Moving averages of pressure, velocity, and void fraction are maintained for tren
 | `renovaRGOdgYco2()` | SisProd.cpp | Scalar transport (RGO, API, BSW, CO₂) |
 | `renovaMasEsp()` | SisProd.cpp | Density re-evaluation |
 | `renovaTemp()` | SisProd.cpp | T-dependent property refresh |
+| `DTransDx()` / `DTransDt()` | SisProd.cpp | Inter-phase mass transfer derivatives |
 | `ValvGasTrans()` | SisProd.cpp | Transient gas-lift valve model (choke flow + IPO) |
 | `subtempoGas()` | SisProd.cpp | Gas-line transient sub-timestepping |
 | `renovaGas()` | SisProd.cpp | Scatter gas-line solution to CelG cells |
