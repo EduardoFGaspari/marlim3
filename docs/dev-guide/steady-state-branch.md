@@ -6,16 +6,16 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 
 | File | Role |
 |------|------|
-| [`src/Num4Main.cpp`](../../src/Num4Main.cpp) | Top-level orchestration: `SolveTramoSolteiro()`, `permanenteSimples()` |
-| [`src/SisProd.cpp`](../../src/SisProd.cpp) | Core solver methods on the `SProd` class |
-| [`src/SisProd.h`](../../src/SisProd.h) | `SProd` class declaration |
-| [`src/celula3.h`](../../src/celula3.h) / [`celula3.cpp`](../../src/celula3.cpp) | `Cel` class — per-cell state and low-level physics |
-| [`src/PropFlu.h`](../../src/PropFlu.h) / [`PropFlu.cpp`](../../src/PropFlu.cpp) | `ProFlu` — fluid property correlations (black-oil & compositional) |
-| [`src/FonteMas.cpp`](../../src/FonteMas.cpp) | Mass source term evaluation |
-| [`src/GradientCorrelations.cpp`](../../src/GradientCorrelations.cpp) | Standalone friction-factor and pressure-gradient correlations |
-| [`src/Leitura.cpp`](../../src/Leitura.cpp) | JSON input parsing → `SProd` initialization |
-| [`src/celulaGas.h`](../../src/celulaGas.h) / [`celulaGas.cpp`](../../src/celulaGas.cpp) | `CelG` class — gas-lift service line cell state and physics |
-| [`src/chokegas.h`](../../src/chokegas.h) / [`chokegas.cpp`](../../src/chokegas.cpp) | `ChokeGas` — compressible gas choke model for VGL orifices |
+| [`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp) | Top-level orchestration: `SolveTramoSolteiro()`, `permanenteSimples()` |
+| [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp) | Core solver methods on the `SProd` class |
+| [`src/include/SisProd.h`](../../src/include/SisProd.h) | `SProd` class declaration |
+| [`src/include/celula3.h`](../../src/include/celula3.h) / [`src/core/celula3.cpp`](../../src/core/celula3.cpp) | `Cel` class — per-cell state and low-level physics |
+| [`src/include/PropFlu.h`](../../src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](../../src/core/PropFlu.cpp) | `ProFlu` — fluid property correlations (black-oil & compositional) |
+| [`src/core/FonteMas.cpp`](../../src/core/FonteMas.cpp) | Mass source term evaluation |
+| [`src/core/GradientCorrelations.cpp`](../../src/core/GradientCorrelations.cpp) | Standalone friction-factor and pressure-gradient correlations |
+| [`src/core/Leitura.cpp`](../../src/core/Leitura.cpp) | JSON input parsing → `SProd` initialization |
+| [`src/include/celulaGas.h`](../../src/include/celulaGas.h) / [`src/core/celulaGas.cpp`](../../src/core/celulaGas.cpp) | `CelG` class — gas-lift service line cell state and physics |
+| [`src/include/chokegas.h`](../../src/include/chokegas.h) / [`src/core/chokegas.cpp`](../../src/core/chokegas.cpp) | `ChokeGas` — compressible gas choke model for VGL orifices |
 
 ---
 
@@ -40,14 +40,14 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 
 ## Overview
 
-The steady-state solver computes the **pressure, temperature, void fraction, and flow-rate profiles** along a branch under time-invariant conditions. The fundamental approach is:
+The steady-state solver computes the **pressure, temperature, void fraction, and flow-rate profiles** along a branch under time-invariant conditions. At a high level, the solution strategy is:
 
-1. **Guess** a boundary value (bottom-hole pressure or inlet mass flow rate)
-2. **March** cell-by-cell from the upstream end to the downstream end, computing pressure, temperature, and mass flow at each cell
-3. **Evaluate the residual** — the mismatch between the computed downstream state and the imposed downstream boundary condition (e.g., separator pressure or choke flow)
-4. **Iterate** using Ridder's root-finding method until the residual is zero
+1. **Guess** a boundary value (for example bottom-hole pressure or an inlet flow-related quantity)
+2. **March** cell-by-cell from the upstream end to the downstream end, computing pressure, temperature, and transported mass quantities
+3. **Evaluate the residual** — the mismatch between the computed downstream state and the imposed downstream boundary condition (e.g., separator pressure or choke-flow consistency)
+4. **Iterate** with a bracketed root finder until the residual is driven to zero or to the configured tolerance band
 
-This is a **shooting method**: the unknown boundary value is the "shot", and the marching equations propagate that shot through the domain.
+This is a **shooting-method style formulation**: the unknown boundary value is the "shot", and the marching routines propagate that shot through the domain.
 
 ```
     Upstream (cell 0)                                  Downstream (cell ncel)
@@ -67,27 +67,27 @@ The steady-state solution for a single branch follows this call chain:
 
 ```
 main()
- └─ SolveTramoSolteiro(sistem1)          [Num4Main.cpp]
+ └─ SolveTramoSolteiro(sistem1)          [`src/core/Num4Main.cpp`]
      ├─ (optional) Switch to black-oil mode for initial convergence
-     ├─ permanenteSimples(sistem1)        [Num4Main.cpp]
+     ├─ permanenteSimples(sistem1)       [`src/core/Num4Main.cpp`]
      │   ├─ Detect BC type and flow direction
-     │   └─ buscaProdPfundoPerm(chute)    [SisProd.cpp]
+     │   └─ buscaProdPfundoPerm(chute)   [`src/core/SisProd.cpp`]
      │       ├─ Estimate initial pressure guess (hydrostatic walk)
-     │       ├─ marchaProdPerm1(pchute)   [SisProd.cpp]  ← first trial
+     │       ├─ marchaProdPerm1(pchute)  [`src/core/SisProd.cpp`]  ← first trial
      │       │   ├─ Initialize cell 0 from source/IPR
      │       │   └─ for i = 1 to ncel:
      │       │       ├─ RenovaPresPermMon(i)    — P: cell center → left boundary
-     │       │       ├─ atualizaPeriPmonProd(i)  — Apply BCS/pump ΔP
-     │       │       ├─ RenovaMassPerm(i)        — Mass flow + source terms
-     │       │       ├─ RenovaTempPerm(i)        — Energy equation
-     │       │       ├─ RenovaPresPermJus(i)     — P: left boundary → cell center
-     │       │       ├─ atualizaPeriPjusProd(i)  — Apply BCS/pump ΔP (jusante)
+     │       │       ├─ atualizaPeriPmonProd(i) — Apply BCS/pump ΔP
+     │       │       ├─ RenovaMassPerm(i)       — Mass flow + source terms
+     │       │       ├─ RenovaTempPerm(i)       — Energy equation
+     │       │       ├─ RenovaPresPermJus(i)    — P: left boundary → cell center
+     │       │       ├─ atualizaPeriPjusProd(i) — Apply BCS/pump ΔP (jusante)
      │       │       └─ RenovaTransMassPerm(i-1) — Interphase mass transfer
-     │       ├─ Bracket search: find pchute_neg, pchute_pos with opposite residual signs
-     │       └─ zriddr(pchute_neg, pchute_pos)  [SisProd.cpp]
+     │       ├─ Bracket search: find `pchute_neg`, `pchute_pos` with opposite residual signs
+     │       └─ zriddr(pchute_neg, pchute_pos) [`src/core/SisProd.cpp`]
      │           └─ multMarcha(x) → marchaProdPerm1(x) (repeatedly)
      ├─ (optional) Switch back to compositional, use black-oil result as initial guess
-     ├─ permanenteSimples(sistem1)        ← second pass (compositional)
+     ├─ permanenteSimples(sistem1)       ← second pass (compositional)
      └─ Print profiles, trends, log file
 ```
 
@@ -101,36 +101,36 @@ When `main()` creates the `SProd` object:
 SProd sistem1(nomeArquivoEntrada, nomeArquivoLog, validacaoJson, tipoSimulacao, &vg1dTramo);
 ```
 
-The constructor ([`SisProd.cpp`](../../src/SisProd.cpp)) performs:
+The constructor ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) performs:
 
 1. **Constructs the `arq` member** (type `Leitura`) — reads the JSON input file, parses geometry, fluid properties, boundary conditions, accessories, and mesh parameters
 2. **Allocates the cell array** — `celula[0..ncel]`, each a `Cel` object containing geometry (`DadosGeo duto`), fluid properties (`ProFlu flui`, `ProFluCol fluicol`), and solver state (pressure, temperature, void fraction, mass flows)
 3. **Initializes solver state** — zeroes counters, flags, pointers, and intermediate variables
 4. **Allocates profile output tables** — `flut` for production line, `flutG` for gas-lift line
-5. **(If gas-lift)** Allocates the gas-line cell array `celulaG[]` and sets up valve positions
+5. **(If gas-lift)** allocates the gas-line cell array `celulaG[]` and sets up valve positions
 
-The `Cel` class ([`celula3.h`](../../src/celula3.h)) holds per-cell state organized into:
+The `Cel` class ([`src/include/celula3.h`](../../src/include/celula3.h)) holds per-cell state organized into:
 
 | Category | Key Fields |
 |----------|------------|
-| Geometry | `dutoL`, `duto`, `dutoR` — diameter, area, perimeter, inclination, roughness |
-| Pressure | `presL`, `presaux` (left boundary), `pres` (center), `presR` |
-| Temperature | `tempL`, `temp`, `tempR` |
-| Mass flow | `MC` (total), `Mliqini` (liquid), `QG` (gas volume), `QL` (liquid volume) |
-| Void fraction | `alf` (gas), `bet` (complementary fluid fraction) |
-| Source terms | `fontemassLR`, `fontemassCR`, `fontemassGR` |
-| Accessories | `acsr` — BCS pump, valve, source, IPR, etc. |
-| Drift-flux | `c0` (distribution parameter), `ud` (drift velocity), `term1`, `term2` |
-| Heat transfer | `calor` — `TrocaCalor` object with pipe wall, insulation, environment model |
-| Fluid models | `flui` (owned `ProFlu`), `fluiL`/`fluiR` (pointers to neighbor fluids), `fluicol` (`ProFluCol`) |
+| Geometry | `dutoL`, `duto`, `dutoR` — left/current/right geometry data |
+| Pressure state | `presL`, `pres`, `presR`, plus interface/auxiliary values such as `presaux`, `presauxL`, `presauxR` and previous-step values like `presini` |
+| Temperature state | `tempL`, `temp`, `tempR`, plus previous-step values such as `tempini`, `tempLini`, `tempRini` |
+| Mass-flow state | `ML`, `MC`, `MR`, liquid-flow companions such as `MliqiniL`, `Mliqini`, `MliqiniR`, and auxiliary complementary-flow storage `MComp` |
+| Void / phase fractions | `alf` (gas void fraction), `bet` (complementary-liquid fraction), and left/right/interface variants |
+| Source terms | left/right source contributions such as `fontemassLL`, `fontemassCL`, `fontemassGL`, `fontemassLR`, `fontemassCR`, `fontemassGR` |
+| Accessories | `acsr` — local source / pump / valve / IPR / porous model accessory |
+| Drift-flux / closure terms | `c0`, `ud`, `term1`, `term2` and related left/right variants |
+| Heat transfer | `calor` — `TrocaCalor` object with wall, insulation, ambient, and coupling data |
+| Fluid models | `flui` (owned `ProFlu`), `fluiL`/`fluiR` (neighbor pointers), `fluicol` (`ProFluCol`) |
 
-Each cell stores copies of its neighbors' state (`presL`/`presR`, `tempL`/`tempR`, `dutoL`/`dutoR`) and pointers to neighbor fluid objects (`fluiL`, `fluiR`), making it self-sufficient for computing local balances. Each cell can hold exactly **one accessory** (`acsr`); if two devices occupy the same position, the cell must be split. Each cell is associated with a specific fluid model (`flui`), enabling multi-fluid simulations with different properties per segment.
+Each cell stores both current and neighboring state information, plus previous-step values used by the steady and transient algorithms. Structurally, each cell contains a single `acessorio` object (`acsr`), and the marching routines assume all local source/device effects for that control volume are represented through that object.
 
 ---
 
 ## Step 2 — SolveTramoSolteiro: Fluid Model Strategy
 
-`SolveTramoSolteiro()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)) is a wrapper that handles the **two-pass strategy** for compositional simulations:
+`SolveTramoSolteiro()` ([`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp)) is a wrapper that handles the **two-pass strategy** for compositional simulations:
 
 ### Black-Oil or Flash Table Modes (`flashCompleto != 2`)
 
@@ -166,131 +166,157 @@ This avoids the expensive flash calculations during the initial bracket search, 
 
 ## Step 3 — permanenteSimples: Boundary Condition Dispatch
 
-`permanenteSimples()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)) selects the solver variant based on the **upstream and downstream boundary conditions**.
+`permanenteSimples()` ([`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp)) selects the solver variant based on the **upstream and downstream boundary conditions**.
 
 ### Decision Tree
+
+A code-faithful summary is:
 
 ```
 permanenteSimples
  │
- ├─ Production system (pocinjec == 0)?
- │   ├─ ConContEntrada == 0  (source BC at inlet: flow rate, IPR, or mass source)
- │   │   ├─ Flow direction?
- │   │   │   ├─ Normal (upstream → downstream):
- │   │   │   │   ├─ Choke wide open (abertura > 0.6):
- │   │   │   │   │   ├─ Gas-lift with pressure BC? → iterate on gas injection rate
- │   │   │   │   │   └─ Otherwise → buscaProdPfundoPerm()
- │   │   │   │   └─ Choke active (abertura ≤ 0.6):
- │   │   │   │       ├─ Gas-lift with pressure BC? → iterate (same logic)
- │   │   │   │       └─ Otherwise → buscaProdPfundoPerm2()
- │   │   │   └─ Reverse flow → buscaProdPfundoPermRev()
- │   │   │
- │   ├─ ConContEntrada == 1  (pressure BC at inlet)
- │   │   ├─ Choke wide open → buscaProdPresPresPerm()
- │   │   ├─ Choke active    → buscaProdPresPresPerm2()
- │   │   └─ Choke closed    → buscaProdPresPresPerm3()
+ ├─ Production system (`pocinjec == 0`)
  │   │
- │   └─ ConContEntrada == 2  (pressure + flow rate at inlet)
- │       └─ buscaProdPfundoPerm3()
+ │   ├─ `ConContEntrada == 0`  → inlet represented by source/IPR/mass-source/porous source
+ │   │   ├─ detect reverse flow only for explicit signed source types (`tipo` 1, 2, 10)
+ │   │   ├─ if reverse → `buscaProdPfundoPermRev()`
+ │   │   └─ if normal flow:
+ │   │       ├─ if production choke is effectively open and `curvaDinamic == 0`
+ │   │       │   ├─ gas-lift + pressure-controlled annulus may require a preliminary flow-controlled estimate
+ │   │       │   └─ final production solve uses `buscaProdPfundoPerm()`
+ │   │       └─ else
+ │   │           ├─ gas-lift + pressure-controlled annulus may again use preliminary flow-controlled estimates
+ │   │           └─ final production solve uses `buscaProdPfundoPerm2()`
+ │   │
+ │   ├─ `ConContEntrada == 1`  → inlet pressure prescribed, inlet flow unknown
+ │   │   ├─ if choke wide open → `buscaProdPresPresPerm()`
+ │   │   ├─ if choke active    → `buscaProdPresPresPerm2()`
+ │   │   └─ if choke effectively closed → `buscaProdPresPresPerm3()`
+ │   │
+ │   └─ `ConContEntrada == 2`  → inlet pressure + flow-related condition
+ │       └─ `buscaProdPfundoPerm3()`
  │
- └─ Injection system (pocinjec == 1)?
-     ├─ CC == 0 → buscaInjPfundoPerm2()
-     ├─ CC == 1 or 3 → buscaInjPfundoPerm1()
-     ├─ CC == 2 → buscaInjPfundoPerm3()
-     ├─ CC == 4 → buscaInjPfundoPerm4()
-     └─ otherwise → buscaInjPfundoPerm5()
+ └─ Injection system (`pocinjec == 1`)
+     ├─ `CC == 0`       → `buscaInjPfundoPerm2()`
+     ├─ `CC == 1 or 3`  → `buscaInjPfundoPerm1()`
+     ├─ `CC == 2`       → `buscaInjPfundoPerm3()`
+     ├─ `CC == 4`       → `buscaInjPfundoPerm4()`
+     └─ otherwise       → `buscaInjPfundoPerm5()`
 ```
+
+Important implementation notes:
+- the reverse-flow detection at this level is only done directly for source types `1`, `2`, and `10`
+- for gas-lift systems with annulus pressure as boundary condition, `permanenteSimples()` may temporarily switch the gas-line mode to a flow-controlled estimate before retrying the pressure-controlled solve
+- the distinction between “choke open” and “choke active” is code-driven (`abertura`, `curvaDinamic`) rather than purely conceptual
 
 ### Key Boundary Condition Types
 
-| Upstream BC (`ConContEntrada`) | Unknown | March Function | Root-Finding Target |
-|-------------------------------|---------|----------------|---------------------|
-| `0` — Flow rate / IPR | Bottom-hole pressure | `marchaProdPerm1` | $P_{\text{sep}} - P_{\text{last cell}} = 0$ |
-| `0` — Flow rate + active choke | Bottom-hole pressure | `marchaProdPerm2` | $\dot{m}_{\text{last cell}} - \dot{m}_{\text{choke}} = 0$ |
-| `1` — Pressure at inlet | Mass flow rate | `marchaProdPresPres1` | $P_{\text{sep}} - P_{\text{last cell}} = 0$ |
+| Upstream BC (`ConContEntrada`) | Unknown | Main production march family | Root-finding target |
+|-------------------------------|---------|-------------------------------|---------------------|
+| `0` — source/IPR-type inlet | bottom-hole / inlet pressure guess | `marchaProdPerm1` or `marchaProdPerm2` | pressure-match or choke-flow residual |
+| `1` — inlet pressure prescribed | inlet mass / flow-rate proxy | `marchaProdPresPres1/2/3` | downstream pressure or choke-related residual |
+| `2` — mixed inlet prescription | specialized inlet pressure solve | `buscaProdPfundoPerm3` family | case-specific residual |
 
 ---
 
 ## Step 4 — buscaProdPfundoPerm: Bracket Search & Root Finding
 
-`buscaProdPfundoPerm()` ([`SisProd.cpp`](../../src/SisProd.cpp)) finds the bottom-hole pressure that satisfies the downstream boundary condition. It has four phases:
+`buscaProdPfundoPerm()` ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) searches for the inlet / bottom-hole pressure that makes the production-line residual vanish. Conceptually it is still a bracketed shooting solve, but the implementation contains several fallback paths and guardrails that are important to mention.
 
 ### Phase 1: Initial Pressure Estimate
 
-If no initial guess is provided (`chute < 0`), the method walks **backwards** from the downstream end (cell `ncel`) to the upstream end (cell 0), accumulating hydrostatic and friction contributions:
+If `chute < 0`, the routine builds an initial estimate starting from `pGSup` and walking backward from the downstream end. The estimate is based on a coarse hydrostatic + friction reconstruction:
 
-```
-pchute = P_sep  (separator pressure)
-for i = ncel down to 1:
-    pchute += (ρ_mix · g · sin(θ) · Δx + f_friction · Δx) / 98066.5
-```
+- local liquid/gas densities are estimated from the current fluid model
+- a guessed void fraction / holdup is used to form a mixture density
+- a friction term is estimated from a coarse Reynolds/friction-factor evaluation when inlet-source information is available
+- constant pressure-gain devices (`acsr.tipo == 7`) are accounted for during the backward walk
+- if an IPR is present at the upstream end, the estimate is clipped away from the static-pressure limit
+- if a PVT table is active, the estimate is also clipped to remain inside the admissible pressure range
 
-Where:
-- $\rho_\text{mix}$ is estimated from a guessed void fraction
-- Friction uses the Fanning equation with Haaland/Colebrook correlation
-- Pressure units are **kgf/cm²** (the factor 98066.5 converts from Pa)
-- BCS pump heads are subtracted (`dpB`)
-- IPR/reservoir pressure caps are respected
+So, the backward walk is best interpreted as a **robust engineering guess generator**, not as an exact reconstruction of the later marching model.
 
 ### Phase 2: First March
 
-Runs `marchaProdPerm1(pchute)` and checks the residual sign:
-- **Residual < 0** (`pchute` too high): the march overshoots — separator pressure is lower than computed
-- **Residual > 0** (`pchute` too low): the march falls short
-- **Residual = ±1e10**: march failed (negative pressures, PVT table out of bounds)
+The routine then evaluates:
 
-### Phase 3: Bracket Search
+```cpp
+val = marchaProdPerm1(pchute);
+```
 
-The method needs two pressure guesses with **opposite residual signs** to start the root finder. Starting from the initial guess, it:
+Interpretation of the result is implementation-driven:
+- `val < 0`: the guessed pressure is too high for the downstream target
+- `val > 0`: the guessed pressure is too low
+- `val ≈ ±1e10`: the march hit an admissibility limit or failed to complete properly
+- `val ≈ ±1.1e10`: stronger failure / non-convergence signaling may be propagated in network-related contexts
 
-- If residual < 0: holds `chuteNeg = pchute`, then **reduces** `pchute` by factor `(1 - buscaFC)` until the residual flips positive
-- If residual > 0: holds `chutePos = pchute`, then **increases** `pchute` by factor `(1 + buscaFC)` until the residual flips negative
+If the first march lands in a failure sentinel region, `buscaProdPfundoPerm()` does **not** immediately give up. It constructs alternative estimates and retries before entering the actual bracketing logic.
 
-The parameter `buscaFC` (default ~0.1) controls the bracket expansion step size.
+### Phase 3: Recover a Valid Bracketing Region
 
-Special handling:
-- If a march returns `−1e10` (pressure collapsed), the method tries a new estimate with higher liquid holdup
-- If a march returns `+1e10` (pressure exceeded IPR limit), it tries with a lower-density estimate
+Before Ridder's method can be used, the code first tries to recover a pair of usable march evaluations. This recovery stage includes logic such as:
 
-### Phase 4: Root Finding (Ridder's Method)
+- increasing the estimate when the first guess collapses pressure too early
+- decreasing the estimate when the first guess crosses IPR/PVT limits
+- switching to denser or lighter hydrostatic assumptions to obtain a more useful second trial
+- repeatedly shrinking or expanding the trial pressure until the march returns a finite residual instead of a failure sentinel
 
-Once a valid bracket `[chuteNeg, chutePos]` is found:
+Only after this stabilization phase does the routine proceed to a true sign-changing bracket search.
+
+### Phase 4: Sign-Changing Bracket Search
+
+Once a finite residual is available, the routine searches for opposite-sign residuals:
+
+- if `val < 0`, it stores the current pressure as the negative side and progressively **reduces** the trial pressure
+- if `val > 0`, it stores the current pressure as the positive side and progressively **increases** the trial pressure
+
+The factors used for reduction/amplification are based on `arq.buscaFC`:
+- reduction factor: `1 - buscaFC`
+- amplification factor: `1 + buscaFC`
+
+This phase also contains additional protection logic:
+- if pressure is reduced too far and the march returns a low-pressure failure sentinel, the code bisects back toward the last usable point
+- if pressure is increased too far and the march returns a high-pressure failure sentinel, the code retreats from the limit similarly
+- for some configurations, if the response appears to reverse unexpectedly, the routine may switch to the reverse-flow variant `buscaProdPfundoPermRev(...)`
+
+### Phase 5: Root Finding
+
+After a valid opposite-sign bracket is found, the routine calls:
 
 ```cpp
 return zriddr(chuteNeg, chutePos, 1, 0);
 ```
 
-`zriddr()` ([`SisProd.cpp`](../../src/SisProd.cpp)) implements **Ridder's method**, which is superlinearly convergent (order ~1.84) and guaranteed to converge within a bracket. Each iteration:
-
-1. Evaluates the residual at the bracket midpoint: $f_m = f\left(\frac{x_1 + x_2}{2}\right)$
-2. Computes the Ridder update: $x_\text{new} = x_m + (x_m - x_1) \cdot \text{sign}(f_1 - f_2) \cdot \frac{f_m}{\sqrt{f_m^2 - f_1 \cdot f_2}}$
-3. Evaluates $f(x_\text{new})$ and narrows the bracket
-
-Each evaluation calls `multMarcha(x, prod=1, tipoCC=0)` which dispatches to `marchaProdPerm1(x)` — a full cell-by-cell march.
-
-Convergence tolerance: $|f| < 10^{-5}$ kgf/cm². Maximum iterations: 100.
+Each evaluation inside `zriddr()` calls `multMarcha(..., prod=1, tipoCC=0)`, which dispatches to `marchaProdPerm1(...)` or its reverse-flow counterpart depending on `revPerm`.
 
 ---
 
 ## Step 5 — marchaProdPerm1: The Cell-by-Cell March
 
-`marchaProdPerm1()` ([`SisProd.cpp`](../../src/SisProd.cpp)) is the **core marching routine**. Given a pressure guess `pchute` at cell 0, it sweeps from cell 1 to cell `ncel`, computing all profiles.
+`marchaProdPerm1()` ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) is the **core marching routine**. Given a pressure guess `pchute` at cell 0, it sweeps from cell 1 to cell `ncel`, computing all profiles.
 
 ### Initialization (Cell 0)
 
-Based on the source type at cell 0 (`acsr.tipo`):
+`marchaProdPerm1()` initializes the first production cell according to `celula[0].acsr.tipo`, but the actual logic is more detailed than a simple lookup table. The code sets temperature, optionally refreshes compositional properties, estimates initial gas/liquid split, and then seeds `celula[0].pres`, `celula[0].alf`, `celula[0].bet`, and the zero-flow condition at the closed upstream boundary.
 
-| `tipo` | Source Type | Initialization |
-|--------|------------|----------------|
-| `0` | None | Set void fraction $\alpha = 1$, $\beta = 0$ |
-| `1` | Gas injection | Compute gas/liquid split from flash at `pchute`, `T_source` |
-| `2` | Liquid injection | Compute gas/liquid split from RGO, Bo, Ba at `pchute` |
-| `3` | IPR | Compute inflow from IPR curve at `pchute` |
-| `10` | Mass source | Compute gas/liquid/comp split from specified mass rates |
-| `15` | Radial porous | Solve near-wellbore model, get inflow |
-| `16` | 2D porous | Solve 2D near-wellbore model, get inflow |
+A faithful summary is:
 
-Sets `celula[0].pres = pchute`, `celula[0].alf = α_ini`, `celula[0].bet = β_ini`.
+| `tipo` | Source Type | Initialization behavior |
+|--------|------------|--------------------------|
+| `0` | None | Uses `arq.celp[0].textern`, sets `alfini = 1`, `betini = 0`; in compositional mode may call `atualizaPropComp()` |
+| `1` | Gas injection | Uses source temperature `injg.temp`; distinguishes dry-gas and non-dry-gas cases; for wet gas, estimates gas/liquid/complementary split from source mass flow and local properties |
+| `2` | Liquid injection | Uses `injl.temp`; estimates initial gas and liquid volumes from `QLiq`, `RGO`, `BSW`, `BOFunc`, `BAFunc`, and `bet` |
+| `3` | IPR | Uses reservoir temperature `ipr.Tres`; computes initial gas/liquid split from `MasG()` and `MasL()` at the guessed pressure |
+| `10` | Mass source | Uses `injm.temp`; may call `renovaFonte(0)` when needed; estimates initial split from `MassG`, `MassP`, and `MassC` |
+| `15` | Radial porous | Uses `radialPoro.tRes`; sets `celula[0].pres = pchute`, calls `renovaFonte(0)`, and derives initial split from `fluxIni`, `fluxIniA`, `fluxIniG` |
+| `16` | 2D porous | Uses `poroso2D.dados.tRes`; sets `celula[0].pres = pchute`, calls `renovaFonte(0)`, and derives initial split from transfer fluxes |
+
+After this source-specific initialization, the routine applies the steady-state upstream-boundary convention used by this marcher:
+- the left boundary is treated as closed for the marching formulation
+- `ML`, `MC`, `MliqiniL`, `Mliqini`, `QL`, `QLL`, and `QG` are initialized consistently with zero incoming flow at the left boundary
+- pressure and phase-fraction values are copied into the left-boundary / previous-step storage used by the later updates
+
+So, the first-cell initialization is best understood as **source-aware state seeding**, followed by enforcement of the marcher’s upstream boundary convention.
 
 ### Main March Loop
 
@@ -310,9 +336,10 @@ Each step is described in detail in [The Marching Equations](#the-marching-equat
 ### Early Termination
 
 The march returns sentinel values if:
-- `−1e10`: Pressure dropped below 0.1 kgf/cm² (vacuum) — `pchute` was too low
-- `+1e10`: Pressure exceeded IPR static pressure, or PVT table bounds — `pchute` was too high, or physically impossible
-- `NaN` detected in pressure, temperature, or void fraction
+- `−1e10`: pressure collapsed below the admissible minimum during the march, or the guessed condition is too low for the current branch configuration
+- `+1e10`: pressure exceeded an admissible limit (for example IPR/static-pressure or PVT-table limits), or the guessed condition is too high
+- `−1.1e10` / `+1.1e10`: non-convergence / failed permanent solve in contexts such as network iterations, where the code distinguishes hard failure from a normal bracketing miss
+- `NaN`/invalid state detection may also trigger an early failure path
 
 ### Return Value
 
@@ -337,28 +364,28 @@ The entire march (production + gas line) may repeat (`iterperm` loop) until the 
 
 ### Pressure March: `RenovaPresPermMon`
 
-**Source:** [`SisProd.cpp`](../../src/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
 
-Marches pressure over the **left half-cell** from cell `i-1` center to cell `i` left boundary:
+`RenovaPresPermMon()` advances pressure from the center of cell `i-1` to the left boundary of cell `i`. At a high level, the update is driven by:
 
-$$P_{i}^{\text{aux}} = P_{i-1} - \frac{1}{98066.5} \left( \Delta P_{\text{fric}} + \Delta P_{\text{hydro}} \right)$$
+- hydrostatic contribution from local mixture density and inclination
+- friction contribution based on local mixture velocity, viscosity, and Reynolds number
+- the active drift/closure model (`tipoModeloDrift` branch)
+- first-pass versus correction-pass logic (`RK == 0` or `RK == 1`)
 
-Where:
+In the common drift-model branch, the routine:
+1. builds local phase/mixture properties from the current guess of pressure, temperature, void fraction, and complementary-liquid fraction
+2. computes superficial velocities and mixture velocity
+3. evaluates Reynolds number via `Cel::Rey()`
+4. evaluates friction factor via `Cel::fric()`
+5. forms hydrostatic and friction gradients over a half-cell distance
+6. writes the resulting interface pressure into `celula[i].presaux`
 
-$$\Delta P_{\text{fric}} = \frac{f \cdot \rho_\text{mix} \cdot |j| \cdot j \cdot S}{2A} \cdot \Delta x$$
+So the clean hydrostatic-plus-friction equation shown in this document should be understood only as a **conceptual summary**; the actual implementation contains model branches, correction passes, and property-evaluation details.
 
-$$\Delta P_{\text{hydro}} = 9.82 \cdot \sin(\theta) \cdot \rho_\text{mix} \cdot \Delta x$$
-
-- $j = u_{gs} + u_{ls}$ is the mixture superficial velocity
-- $f$ is the Fanning friction factor from Haaland/Colebrook iteration
-- $S$ is the wetted perimeter, $A$ is the cross-sectional area
-- $\theta$ is the pipe inclination angle
-- $\Delta x = \frac{1}{2} \Delta x_L$ (half the left cell length)
-- The factor 98066.5 converts Pa to kgf/cm²
-
-The friction factor is computed by the `Cel::fric()` method ([`celula3.cpp`](../../src/celula3.cpp)):
+The friction factor is computed by `Cel::fric()` ([`src/core/celula3.cpp`](../../src/core/celula3.cpp)):
 - **Laminar** ($Re \leq 2400$): $f = 16 / Re$ (Fanning)
-- **Turbulent** ($Re > 2400$): Haaland initial estimate + 2 Colebrook iterations
+- **Turbulent** ($Re > 2400$): Haaland-style initialization followed by two Colebrook-style updates
 
 Reynolds number via `Cel::Rey()`:
 
@@ -368,87 +395,132 @@ where viscosity $\mu$ is in centipoise (cP).
 
 ### Pressure March: `RenovaPresPermJus`
 
-**Source:** [`SisProd.cpp`](../../src/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
 
-Same equations, but marches over the **right half-cell** from cell `i` left boundary to cell `i` center, using $\Delta x = \frac{1}{2} \Delta x_i$. Also handles area-change pressure losses when the pipe diameter changes between cells.
+`RenovaPresPermJus()` advances pressure from the left boundary of cell `i` to the center of cell `i`. As in `RenovaPresPermMon()`, the implementation is more detailed than a single closed expression. The update may include:
+
+- hydrostatic and friction contributions over the right half-cell
+- property re-evaluation using the current intermediate pressure/temperature state
+- pressure-gain contribution inherited from upstream devices through `dpB`
+- optional area-change correction `dpArea` when `celula[i].mudaArea == 1`
+- first-pass (`RK == 0`) and correction-pass (`RK == 1`) variants
+- an alternative branch using `executarCorrelacao(...)` when `tipoModeloDrift != 1`
+
+For that reason, this section should be read as an **implementation summary of a half-cell pressure advance**, not as a single universal equation valid for all branches.
 
 ### Artificial Lift: `atualizaPeriPmonProd`
 
-**Source:** [`SisProd.cpp`](../../src/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
 
-After computing `presaux` at the cell boundary, this method adds the **pressure gain** from artificial-lift devices located at cell `i-1`:
+After computing `presaux` at the cell boundary, this method updates the boundary pressure state to reflect artificial-lift or imposed pressure-gain devices attached to the upstream control volume.
+
+Typical cases handled by the documentation are still representative:
 
 | `acsr.tipo` | Device | Pressure Contribution |
 |-------------|--------|-----------------------|
-| `4` | BCS (ESP pump) | $\Delta P_B = \text{sgn}(Q) \cdot 0.3048 \cdot H_\text{vis} \cdot \rho_\text{mix} \cdot 9.82$ (converted from head in ft to Pa) |
-| `7` | Generic ΔP | $\Delta P_B = \text{sgn}(Q) \cdot \Delta P_\text{user} \cdot 98066.5$ |
-| `17` | MultiBCS | Calls `marchaMultiBcs()` — multi-stage pump model |
+| `4` | BCS (ESP pump) | pressure gain derived from pump head and local mixture properties |
+| `7` | Generic ΔP | user-imposed pressure increment |
+| `17` | MultiBCS | delegated to the multi-stage pump model |
 
-The BCS model uses `NovaVis()` to apply **viscosity corrections** to the pump curve before computing head.
+The exact applied increment is then carried forward through quantities such as `dpB`, which are reused by the later pressure and temperature updates.
 
 ### Mass Flow: `RenovaMassPerm`
 
-**Source:** [`SisProd.cpp`](../../src/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
 
-Updates mass flow rates at cell `i`:
+`RenovaMassPerm()` is one of the densest routines in the steady-state solver. It does more than simply “add source terms to the incoming mass flow”. A more faithful description is:
 
-1. Calls `renovaFonte(i-1)` — evaluates source terms at cell `i-1` at the local pressure and temperature
-2. **Propagates source terms** from cell `i-1` right side to cell `i` left side:
-   - `fontemassLL` (liquid), `fontemassCL` (complementary), `fontemassGL` (gas)
-3. **Computes flash** at cell `i-1`: $R_s$, $B_o$, $B_a$ (solution gas ratio, oil/water formation volume factors)
-4. **In-situ water fraction**: $f_w = \frac{\text{BSW} \cdot B_a}{B_o + B_a \cdot \text{BSW} - \text{BSW} \cdot B_o}$
-5. **Updates mass flow** at cell `i`:
-   - Total mass: $\dot{m}_C = \dot{m}_{C,i-1} + \text{source terms}$
-   - Liquid mass: $\dot{m}_{L} = \dot{m}_{L,i-1} + \text{liquid source}$
-   - Gas volume / liquid volume updated from flash split
+1. **Source refresh**
+   - calls `renovaFonte(i - 1)` to evaluate the source/accessory attached to the upstream cell under the current local state
+   - copies right-side source values from cell `i-1` into the left-side bookkeeping of cell `i`
+
+2. **Transported-flow bookkeeping**
+   - propagates complementary-liquid transport (`MComp`)
+   - determines the effective flow direction / sign used by several updates
+
+3. **Thermodynamic-property update of the carried fluid**
+   - evaluates black-oil style quantities such as `RS`, `BOFunc`, `BAFunc`
+   - updates in-situ water fraction `FW`
+   - updates carried fluid descriptors such as `RGO`, `BSW`, gas density surrogate (`Deng`), `yco2`, and, when relevant, `API`, `Denag`, and ASTM viscosity-pair support data
+   - applies different mixing/update rules depending on the upstream accessory type
+
+4. **Accessory-specific mixing logic**
+   - no source / passive cell
+   - gas source (`tipo == 1`, including dry-gas and wet-gas behavior)
+   - liquid source (`tipo == 2`)
+   - IPR (`tipo == 3`)
+   - mass source (`tipo == 10`)
+   - porous/radial / 2D porous / leak-like special cases in later branches
+
+5. **Complementary-liquid fraction update**
+   - recomputes `bet` when the mixture composition changes enough to require a new in-situ complementary-liquid fraction
+
+6. **Fluid-model refresh**
+   - for black-oil style operation, calls `RenovaFluido()` / `corrDeng()` after composition-like quantities are updated
+   - for more complex configurations, preserves or reuses previously updated values according to the active model branch
+
+So, `RenovaMassPerm()` should be understood as a **combined transported-mass update + fluid-mixture recomposition routine**, not merely as a conservation-law increment.
+
+The earlier simplified summary still captures the broad intent:
+- upstream source terms are evaluated at cell `i-1`
+- transported mass quantities are propagated into cell `i`
+- local fluid descriptors are recomputed to remain consistent with the changed mixture
 
 ### Source Terms: `renovaFonte`
 
-**Source:** [`SisProd.cpp`](../../src/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
 
 Evaluates mass source terms at a cell based on the accessory type:
 
 | `acsr.tipo` | Source | Evaluation |
 |-------------|--------|------------|
-| `1` | Gas injection | `VMas(P, T)` → split into gas + liquid via flash |
-| `2` | Liquid injection | `QLiq` → split via RGO, BSW, Bo, Ba |
-| `3` | IPR | `MasG(P,T)`, `MasL(P,T)` from the inflow performance curve |
-| `5` | Choke (internal) | Choke flow equation |
+| `1` | Gas injection | `VMas(P, T)` → split into gas + liquid via flash / source model |
+| `2` | Liquid injection | `QLiq` → split via local black-oil / fluid-property relations |
+| `3` | IPR | `MasG(P,T)`, `MasL(P,T)` from the inflow-performance model |
+| `5` | Choke / restriction-related source branch | case-specific flow contribution |
 | `10` | Mass source | Direct `MassG`, `MassP`, `MassC` specification |
 | `15` | Radial porous | Near-wellbore radial model |
 | `16` | 2D porous | Near-wellbore 2D model |
 
-Results stored in `fontemassGR` (gas), `fontemassLR` (liquid), `fontemassCR` (complementary fluid) — these are the right-side source contributions of the cell.
+Results are stored in the right-side source accumulators such as `fontemassGR`, `fontemassLR`, and `fontemassCR` for later propagation into the next cell.
 
 ### Temperature: `RenovaTempPerm`
 
-**Source:** [`SisProd.cpp`](../../src/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
 
-Marches the energy equation from cell `i-1` to cell `i`. The temperature change combines four contributions:
+`RenovaTempPerm()` advances the production-line temperature using a **full energy-balance update**, not a single compact textbook equation. In the implementation, the temperature change combines several effects evaluated with local phase properties and flow rates:
 
-$$\Delta T = \left( \mu_{JT,l} \cdot \frac{dP}{dx}\bigg|_l + \mu_{JT,g} \cdot \frac{dP}{dx}\bigg|_g - \frac{\rho g \sin\theta}{C_p} - \frac{\dot{Q}_\text{wall}}{\dot{m} \cdot C_p} \right) \cdot \Delta x$$
+- pressure-work / Joule-Thomson terms for gas and liquid contributions
+- hydrostatic work
+- optional kinetic-energy correction
+- enthalpy carried by source terms (gas, liquid, IPR, porous inflow, leaks)
+- optional latent-heat contribution when phase change is enabled
+- radial heat transfer through the pipe wall via `calor.transperm()`
+- optional annulus / gas-lift thermal coupling when the column is thermally connected to the service line
 
-Where:
-- $\mu_{JT}$ = Joule-Thomson coefficient (K·cm²/kgf) for liquid and gas phases
-- $\dot{Q}_\text{wall}$ = heat transfer rate to/from the environment, computed by the `TrocaCalor` object (overall heat transfer coefficient accounting for pipe wall, insulation, burial, and ambient conditions)
-- $C_p$ = mixture heat capacity (mass-weighted average of gas and liquid)
+Important implementation details:
+- the routine works with local mixture quantities assembled from gas, produced liquid, and complementary liquid
+- for strong heat transfer, the code may **substep the temperature update** for stability instead of applying the whole change in one step
+- if mixture velocity is very small, the code falls back to the external/ambient temperature model rather than using the full convective energy balance
+- the computed temperature is clipped to an admissible interval in the implementation
 
-The heat-transfer model at each cell (`celula[i].calor`) receives:
-- Internal fluid temperature, velocity, and properties
-- External temperature (sea water, soil, ambient air)
-- Pipe geometry (wall layers, insulation thickness)
-
-And returns the heat flux through the pipe wall.
+So, this method should be read as a **numerical energy-balance march with heat-transfer and source-term coupling**, not as a single closed-form equation.
 
 ### Interphase Mass Transfer: `RenovaTransMassPerm`
 
-**Source:** [`SisProd.cpp`](../../src/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
 
-Computes the **gas liberation/absorption** at cell `i` due to changes in pressure and temperature along the pipe:
+`RenovaTransMassPerm()` computes the interphase mass-transfer term used by the energy model and by the steady-state bookkeeping of phase change. Conceptually, it represents gas liberation/absorption caused by changing thermodynamic state along the branch, but the implementation is more specific than a simple proportionality such as $\partial(R_s/B_o)/\partial x$.
 
-$$\dot{m}_\text{transfer} \propto \frac{\partial (R_s / B_o)}{\partial x}$$
+In the code, the term is assembled from finite differences between neighboring-cell states and includes:
+- solution-gas ratio `RS`
+- oil formation volume factor `BOFunc`
+- local BSW-dependent in-situ water fraction
+- complementary-liquid fraction `bet`
+- gas specific gravity / density correction terms
+- local liquid volumetric flow quantities used to convert the thermodynamic change into a mass-transfer rate per unit length
 
-Evaluates $R_s$ (solution gas-oil ratio) and $B_o$ (oil formation volume factor) at both the left and right boundaries of cell `i`, and differences them to obtain the spatial derivative. This term represents the flash — gas coming out of solution (or being absorbed) as P and T change.
+The resulting quantity is stored in `transmassR`, propagated to the neighboring left-side value, and mirrored into `FonteMudaFase`. For compositional-gas style handling, the code may instead use `RenovaTransMassPermGas()`.
 
 ---
 
@@ -456,44 +528,38 @@ Evaluates $R_s$ (solution gas-oil ratio) and $B_o$ (oil formation volume factor)
 
 ### multMarcha — March Dispatcher
 
-`multMarcha()` ([`SisProd.cpp`](../../src/SisProd.cpp)) is the dispatch function called by the root finder:
+`multMarcha()` ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) is the dispatch function called by the root finder:
 
 | `prod` | `tipoCC` | Function Called |
 |--------|----------|-----------------|
 | `0` (gas) | `0` | `marchaGasPerm2` |
 | `0` (gas) | `1` | `marchaGasPerm3` |
-| `1` (production) | `0` | `marchaProdPerm1` (or `Rev` variant) |
+| `1` (production) | `0` | `marchaProdPerm1` (or `marchaProdPerm1Rev`) |
 | `1` (production) | `1` | `marchaProdPerm2` |
-| `2` (P-P) | `0` | `marchaProdPresPres1` (or `Rev` variant) |
-| `2` (P-P) | `1` | `marchaProdPresPres2` / `marchaProdPresPres3` |
+| `2` (P-P) | `0` | `marchaProdPresPres1` (or `marchaProdPresPres1Rev`) |
+| `2` (P-P) | `1` | `marchaProdPresPres2` |
 | injection | any | `marchaInjPerm1` |
+
+> **Implementation note:** although the higher-level permanent solver has separate logic for closed-choke pressure/pressure cases, the `multMarcha()` dispatcher itself currently routes the `prod = 2`, `tipoCC = 1` branch to `marchaProdPresPres2()`.
 
 ### zriddr — Ridder's Method
 
-`zriddr()` ([`SisProd.cpp`](../../src/SisProd.cpp)) implements **Ridder's root-finding algorithm**:
+`zriddr()` ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) implements a practical **Ridder-style bracketed root finder**:
 
-1. Ensures the bracket has opposite signs; if not, nudges the boundaries
-2. Iterates up to 100 times with the Ridder formula:
+1. Starts from two guesses with opposite residual signs
+2. Re-evaluates / nudges the bracket ends if necessary
+3. Iterates up to 100 times with a Ridder update based on the midpoint and
+   $$
+   s = \sqrt{f_m^2 - f_l f_h}
+   $$
+4. Re-evaluates the march residual via `multMarcha(...)` and contracts the bracket
 
-$$x_\text{new} = x_m + (x_m - x_1) \cdot \frac{\text{sgn}(f_1) \cdot f_m}{\sqrt{f_m^2 - f_1 \cdot f_2}}$$
+Important implementation notes:
+- the code uses `xacc = 1e-5` as the principal **root/interval tolerance**
+- parts of the residual tracking are scaled by `monitConvPermBase`, so the stopping logic is **not simply** “raw residual $|f| < 10^{-5}$ kgf/cm²”
+- `monitConvPerm` is updated for monitoring using normalized residual values in several branches
 
-3. Evaluates $f(x_\text{new})$ via `multMarcha(x_new, ...)`
-4. Stops when $|f| < 10^{-5}$
-
-Ridder's method was chosen for its:
-- **Guaranteed convergence** (as long as the bracket is valid)
-- **No derivative requirement** (unlike Newton-Raphson)
-- **Superlinear convergence** (order ~1.84, faster than bisection)
-
-### Inner Convergence (marchaProdPerm1)
-
-Within each march, the main `while` loop repeats the full sweep until **both** pressure and mass flow converge between consecutive iterations:
-
-$$\frac{|m_\text{end}^{(k)} - m_\text{end}^{(k-1)}|}{|m_\text{end}^{(k)}|} < \epsilon_\text{perm}$$
-
-$$\frac{|P_\text{end}^{(k)} - P_\text{end}^{(k-1)}|}{|P_\text{end}^{(k)}|} < \epsilon_\text{perm}$$
-
-The tolerance `CriterioConvergPerm` is read from the input JSON. Typically 1–2 iterations suffice (controlled by `limIter`). The option `AceleraConvergPerm` reduces to a single sweep when gas-lift coupling is not present.
+So the most accurate summary is: **`zriddr()` uses a Ridder-type bracketed solve with a root-position tolerance of about `1e-5`, plus normalized residual monitoring.**
 
 ---
 
@@ -536,92 +602,49 @@ When a gas-lift service line is present (`arq.lingas > 0`), the steady-state sol
 
 ### The Gas-Lift Service Line Model
 
-The gas-lift service line is discretized into its own 1D cell array `celulaG[]` of type `CelG` (defined in [`celulaGas.h`](../../src/celulaGas.h) / [`celulaGas.cpp`](../../src/celulaGas.cpp)). Each `CelG` cell stores:
+The gas-lift service line is discretized into its own 1D cell array `celulaG[]` of type `CelG` (defined in [`src/include/celulaGas.h`](../../src/include/celulaGas.h) / [`src/core/celulaGas.cpp`](../../src/core/celulaGas.cpp)). Each `CelG` cell stores, among other things:
 
 | Category | Key Members |
 |----------|-------------|
-| Geometry | `dutoL`, `duto`, `dutoR` — diameter, area, perimeter, inclination |
-| Pressure | `pres`, `presL`, `presR` — cell center and face pressures |
+| Geometry | `dutoL`, `duto`, `dutoR` |
+| Pressure | `pres`, `presL`, `presR` |
 | Temperature | `temp`, `tempL`, `tempR` |
-| Mass flow | `VGasL`, `VGasR`, `VGasRR` — gas mass flow at left/right/far-right faces |
-| Density | `u1L`, `u1R` ($\rho \cdot A$ products), `rg` |
-| VGL source | `massfonteCH` — mass extracted through gas-lift valve |
-| Discharge | `razInter`, `celInter` — gas/liquid interface tracking (for liquid-loaded annuli) |
-| Stagnation state | `pEstag`, `tEstag`, `pGarg`, `tGarg`, `qGarg`, `areaGarg` — VGL choke conditions |
-| Fluid model | `flui` (`ProFlu`), `calor` (`TransCal`), `chkcell` (`ChokeGas`) |
+| Flow variables | `VGasL`, `VGasR`, `VGasRR`, together with `u1LL`, `u1L`, `u1R` (density-area products used to convert between transported quantity and velocity) |
+| Valve/source term | `massfonteCH` — valve / choke extraction or injection source term in the gas-line cell |
+| Interface tracking | `razInter`, `razInterIni`, `celInter` |
+| Stagnation/throat trend variables | `pEstag`, `tEstag`, `pGarg`, `tGarg`, `qGarg`, `areaGarg` |
+| Fluid/thermal model | `flui`, `calor`, `chkcell` |
 
-Unlike the production-line `Cel` class which tracks multiphase flow (gas + oil + water), the `CelG` class models **single-phase compressible gas** (or, below the liquid interface `celInter`, completion fluid).
+> **Implementation note:** although the variable names suggest “gas flow”, the gas-line model carries these quantities together with density-area terms (`u1L`, etc.), so it is safer to describe `VGasL/VGasR/VGasRR` as the gas-line transported flow variables used by the annulus solver, rather than as plain volumetric or plain mass flow without qualification.
 
 ### Gas-Line Marching Functions
 
-The steady-state gas-line solver marches cell-by-cell from the injection point (wellhead annulus) down to the deepest gas-lift valve. Three variants exist:
+At the production-line level, the steady-state branch solver couples to the gas line through three main entry points:
 
-| Function | BC Mode | Approach |
-|----------|---------|----------|
-| `marchaGasPerm1()` | Pressure BC | Iterative: guesses total injection mass flow, marches, sums VGL extractions, relaxes estimate until mass balance converges (tolerance < 1e-5) |
-| `marchaGasPerm2()` | Flow-rate BC | Single march with given injection pressure `pchute` and prescribed flow rate. Returns residual $\Sigma(\dot{m}_{\text{VGL}}) - \dot{m}_{\text{inj}}$. Used by `buscaGasPresPerm2()` with Ridder root finding |
-| `marchaGasPerm3()` | Injection choke BC | Single march with injection choke (`chokeInj.massica()`). Returns residual $\Sigma(\dot{m}_{\text{VGL}}) - \dot{m}_{\text{choke}}$. Used by `buscaGasPresPerm3()` |
+| Function | Role in branch solve |
+|----------|----------------------|
+| `marchaGasPerm1()` | Used when the gas-line inlet condition is injection pressure and the injection choke is effectively open |
+| `buscaGasPresPerm2()` | Used when the gas-line condition is injection flow rate |
+| `buscaGasPresPerm3()` | Used when the gas-line inlet is pressure-controlled but the injection choke is active/restricting |
 
-Each march step calls three helper methods per cell:
-
-1. **`RenovaPresGasPerm(i)`** — two half-cell pressure advances (center → face → center), accounting for friction (Fanning/Colebrook via `CelG::fric()`), hydrostatic head ($\rho g \sin\theta \Delta x$), and area-change dynamic pressure loss
-2. **`RenovaTempGasPerm(i)`** — energy equation march using Joule-Thomson cooling, radial heat transfer (`calor.transperm()`), friction heating, and hydrostatic work
-3. **`calcVazGasPerm(i)`** — at each cell containing a gas-lift valve, computes:
-   - Stagnation pressure `presEstag` from gas-cell pressure
-   - Throat pressure `presGarg` from production-column pressure with recovery fraction `frec`
-   - Mass flow through the orifice via `chokeVGL[j].massica()` (compressible gas choke model in [`chokegas.cpp`](../../src/chokegas.cpp))
-   - For IPO valves (`tipo == 1`): effective area modulated by `areaValvCali()` (calibrated orifice area vs. pressure differential)
-   - Gas injection temperature via `TempDescGL()` (isenthalpic expansion, see below)
-   - Subtracts valve flow from the running line flow total
-
-### Gas-Lift Valve Choke Model
-
-Each VGL is represented by a `ChokeGas` object (`chokeVGL[]` array). The method `chokeVGL[i].massica()` computes mass flow through the orifice using a **compressible gas choke model** (implemented in [`chokegas.cpp`](../../src/chokegas.cpp)):
-
-- **Subcritical flow**: mass flow depends on the pressure ratio $P_{\text{throat}} / P_{\text{stagnation}}$ and discharge coefficient $C_d$
-- **Critical flow**: when the pressure ratio falls below the critical value, the flow is choked (mass flow is limited by sonic conditions at the throat)
-- **Liquid mode**: when the cell is below the gas/liquid interface (`celInter`), `massica(1, salinidade)` uses a liquid-phase flow model with completion-fluid properties
-
-### Temperature Drop Across VGL (`TempDescGL`)
-
-`SProd::TempDescGL()` computes the gas temperature after isenthalpic expansion through a gas-lift valve:
-
-- Performs a **stepwise pressure march** from `presEstag` to `presGarg` in steps of 50 kgf/cm²
-- Each step uses the real-gas expansion formula:
+More specifically:
+- `marchaGasPerm1()` iterates on the **total injected gas mass rate**, repeatedly marching the annulus and recomputing the sum of valve outflows until the inlet-flow estimate and outlet valve extraction become consistent
+- `marchaGasPerm2()` performs one gas-line march for a guessed inlet pressure and prescribed injection flow, returning the residual
   $$
-  T_1 = \frac{1}{\frac{1}{T_0} - \frac{286.998}{\rho_g} \cdot \frac{\partial Z / \partial T}{c_{p,g}} \cdot \ln\frac{P_1}{P_0}}
+  \sum \dot m_{\mathrm{VGL}} - \dot m_{\mathrm{inj}}
   $$
-- If the step is too small, falls back to the Joule-Thomson approximation: $\Delta T = \mu_{JT} \cdot \Delta P$
+- `marchaGasPerm3()` performs one gas-line march for a guessed pressure downstream of the injection choke, using `chokeInj.massica()` to compute inlet mass flow, and returns
+  $$
+  \sum \dot m_{\mathrm{VGL}} - \dot m_{\mathrm{choke}}
+  $$
 
-### Coupling Mechanism
+Within all three gas-line marches, the per-cell sequence is effectively:
+1. `RenovaPresGasPerm(i)`
+2. `RenovaTempGasPerm(i)`
+3. `calcVazGasPerm(i)`
+4. update density / density-area bookkeeping (`rg`, `u1L`, `u1R`, `u1LL`)
 
-Gas-lift valves (VGLs) are placed at specific positions along the production and service lines. Each valve has a flow rate that depends on the **pressure difference** between the service line (annulus) and the production line at that position.
-
-### Solution Strategy
-
-1. On the **first iteration** (`iterperm == 0`), `IniciaVazValvGasPerm()` estimates initial valve flow rates
-2. After the production-line march, the gas-lift service line is marched:
-   - `marchaGasPerm1()` — direct march (for valve-flow BC)
-   - `buscaGasPresPerm2()` — root finding for injection-flow BC
-   - `buscaGasPresPerm3()` — root finding for choke-restricted injection
-3. Gas-lift valve rates are updated based on the new pressure differential
-4. If the gas-lift BC is injection pressure (not flow rate), an **outer loop** in `permanenteSimples` iterates on the gas injection rate:
-   - Start with an initial estimate: $Q_g \approx 150{,}000 \times A_\text{annulus} / A_\text{ref}$
-   - Solve with this rate, obtain service-line pressure
-   - Compare with target injection pressure
-   - Adjust rate by ±5% and retry (up to 40 attempts)
-
-### Strong Thermal Coupling
-
-When `acopColAnulPermForte > 0`, the solver performs **pseudo-transient thermal iterations** to couple the temperature fields of the production and service lines:
-
-```
-for kontaPseudo = 0 to acopColAnulPermForte:
-    1. March gas-line temperature
-    2. March production-line temperature
-    3. Update fluid properties
-    4. Re-connect columns (heat exchange between concentric pipes)
-```
+So the gas-line helper breakdown can be stated explicitly for the current code.
 
 ---
 
@@ -629,7 +652,7 @@ for kontaPseudo = 0 to acopColAnulPermForte:
 
 For compositional fluid models (`flashCompleto == 2`), `SolveTramoSolteiro` employs the two-pass approach described in [Step 2](#step-2--solvetramosolteirofluid-model-strategy).
 
-Additionally, the `preparaTabDin()` function ([`Num4Main.cpp`](../../src/Num4Main.cpp)) can build **dynamic PVT tables** from the black-oil result. These pre-tabulated flash results cover the pressure and temperature range discovered during the first pass, making the compositional pass much faster by avoiding repeated flash calculations.
+Additionally, the `preparaTabDin()` function ([`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp)) can build **dynamic PVT tables** from the black-oil result. These pre-tabulated flash results cover the pressure and temperature range discovered during the first pass, making the compositional pass much faster by avoiding repeated flash calculations.
 
 The approach within `preparaTabDin`:
 1. Identifies P,T range from the black-oil solution
@@ -657,34 +680,34 @@ After `permanenteSimples` returns successfully, `SolveTramoSolteiro` writes:
 
 | Method | File | Purpose |
 |--------|------|---------|
-| `SolveTramoSolteiro` | Num4Main.cpp | Top-level: handles compositional two-pass, calls `permanenteSimples`, writes output |
-| `permanenteSimples` | Num4Main.cpp | BC dispatch: selects solver variant based on boundary conditions |
-| `buscaProdPfundoPerm` | SisProd.cpp | Bracket search + Ridder root finding for $P_0$ |
-| `buscaProdPfundoPerm2` | SisProd.cpp | Same but for active choke (calls `marchaProdPerm2`) |
-| `buscaProdPresPresPerm` | SisProd.cpp | Bracket search + Ridder for mass flow rate $\dot{m}_0$ |
-| `marchaProdPerm1` | SisProd.cpp | Cell-by-cell march, returns $P_\text{sep} - P_\text{ncel}$ |
-| `marchaProdPerm2` | SisProd.cpp | Same march, returns $\dot{m} - \dot{m}_\text{choke}$ |
-| `marchaProdPresPres1` | SisProd.cpp | March with known inlet P, returns $P_\text{sep} - P_\text{ncel}$ |
-| `multMarcha` | SisProd.cpp | Dispatch: routes `(chute, prod, tipoCC)` to the correct march function |
-| `zriddr` | SisProd.cpp | Ridder's root-finding method |
-| `RenovaPresPermMon` | SisProd.cpp | Pressure: cell center → left boundary (half-step) |
-| `RenovaPresPermJus` | SisProd.cpp | Pressure: left boundary → cell center (half-step) |
-| `atualizaPeriPmonProd` | SisProd.cpp | Apply BCS/pump ΔP at cell boundary |
-| `RenovaMassPerm` | SisProd.cpp | Mass flow update + source evaluation |
-| `RenovaTempPerm` | SisProd.cpp | Energy equation march (Joule-Thomson + heat transfer) |
-| `RenovaTransMassPerm` | SisProd.cpp | Interphase mass transfer (gas liberation/absorption) |
-| `renovaFonte` | SisProd.cpp | Evaluate source terms (gas/liquid/mass injection, IPR, porous) |
-| `Cel::fric` | celula3.cpp | Fanning friction factor (Haaland + Colebrook) |
-| `Cel::Rey` | celula3.cpp | Reynolds number |
-| `hidroreverso` | SisProd.cpp | Backward hydrostatic walk for initial pressure estimate |
-| `preparaTabDin` | Num4Main.cpp | Build dynamic PVT tables for compositional acceleration |
-| `marchaGasPerm1` | SisProd.cpp | Gas-line steady-state march (pressure BC, iterative) |
-| `marchaGasPerm2` | SisProd.cpp | Gas-line march (flow-rate BC), returns residual for Ridder |
-| `marchaGasPerm3` | SisProd.cpp | Gas-line march (injection choke BC), returns residual for Ridder |
-| `RenovaPresGasPerm` | SisProd.cpp | Gas-line pressure march: friction + hydrostatic per half-cell |
-| `RenovaTempGasPerm` | SisProd.cpp | Gas-line temperature march: J-T + heat transfer |
-| `calcVazGasPerm` | SisProd.cpp | Gas-line valve flow: choke model, IPO correction, temperature drop |
-| `TempDescGL` | SisProd.cpp | Isenthalpic gas temperature drop across VGL |
-| `CelG::fric` | celulaGas.cpp | Friction factor for gas-line cells (Haaland + Colebrook) |
-| `CelG::Rey` | celulaGas.cpp | Reynolds number for gas-line cells |
-| `chokeVGL[].massica` | chokegas.cpp | Compressible gas choke mass-flow model |
+| `SolveTramoSolteiro` | `src/core/Num4Main.cpp` | Top-level wrapper: handles compositional two-pass logic, calls `permanenteSimples`, writes output |
+| `permanenteSimples` | `src/core/Num4Main.cpp` | Boundary-condition dispatcher and coupled gas-lift orchestration |
+| `buscaProdPfundoPerm` | `src/core/SisProd.cpp` | Robust bracket-search and Ridder-style solve for the inlet / bottom-hole pressure in the standard production-pressure case |
+| `buscaProdPfundoPerm2` | `src/core/SisProd.cpp` | Pressure search for the active-choke production case |
+| `buscaProdPresPresPerm` | `src/core/SisProd.cpp` | Bracketed solve for inlet flow / mass-rate proxy when inlet pressure is prescribed |
+| `marchaProdPerm1` | `src/core/SisProd.cpp` | Main production-line marching routine; returns the downstream pressure residual |
+| `marchaProdPerm2` | `src/core/SisProd.cpp` | Production marcher for active-choke cases; returns the choke-flow residual |
+| `marchaProdPresPres1` | `src/core/SisProd.cpp` | March routine for prescribed-pressure / prescribed-pressure production cases |
+| `multMarcha` | `src/core/SisProd.cpp` | Dispatch helper used by the root finder |
+| `zriddr` | `src/core/SisProd.cpp` | Ridder-style bracketed root finder with normalized residual monitoring |
+| `RenovaPresPermMon` | `src/core/SisProd.cpp` | Half-cell pressure advance from cell center to left boundary |
+| `RenovaPresPermJus` | `src/core/SisProd.cpp` | Half-cell pressure advance from left boundary to cell center |
+| `atualizaPeriPmonProd` | `src/core/SisProd.cpp` | Applies upstream artificial-lift / imposed pressure-gain effects at the interface state |
+| `RenovaMassPerm` | `src/core/SisProd.cpp` | Transported-mass update plus fluid-mixture recomposition |
+| `RenovaTempPerm` | `src/core/SisProd.cpp` | Numerical energy-balance march with heat-transfer and source coupling |
+| `RenovaTransMassPerm` | `src/core/SisProd.cpp` | Interphase mass-transfer update used by the steady-state energy model |
+| `renovaFonte` | `src/core/SisProd.cpp` | Evaluates local source terms (gas/liquid/mass injection, IPR, porous, and related cases) |
+| `Cel::fric` | `src/core/celula3.cpp` | Fanning friction factor evaluation |
+| `Cel::Rey` | `src/core/celula3.cpp` | Reynolds-number evaluation |
+| `hidroreverso` | `src/core/SisProd.cpp` | Reverse-direction hydrostatic estimate helper |
+| `preparaTabDin` | `src/core/Num4Main.cpp` | Builds dynamic PVT tables for compositional acceleration |
+| `marchaGasPerm1` | `src/core/SisProd.cpp` | Iterative gas-line steady-state march for pressure-controlled injection |
+| `marchaGasPerm2` | `src/core/SisProd.cpp` | Single gas-line march for flow-controlled injection; returns annulus residual for root finding |
+| `marchaGasPerm3` | `src/core/SisProd.cpp` | Single gas-line march for injection-choke-controlled cases; returns annulus residual for root finding |
+| `RenovaPresGasPerm` | `src/core/SisProd.cpp` | Gas-line pressure advance |
+| `RenovaTempGasPerm` | `src/core/SisProd.cpp` | Gas-line temperature advance |
+| `calcVazGasPerm` | `src/core/SisProd.cpp` | Gas-line valve-flow calculation and annulus source update |
+| `TempDescGL` | `src/core/SisProd.cpp` | Gas temperature drop across VGL / gas-lift throttling model |
+| `CelG::fric` | `src/core/celulaGas.cpp` | Friction-factor evaluation for gas-line cells |
+| `CelG::Rey` | `src/core/celulaGas.cpp` | Reynolds-number evaluation for gas-line cells |
+| `chokeVGL[].massica` | `src/core/chokegas.cpp` | Compressible gas choke mass-flow model |
