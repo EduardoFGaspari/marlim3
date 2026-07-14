@@ -4,7 +4,11 @@ A discretização das equações seguirá a clássica abordagem de volumes finit
 
 As células com traço cheio são as células em que as leis de conservação de massa e evolução de holdup e beta são resolvidas. Já a célula tracejada é onde a equação de quantidade de movimento é resolvida. A equação de energia é um caso especial, já que é apresentada na sua forma não-conservativa, não faz muito sentido uma abordagem de volumes finitos, neste caso, se utilizará um esquema de diferenças adaptado. Ainda tomando como referência a figura anterior, variáveis como holdup, beta, pressão, temperatura, taxa de transferência de massa, volume de fração leve, densidade de gás, fração de CO2, RGO com escorregamento, fontes de massa, entalpias, fluxo de calor são todas armazenadas nos pontos de índice inteiro. Já as variáveis relacionadas com os fluxos, vazão mássica da mistura, vazão mássica do líquido, vazão mássica do gás, arranjos, parâmetros de escorregamento, velocidades superficiais são avaliadas nas posições de índice fracionário, o que, para o esquema, significa as fronteiras do volume de controle onde se dá o balanço de massa, como no teorema de transporte de Reynolds.
 
-Neste texto, o índice i  sempre se referirá à posição no espaço; o índice k ao avanço de tempo, além disto, existe a possibilidade de se escolher um processo iterativo para garantir um avanço completamente implícito do esquema. A maneira como a abordagem numérica foi pensada trabalha com dois ramos, uma metodologia mais simples e mais rápida, em um esquema semi-implícito e uma metodologia mais completa, porém de desempenho pior, com processos iterativos; o processo iterativo é necessário para que se possa incluir no modelo numérico termos que são descartados no esquema mais simples e semi-implícito. Lógico, esta abordagem iterativa termina também sendo uma abordagem implícita. O que a princípio parece ser uma vantagem importante, pois não se tem limitações de incremento de tempo devido ao critério CFL, mas, infelizmente, não é exatamente assim, existem limitações em métodos numéricos para sistemas multifásicos que vão além do que se apresenta em livros textos de métodos numéricos, a limitação, talvez, mais importante está em eventuais, não tão eventuais assim, transições entre condições de escoamento multifásico para escoamentos monofásicos. Estas transições representam verdadeiras singularidades de modelo, algumas decisões devem ser tomadas dentro do código quando estas transições ocorrem e incrementos de tempo muito grandes podem dificultar uma boa transição entre condições de escoamento multifásico para monofásico, em resumo, mesmo em esquemas implícitos, livres das limitações CFL, grandes incrementos de tempo podem não ser aconselháveis em simulações transientes de sistemas multifásicos, neste aspecto, um esquema semi-implícito se torna a abordagem mais adequada. Para entender melhor estas questões, se utilizará como exemplo a discretização da Equação de evolução do holdup:
+Neste texto, o índice $i$ sempre se referirá à posição no espaço; o índice $k$ ao avanço de tempo, além disto, existe a possibilidade de se escolher um processo iterativo para garantir um avanço completamente implícito do esquema. A maneira como a abordagem numérica foi pensada trabalha com dois ramos, uma metodologia mais simples e mais rápida, em um esquema semi-implícito e uma metodologia mais completa, porém de desempenho pior, com processos iterativos; o processo iterativo é necessário para que se possa incluir no modelo numérico termos que são descartados no esquema mais simples e semi-implícito. Lógico, esta abordagem iterativa termina também sendo uma abordagem implícita. O que a princípio parece ser uma vantagem importante, pois não se tem limitações de incremento de tempo devido ao critério CFL, mas, infelizmente, não é exatamente assim, existem limitações em métodos numéricos para sistemas multifásicos que vão além do que se apresenta em livros textos de métodos numéricos, a limitação, talvez, mais importante está em eventuais, não tão eventuais assim, transições entre condições de escoamento multifásico para escoamentos monofásicos. Estas transições representam verdadeiras singularidades de modelo, algumas decisões devem ser tomadas dentro do código quando estas transições ocorrem e incrementos de tempo muito grandes podem dificultar uma boa transição entre condições de escoamento multifásico para monofásico, em resumo, mesmo em esquemas implícitos, livres das limitações CFL, grandes incrementos de tempo podem não ser aconselháveis em simulações transientes de sistemas multifásicos, neste aspecto, um esquema semi-implícito se torna a abordagem mais adequada. 
+
+## Holdup evolution equation
+
+Seja a discretização da Equação de evolução do holdup:
 
 $$\left[1 - (1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}(1-\beta)\right]\frac{\partial(1-\alpha)}{\partial t} =- \frac{1}{A\rho_{lp}}\frac{\partial \dot{M}_p}{\partial x} - \frac{1}{A\rho_{lc}}\left[1-(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}\right]\frac{\partial \dot{M}_c}{\partial x}+ \frac{1}{A\rho_{lp}}\frac{\partial(1-\beta)(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}Q_l}{\partial x} + \left[1-(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{\rho_{lp}B_o}\right]\frac{\Gamma_{cp}}{A\rho_{lc}\Delta L} + \frac{\Gamma_{lp}}{A\rho_{lp}\Delta L}- \left[\frac{(1-\alpha)(1-\beta)}{\rho_{lp}}\frac{\partial \rho_{lp}}{\partial t} + \frac{(1-\alpha)\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-F_w)}{ A\rho_{lp}}\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}(1-\alpha)\frac{\beta}{\rho_{lc}}\frac{\partial \rho_{lc}}{\partial t} - \frac{A(1-\alpha)(1-\beta)}{A\rho_{lp}}\frac{\partial(1-F_w)\frac{R_s \gamma_g \rho_{air}^{std}}{B_o}}{\partial t}\right] \label{eq:holdup_evolution_final}$$
 
@@ -94,6 +98,8 @@ A vantagem desta equação de evolução de fração de vazio está no fato de q
 
 Caso se deseje trabalhar com todos os termos da Equação \eqref{eq:holdup_evolution_final}, deve-se usar um esquema iterativo o que penaliza o desempenho do simulador. Neste caso, o processo se daria tomando como ponto de partida a solução explícita de \eqref{eq:holdup_ev_disc1}, se avançaria na pressão e temperatura, com isto, os termos de derivada temporal dependentes de pressão e temperatura, antes descartadas, podem ser avaliadas e a discretização é similar a \eqref{eq:holdup_ev_disc1}, porém com a adição das derivadas temporais antes descartadas. Ao fim do processo, o método se tornaria totalmente implícito, devido ao processo iterativo. O que foi observado nos testes que foram feitos usando o `Marlim3` é que os termos descartados tem realmente pouca influência no tipo de problema que se deseja estudar. Sendo assim, a partir deste ponto, só se referirá ao esquema de equações simplificadas em uma abordagem semi-implícita.
 
+## $\beta$ evolution equation
+
 Agora consideremos a equação de evolução da fração de fluido complementar $\beta$:
 
 $$
@@ -121,6 +127,8 @@ $$
 $$
 
 Observe que para se poder fazer a evolução da variável $\beta$ em \eqref{eq:beta_disc}, é necessário já se ter o perfil de fração de vazio obtido para a camada de tempo k, logo, \eqref{eq:beta_disc} só é resolvido após a resolução de \eqref{eq:holdup_ev_disc1}. Da mesma maneira que a fração de vazio, $\beta$ também tem limites que não podem ser extrapolados, a restrição é de que fique sempre entre 0 e 1, logo, correções de incremento de tempo podem ocorrer na evolução desta variável, caso estes limites sejam desrespeitados.
+
+## Acoplamento pressão-velocidade
 
 Resolvido o perfil de $\alpha$ e $\beta$, o próximo passo na resolução do problema é resolver o acoplamento pressão-velocidade. Como já foi comentado, a pressão está intimamente relacionada com as famílias de ondas mais rápidas, que por sua vez estão relacionadas com a compressibilidade dos fluidos. Estas famílias de onda mais rápidas implicam em um critério CFL mais rigoroso, sendo assim, as equações responsáveis pela resolução do acoplamento pressão-velocidade, caso se queira trabalhar com incrementos de tempo menos limitantes para o desempenho do simulador, devem ser resolvidas com um esquema implícito. As equações responsáveis pela resolução do perfil de pressão e de vazão mássica da mistura são:
 
@@ -622,3 +630,100 @@ $$\begin{equation}
 \end{equation}$$
 
 Para finalizar a questão do acoplamento pressão-velocidade, deve-se atentar para alguns detalhes na obtenção dos termos $T_1$ e $T_2$, quando a fronteira do volume se encontra em uma situação de mudança de arranjo de fase ou mudança de condição multifásica para condição monofásica, estes são problemas delicados no simulador. $T_1$ e $T_2$ são dois termos que determinam quanto da vazão mássica da mistura de fluidos é uma vazão mássica de líquido ou uma vazão mássica de gás. Estes termos são sempre calculados na fronteira dos volumes de conservação de massa. Pelas equações $T_1 = \frac{1-\alpha C_0}{1-\alpha C_0\left(1-\frac{\rho_g}{\rho_l}\right)}$ e $T_2 = -\frac{\alpha A u_d \rho_g}{1-\alpha C_0\left(1-\frac{\rho_g}{\rho_l}\right)}$, obtidas na derivação das equações de balanço de massa e quantidade de movimento, estes dois termos são fáceis de se calcular, as equações são simples, basta apenas que se tenha os parâmetros necessários nestas fronteiras. $T_1$ e $T_2$  têm uma relação importante com os parâmetros de escorregamento, é interessante observar que em um módulo de cálculo permanente, os parâmetros de escorregamento são utilizados para o cálculo da fração de vazio, já no módulo transiente, estes mesmos parâmetros são utilizados para determinar o quanto da vazão mássica da mistura é vazão de gás ou de líquido. Os parâmetros de escorregamento são dependentes dos arranjos de fases e a depender das correlações utilizadas e do arranjo envolvido, estes parâmetros de escorregamento podem ser muito distintos o que leva a valores $T_1$ e $T_2$ também distintos de um arranjo para outro. Em processos transientes, a mudança de arranjo podem ocorrer de uma camada de tempo para outra, estas mudanças podem levar a mudanças importantes nos valores de $T_1$ e $T_2$, a depender destas variações, o simulador pode ser lançado em uma situação instável e cíclico de mudança de arranjo de fases, em que em cada camada de tempo se é indicado um arranjo de fases diferente; para se evitar esta ciclagem de arranjos à medida em se avança no tempo, a transição dos parâmetros de escorregamento devem ser feitos de maneira suavizada, deve-se evitar uma mudança abrupta de parâmetros de escorregamento em um passo de tempo, esta suavização é feita de maneira heurística, em geral, no simulador, uma transição de arranjo só é completada após cerca de 20 passos de tempo, o que vem demonstrando suficiente para evitar este processo de ciclagem de arranjos. Excluindo esta dificuldade relacionada com mudanças de arranjo de fase, a determinação de $T_1$ e $T_2$ em uma situação de escoamento bifásico é trivial. Porém, observando as relações de $T_1$ e $T_2$ verifica-se que elas só fazem sentido enquanto se tem garantido um escoamento multifásico na fronteira do volume, as relações em si não são capazes de indicar que o fluxo na fronteira é um fluxo monofásico de gás ou de líquido, em outras palavras, não é uma decisão natural ou transparente determinar quando o fluxo em uma fronteira de volume é monofásico ou multifásico, para tanto, no código do simulador, foi necessário criar mais outra heurística para a tomada de decisão sobre esta questão. Duas situações, claro, são relativamente fáceis de determinar se o escoamento é multifásico ou monofásico na fronteira. A primeira é quando dois volumes adjacentes têm frações de vazio diferentes de 1 e de zero, neste caso, o fluxo na fronteira será multifásico; a segunda situação é quando os dois volumes adjacentes têm, ao mesmo tempo fração de vazio = 1, fluxo de gás na fronteira, ou os dois têm fração de vazio = 0, fluxo de líquido na fronteira.
+
+Infelizmente, não é sempre tão óbvio se tomar esta decisão e isto pode ser um desafio para o simulador, principalmente em processos de segregação de fluidos a baixa velocidade. Considere a seguinte situação:
+
+![dubious_boundary_flux](../img/dubious_boundary_flux.png)
+
+Esta é uma situação não tão incomum de ocorrer em um processo de parada de produção. A decisão se um fluxo em uma fronteira é bifásico ou monofásico é feita com informações da camada de tempo k, anterior ao avanço do passo de tempo, esta decisão é uma das mais importantes para a conservação de massa e acoplamento pressão-velocidade, para se ter uma previsão correta, teria de se ter um esquema implícito, a partir de métodos iterativos, o que se está evitando neste simulador. No caso da Figura (23) o gás está parado, porém existe líquido atravessando a fronteira, como este líquido tem velocidade negativa e vem de um volume em condição bifásica, é razoável admitir que o fluxo na fronteira é bifásico, se ao contrário, a velocidade do líquido fosse positiva, seria mais razoável admitir que o fluxo na fronteira é apenas de gás. Neste ponto, pode-se verificar um desafio para o simulador; em condições em que a velocidade de líquido é pequena, próxima de zero, típico de situações de parada de produção, em um avanço de tempo frequentemente a velocidade de uma das fases muda de sentido e a decisão que foi tomada com dados do tempo anterior se demonstrará incorreta. Por exemplo, no caso da Figura 23, se indicou um fluxo bifásico, mas se no avanço de tempo, a velocidade de líquido mudou de sentido, talvez o mais correto teria sido indicar fluxo monofásico de gás. Isto pode incorrer em um erro na conservação de massa, pode-se gerar massa de líquido ou massa de gás por conta de uma decisão equivocada como esta. Isto não é um problema grave, se eventual, mas em processos longos de parada de produção, erros deste tipo podem se tornar frequentes e arruinar a simulação. Casos de parada de produção, ou shut in, tem duas características que dificultam estas decisões sobre a natureza do fluxo na fronteira de volumes; um processo longo de segregação com vários volumes adjacentes com condições dúbias sobre qual o tipo de fluxo na fronteira, baixas velocidades de escoamento, tornando comum a mudança de sentido do escoamento de uma fase em um avanço de tempo, dificultando a previsão da natureza do fluxo na fronteira. A solução para isto, além, claro, de se ter uma heurística adequada, é limitar o avanço de tempo; em paradas, o incremento de tempo pode, a priori, ser feito com valores grandes, pois as velocidades de escoamento são baixas, relaxando assim o critério CFL, mas quando estes incrementos de tempo se tornam grandes em processos com velocidades próximas de zero, o risco da velocidade da fase no avanço de tempo mudar de sentido é grande, causando erros na previsão do fluxo, gerando inclusive geração de massa, o que pode ter um péssimo impacto na simulação, levando a um círculo vicioso capaz de arruinar a simulação. Portanto, em processos de parada, mesmo que o critério CFL permita grandes incrementos de tempo, recomenda-se parcimônia nestes limites de avanço de tempo.
+
+## Equação de transporte de temperatura
+
+O próximo passo é a algebrização da equação de transporte de temperatura:
+
+$$\left[\rho_g\alpha A c_{vg}^\prime+\rho_l\left(1-\alpha\right)Ac_{vl}\right]\frac{\partial T}{\partial t}+\rho_g\alpha A\frac{1}{z\rho_g}\left(z+T\left.\frac{\partial z}{\partial T}\right|_p\right)\frac{\partial p}{\partial t}+\left[\rho_g\alpha A u_gc_{pg}+\rho_l\left(1-\alpha\right)Au_lc_{pl}\right]\frac{\partial T}{\partial x}-\left[\rho_g\alpha A u_gJ_g+\rho_l\left(1-\alpha\right)Au_lJ_l\right]\frac{\partial p}{\partial x}+\left(\rho_g\alpha A\right)\left(\frac{\partial\frac{u_g^2}{2}}{\partial t}+u_g^2\frac{\partial u_g}{\partial x}\right)+\left[\rho_l\left(1-\alpha\right)A\right]\left(\frac{\partial\frac{u_l^2}{2}}{\partial t}+u_l^2\frac{\partial u_l}{\partial x}\right)=\left(h_{Fg}-h_g\right)\frac{\mathrm{\Gamma}_g}{\mathrm{\Delta L}}+\left(h_{Flp}-h_l\right)\frac{\mathrm{\Gamma}_{lp}}{\mathrm{\Delta l}}+\left(h_{Flc}-h_l\right)\frac{\mathrm{\Gamma}_{lc}}{\mathrm{\Delta l}}-\left(h_g-h_l\right)\psi-\left[\rho_gu_g\alpha_g+\rho_lu_l\left(1-\alpha\right)\right]Ag+Q_w-\frac{A}{\rho_l}p\left(1-\alpha\right)\left(\rho_{lc}-\rho_{lp}\right)\frac{\partial\beta}{\partial t} \label{eq:energy_final}$$
+
+Esta equação a princípio não representaria um desafio em ser algebrizada, pois, devido ao seu baixo acoplamento com o par pressão-velocidade, pode ser resolvida de maneira explícita, logo após a resolução do acoplamento pressão-velocidade, tendo já a disposição os perfis na camada de tempo atual da fração de vazio, beta, pressão e vazões mássicas. Infelizmente existe um pequeno complicador. Se está trabalhando com um esquema de discretização mais adequado para volumes finitos, onde os fluxos de fronteira são bem definidos, a equação de transporte da temperatura não está em uma forma clara onde estes fluxos possam ser definidos (não está em sua forma conservativa, está toda em sua forma quasi-linear, mais adequada para diferenças finitas), sendo assim, serão feitas algumas adaptações na algebrização desta equação para que se adeque à discretização utilizada. A equação algebrizada de transporte de temperatura:
+
+$$
+\begin{equation}
+\begin{aligned}
+T_i^{k+1} &= T_i^k \\[6pt]
+&+ \Delta t\,
+\frac{
+  \left\{
+  \begin{array}{l}
+  \displaystyle
+  -\rho_g\big|\alpha_i^{k+1} A_i
+  \frac{1}{z\rho_{g_i}^{k+\frac{1}{2}}}
+  \left(z_i^{k+\frac{1}{2}}+T_i^k\frac{\partial z}{\partial T}\bigg|_{p_i}\right)^{\!k+\frac{1}{2}}
+  \frac{p_i^{k+1}-p_i^k}{\Delta t}
+  -\left[
+    \rho_g\big|_i^{k+\frac{1}{2}}\alpha_i^{k+1}A_i u_{g_i}^{k+\frac{1}{2}}c_{pg}\big|_i^{k+\frac{1}{2}}
+    +\rho_l\big|_i^{k+\frac{1}{2}}(1-\alpha_i^{k+1})A_i u_{l_i}^{k+\frac{1}{2}}c_{pl_i}^{k+\frac{1}{2}}
+  \right]
+  \dfrac{\Delta T_i^k}{\Delta x_i}+ \\[10pt]
+  \displaystyle
+  \left[
+    \rho_g\big|_i^{k+\frac{1}{2}}\alpha_i^{k+1}A_i u_{g_i}^{k+\frac{1}{2}}J_{g_i}^{k+\frac{1}{2}}
+    +\rho_l\big|_i^{k+\frac{1}{2}}(1-\alpha_i^{k+1})A_i u_{l_i}^{k+\frac{1}{2}}J_{l_i}^{k+\frac{1}{2}}
+  \right]
+  \dfrac{p_{i+\frac{1}{2}}^{k+1}-p_{i-\frac{1}{2}}^{k+1}}{\Delta x_i} \\[10pt]
+  \displaystyle
+  -\!\left(\rho_g\big|_i^{k+\frac{1}{2}}\alpha_i^{k+1}A_i\right)
+  \!\left(
+    \frac{\dfrac{u_{g_i}^{2\,k+\frac{1}{2}}-u_{g_i}^{2\,k}}{2}}{\Delta t}
+    +u_{g_i}^2\big|_i^{k+\frac{1}{2}}
+    \frac{u_{g_{i+\frac{1}{2}}}^{k+\frac{1}{2}}-u_{g_{i-\frac{1}{2}}}^{k+\frac{1}{2}}}{\Delta x_i}
+  \right)
+  -\!\left(\rho_l\big|_i^{k+\frac{1}{2}}(1-\alpha_i^{k+1})A_i\right)
+  \!\left(
+    \frac{\dfrac{u_{l_i}^{2\,k+\frac{1}{2}}-u_{l_i}^{2\,k}}{2}}{\Delta t}
+    +u_{l_i}^2\big|_i^{k+\frac{1}{2}}
+    \frac{u_{l_{i+\frac{1}{2}}}^{k+\frac{1}{2}}-u_{l_{i-\frac{1}{2}}}^{k+\frac{1}{2}}}{\Delta x_i}
+  \right)+ \\[10pt]
+  \displaystyle
+  \left[
+    (h_{Fg}-h_g)\frac{\Gamma_g}{\Delta L}
+    +(h_{Flp}-h_l)\frac{\Gamma_{lp}}{\Delta l}
+    +(h_{Flc}-h_l)\frac{\Gamma_{lc}}{\Delta l}
+    -(h_g-h_l)\psi
+  \right]_i^{k+\frac{1}{2}}
+  -\!\left[\rho_g u_g\big|\alpha_g^{k+1}+\rho_l u_l\big|(1-\alpha_i^{k+1})\right]A_i g
+  +Q_{w_i}^{k+\frac{1}{2}}- \\[10pt]
+  \displaystyle
+  \frac{A_i}{\rho_{l_i}^{k+\frac{1}{2}}}
+  p_i^{k+1}(1-\alpha_i^{k+1})
+  (\rho_{lc}-\rho_{lp})_i^{k+\frac{1}{2}}
+  \frac{\beta_i^{k+1}-\beta_i^k}{\Delta t}
+  \end{array}
+  \right\}
+}{
+  \left[
+    \rho_g\big|_i^{k+\frac{1}{2}}\alpha_i^{k+1}A_i c_{vg_i}^{\,k+\frac{1}{2}}
+    +\rho_l\big|_i^{k+\frac{1}{2}}(1-\alpha_i^{k+1})A_i c_{vl}\big|_i^{k+\frac{1}{2}}
+  \right]
+}
+\end{aligned}
+\end{equation}
+$$
+
+Algumas observações, o índice $k+1/2$ indica que nem todas as variáveis utilizadas para calcular determinada propriedade está na camada $k+1$; no caso, a temperatura não está nesta camada de tempo mais atual, muito embora, pressão, fração de vazio, beta e vazão mássica estejam. Existe uma dificuldade, pela forma da malha, em se determinar o termo $\frac{\Delta T_i^k}{\Delta x_i}$ é defasada, sendo assim, se utilizou o seguinte critério, aproveitando-se da velocidade de advecção da temperatura, 
+
+$$V_T=\frac{\rho_g\alpha u_gc_{pg}+\rho_l\left(1-\alpha\right)u_lc_{pl}}{\rho_g\alpha c_{vg}^{\prime\prime}+\rho_l\left(1-\alpha\right)c_{vl}}$$
+
+Caso $V_T > 0$:
+
+$$
+\begin{equation}
+\frac{\Delta T_i^k},{\Delta x_i} = \frac{T_i^k - T_{i-1}^k},{0.5(\Delta x_i + \Delta x_{i-1})}
+\end{equation}
+$$
+
+Caso $V_T < 0$:
+
+$$
+\begin{equation}
+\frac{\Delta T_i^k},{\Delta x_i} = \frac{T_{i+1}^k - T_i^k},{0.5(\Delta x_i + \Delta x_{i+1})}
+\end{equation}
+$$
