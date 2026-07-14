@@ -1,5 +1,3 @@
-# Transient drift-flux modeling
-
 `Marlim3` transient solver uses an one-dimensional drift-flux model to describe three-phase gas-liquid-liquid flow in petroleum production systems. The model accounts for temperature variation along the pipe and heat exchange with the surroundings, as well as the coupling with a gas injection line, whose mass flow rate through the gas-lift valve is determined by the pressure difference between the service and production lines.
 
 The key modeling hypotheses are:
