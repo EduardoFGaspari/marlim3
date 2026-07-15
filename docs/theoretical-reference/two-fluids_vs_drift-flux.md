@@ -120,3 +120,43 @@ $$
 This value is also often close to the gas velocity itself. This is an important result: whenever the dynamic terms become of secondary relevance, the kinematic wave assumes most of the responsibility for transporting void-fraction information.
 
 In a drift-flux model, a kinematic wave does not arise as directly as in the two-fluid formulation. Nevertheless, the slowest dynamic wave family in the drift-flux model is itself closely related to the mean gas velocity. In this sense, the two approaches become similar with respect to the transport of void-fraction information in two-phase flow.
+
+Consider the initial condition illustrated in the next figure: a pipe divided into two regions by a ball valve. If the valve is opened rapidly, the system undergoes fast transient changes, partly governed by the faster wave families and partly governed by the slower ones.
+
+As expected, pressure information propagates more rapidly than holdup information. The latter is associated with the slower dynamic waves and, once dynamic effects related to fluid acceleration become negligible, the transient behavior is governed predominantly by the kinematic wave, also referred to as the continuity wave or density wave; see Wallis (1969).
+
+## Drift-flux model
+
+As discussed above, the principal difficulty of the two-fluid model lies in the reliable representation of interfacial effects. The **drift-flux model** emerges as a simplification of the two-fluid formulation and seeks to bypass, at least partially, the need for a detailed description of interfacial effects in multiphase flow. The classical reference for this model is Zuber and Findlay (1965).
+
+The main structural difference relative to the two-fluid model is the reduction in the number of momentum equations. Instead of solving one momentum equation for each phase, the drift-flux model employs a single **mixture momentum equation**:
+
+### Liquid mass conservation
+
+$$
+A\frac{\partial \left[\rho_l(1-\alpha)\right]}{\partial t}
++ \frac{\partial \dot{M}_l}{\partial x}
+= \frac{\Gamma_l}{\Delta L} - \psi
+$$
+
+### Gas mass conservation
+
+$$
+A\frac{\partial \left(\rho_g\alpha\right)}{\partial t}
++ \frac{\partial \dot{M}_g}{\partial x}
+= \frac{\Gamma_g}{\Delta L} + \psi
+$$
+
+### Mixture momentum conservation
+
+$$
+\frac{\partial \dot{M}_m}{\partial t}
++ \frac{\partial \left(u_l \dot{M}_l + u_g \dot{M}_g\right)}{\partial x}
++ A\frac{\partial p}{\partial x}
+= f_m\,\frac{\rho_m j^2}{2}\,S_w
++ \rho_m g A\sin\theta
+$$
+
+Compared with the two-fluid model, the drift-flux formulation replaces the two separate phase-momentum equations by a single mixture momentum balance. This reduction simplifies the mathematical structure of the model and removes the explicit interfacial shear term from the momentum equations. The relative motion between phases is then introduced through an additional closure relation, which plays the central role in the drift-flux framework.
+
+The price paid for this simplification is that the relative motion between phases must now be introduced through an additional closure relation. In the drift-flux framework, this role is played by a constitutive relation linking gas velocity, mixture velocity, and phase distribution. The resulting model is therefore simpler than the two-fluid formulation, while still retaining the essential mechanisms required to describe phase slip in many practical situations.
