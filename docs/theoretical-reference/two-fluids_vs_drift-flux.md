@@ -1,6 +1,6 @@
 `Marlim3` employs a **drift-flux formulation** in its transient multiphase-flow solver. In order to better understand the structure, capabilities, and limitations of this formulation, it is useful to compare it with the **two-fluid model**, which is the most widely used mechanistic framework for transient multiphase pipe flow. `OLGA`, for instance, is based on this class of model; see Bendiksen et al. (1991).
 
-The purpose of this section is therefore to use the comparison between them to provide physical and mathematical insight into the modeling choices adopted in `Marlim3`.
+The purpose of this section is therefore to use the comparison between them to provide physical and mathematical insight into the modeling choices adopted in `Marlim3`. In particular, the comparison is useful because it clarifies how each formulation distributes transient information among different wave families. For the present documentation, the main goal is to build practical intuition about which variables are mainly associated with fast pressure-carrying waves, which are associated with slower holdup-carrying waves, and what this implies for the numerical treatment adopted later.
 
 ## Two-fluid model
 
@@ -109,6 +109,8 @@ For subsonic flow, these expressions — even in approximate form — already re
 
 Because these are all dynamic waves, every family carries information related to the pressure field. The faster waves do so mainly through gas compression and expansion, whereas the slower waves are associated with variations in liquid level, which modify the mean flow pressure through changes in the hydrostatic liquid head across the pipe cross-section. The actual mechanism is somewhat more involved, but this interpretation captures the dominant effect.
 
+From the standpoint of transient interpretation, this richer wave structure is both an advantage and a burden. It is an advantage because it preserves more of the underlying phase dynamics, especially when fast interfacial and compressibility effects matter. It is a burden because the model then requires more closure detail and a numerical treatment capable of accommodating a wider range of propagation speeds and stronger coupling mechanisms.
+
 The two faster wave families transport pressure information more efficiently. By contrast, the slower waves require comparatively large variations in liquid-film height to produce small pressure changes. Consequently, even when these slower waves are involved in pressure transmission, the most evident system response is generally a variation in void fraction or, equivalently, in liquid holdup. In simplified terms, the faster dynamic-wave pair is more directly associated with the transport of pressure information, whereas the slower dynamic-wave pair is more closely associated with the transport of void-fraction information.
 
 In addition to these dynamic wave families, the source terms appearing in the momentum equations give rise to another class of waves, of lower hierarchy than the dynamic ones: the so-called **kinematic waves**, or **density waves**. These waves become important when the inertial terms in the momentum equations are comparatively weak relative to frictional and hydrostatic contributions.
@@ -197,5 +199,7 @@ The key point is that a wide range of drift-flux correlations is now available f
 
 
 Regarding wave propagation, the isothermal drift-flux model exhibits **three wave families**. Two of them, as usual, are primarily associated with gas compressibility. The third is a low-speed dynamic wave whose propagation speed is approximately equal to the mean gas velocity. This third family is especially relevant in the drift-flux model for most transient problems of interest in production and transport systems, since it is the wave family chiefly responsible for transporting void-fraction information. For a complete eigenvalue analysis of the one-dimensional isothermal drift-flux model, see Santin and Rosa (2016).
+
+This reduction from four dynamic families in the two-fluid model to three in the drift-flux model helps explain why the latter is attractive for the class of problems targeted by `Marlim3`. The formulation gives up part of the detailed phase-wise dynamic description, but it preserves the transport mechanism that is most important for slow production-system transients: the comparatively slow propagation of gas fraction and liquid holdup. At the same time, the fast pressure-related families remain present through the compressible mixture description, which is why the later numerical treatment still solves pressure implicitly. In short, the drift-flux model may be viewed here as a deliberate compromise: it is simpler than a full two-fluid model, but it still retains the wave structure needed to represent the dominant transient mechanisms in the intended applications.
 
 The next section presents the derivation of the model adopted in the `Marlim3` transient solver.
