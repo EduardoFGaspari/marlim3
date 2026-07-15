@@ -23,11 +23,18 @@ theme:
     - navigation.instant
     - navigation.tracking
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.indexes
+    - navigation.path
     - toc.follow
+    - toc.integrate
     - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.tabs.link
 
 nav:
   - Home: index.md

@@ -1,8 +1,14 @@
 window.MathJax = {
   tex: {
-    inlineMath: [['\\(', '\\)']],
-    displayMath: [['\\[', '\\]']],
+    inlineMath: [["\\(", "\\)"]],
+    displayMath: [["\\[", "\\]"]],
     processEscapes: true,
-    tags: 'all'
+    tags: "all"
   }
 };
+
+document$.subscribe(() => {
+  MathJax.texReset();
+  MathJax.typesetClear();
+  MathJax.typesetPromise();
+});
