@@ -504,13 +504,14 @@ void executarCorrelacao(Cel* celula, int i, int inter, int AceleraConvergPerm,
     	gravityGrad=saida.dpdL_grav/22620.6;
     	frictionGrad=saida.dpdL_fric/22620.6;
     	accelGrad=0.;
-        if(holdup>1-1e-5)flowPattern=1;
-        if(holdup<1e-5)flowPattern=2;
-        if((int)saida.pattern==2)flowPattern=4;
-        if((int)saida.pattern==4 || (int)saida.pattern==5)flowPattern=3;
-        if((int)saida.pattern==0 || (int)saida.pattern==1)flowPattern=6;
-        if((int)saida.pattern==3)flowPattern=5;
+        if(holdup>1-1e-5)flowPattern='1';
+        if(holdup<1e-5)flowPattern='2';
+        if((int)saida.pattern==2)flowPattern='4';
+        if((int)saida.pattern==4 || (int)saida.pattern==5)flowPattern='3';
+        if((int)saida.pattern==0 || (int)saida.pattern==1)flowPattern='6';
+        if((int)saida.pattern==3)flowPattern='5';
     }
+    flowType=flowPattern;
 }
 
 

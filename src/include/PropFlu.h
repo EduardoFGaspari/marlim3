@@ -212,6 +212,7 @@ class ProFlu {
     int flashCompleto; // Selects the PVTSim table model: 1 -> PVTSim table
     // 2 -> compositional model
     int tabelaDinamica;
+    int multbcs;
     int viscBlackOil; // For PVTSim tables, indicates whether viscosity values should still be obtained from
     // a Black Oil model
     int indiceFlash; // Unused

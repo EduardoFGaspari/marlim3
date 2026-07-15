@@ -9875,6 +9875,7 @@ void solveRedeProd(SProd *malha, Rede &arqRede, int narq,
                         malha[i].celula[j].betPigEini = malha[i].celula[j].betPigE;
                         malha[i].celula[j].betPigDini = malha[i].celula[j].betPigD;
 
+
                         malha[i].celula[j].rpC = malha[i].celula[j].rpCi =
                             malha[i].celula[j].flui.MasEspLiq(malha[i].celula[j].pres, malha[i].celula[j].temp);
                         malha[i].celula[j].rgC = malha[i].celula[j].rgCi =
@@ -9891,6 +9892,36 @@ void solveRedeProd(SProd *malha, Rede &arqRede, int narq,
                         malha[i].celula[j].mipC = malha[i].celula[j].flui.ViscOleo(malha[i].celula[j].pres, malha[i].celula[j].temp);
                         malha[i].celula[j].migC = malha[i].celula[j].flui.ViscGas(malha[i].celula[j].pres, malha[i].celula[j].temp);
                         malha[i].celula[j].micC = malha[i].celula[j].fluicol.VisFlu(malha[i].celula[j].pres, malha[i].celula[j].temp);
+                        if (malha[i].arq.tabelaDinamica == 1) {
+                        	malha[i].arq.tabelaDinamica = 0;
+                            for (int j = 0; j <= malha[i].ncel; j++) {
+                            	malha[i].celula[j].flui.tabelaDinamica = 0;
+                                if (malha[i].celula[j].acsr.tipo == 1)
+                                	malha[i].celula[j].acsr.injg.FluidoPro.tabelaDinamica = 0;
+                                else if (malha[i].celula[j].acsr.tipo == 2)
+                                	malha[i].celula[j].acsr.injl.FluidoPro.tabelaDinamica = 0;
+                                else if (malha[i].celula[j].acsr.tipo == 3)
+                                	malha[i].celula[j].acsr.ipr.FluidoPro.tabelaDinamica = 0;
+                                else if (malha[i].celula[j].acsr.tipo == 15) {
+                                	malha[i].celula[j].acsr.radialPoro.flup.tabelaDinamica = 0;
+                                    int ncelRad = malha[i].celula[j].acsr.radialPoro.ncel;
+                                    for (int k = 0; k < ncelRad; k++) {
+                                    	malha[i].celula[j].acsr.radialPoro.celula[k].flup.tabelaDinamica = 0;
+                                    }
+                                } else if (malha[i].celula[j].acsr.tipo == 16) {
+                                	malha[i].celula[j].acsr.poroso2D.dados.flup.tabelaDinamica = 0;
+                                    int ncelRad = malha[i].celula[j].acsr.poroso2D.dados.transfer.ncel;
+                                    for (int k = 0; k < ncelRad; k++) {
+                                    	malha[i].celula[j].acsr.poroso2D.dados.transfer.celula[k].flup.tabelaDinamica = 0;
+                                    }
+                                    int ncelEle = malha[i].celula[j].acsr.poroso2D.malha.nele;
+                                    for (int k = 0; k < ncelEle; k++) {
+                                    	malha[i].celula[j].acsr.poroso2D.malha.mlh2d[k].flup.tabelaDinamica = 0;
+                                    }
+                                } else if (malha[i].celula[j].acsr.tipo == 10)
+                                	malha[i].celula[j].acsr.injm.FluidoPro.tabelaDinamica = 0;
+                            }
+                        }
 
                         if (j > 0) {
                             malha[i].celula[j - 1].rpR = malha[i].celula[j - 1].rpRi = malha[i].celula[j].rpC;
@@ -11690,6 +11721,36 @@ void RedeParalela(SProd *malha, Rede &arqRede, int narq,
                 malha[i].celula[j].mipC = malha[i].celula[j].flui.ViscOleo(malha[i].celula[j].pres, malha[i].celula[j].temp);
                 malha[i].celula[j].migC = malha[i].celula[j].flui.ViscGas(malha[i].celula[j].pres, malha[i].celula[j].temp);
                 malha[i].celula[j].micC = malha[i].celula[j].fluicol.VisFlu(malha[i].celula[j].pres, malha[i].celula[j].temp);
+                if (malha[i].arq.tabelaDinamica == 1) {
+                	malha[i].arq.tabelaDinamica = 0;
+                    for (int j = 0; j <= malha[i].ncel; j++) {
+                    	malha[i].celula[j].flui.tabelaDinamica = 0;
+                        if (malha[i].celula[j].acsr.tipo == 1)
+                        	malha[i].celula[j].acsr.injg.FluidoPro.tabelaDinamica = 0;
+                        else if (malha[i].celula[j].acsr.tipo == 2)
+                        	malha[i].celula[j].acsr.injl.FluidoPro.tabelaDinamica = 0;
+                        else if (malha[i].celula[j].acsr.tipo == 3)
+                        	malha[i].celula[j].acsr.ipr.FluidoPro.tabelaDinamica = 0;
+                        else if (malha[i].celula[j].acsr.tipo == 15) {
+                        	malha[i].celula[j].acsr.radialPoro.flup.tabelaDinamica = 0;
+                            int ncelRad = malha[i].celula[j].acsr.radialPoro.ncel;
+                            for (int k = 0; k < ncelRad; k++) {
+                            	malha[i].celula[j].acsr.radialPoro.celula[k].flup.tabelaDinamica = 0;
+                            }
+                        } else if (malha[i].celula[j].acsr.tipo == 16) {
+                        	malha[i].celula[j].acsr.poroso2D.dados.flup.tabelaDinamica = 0;
+                            int ncelRad = malha[i].celula[j].acsr.poroso2D.dados.transfer.ncel;
+                            for (int k = 0; k < ncelRad; k++) {
+                            	malha[i].celula[j].acsr.poroso2D.dados.transfer.celula[k].flup.tabelaDinamica = 0;
+                            }
+                            int ncelEle = malha[i].celula[j].acsr.poroso2D.malha.nele;
+                            for (int k = 0; k < ncelEle; k++) {
+                            	malha[i].celula[j].acsr.poroso2D.malha.mlh2d[k].flup.tabelaDinamica = 0;
+                            }
+                        } else if (malha[i].celula[j].acsr.tipo == 10)
+                        	malha[i].celula[j].acsr.injm.FluidoPro.tabelaDinamica = 0;
+                    }
+                }
 
                 if (j > 0) {
                     malha[i].celula[j - 1].rpR = malha[i].celula[j - 1].rpRi = malha[i].celula[j].rpC;
@@ -11711,7 +11772,9 @@ void RedeParalela(SProd *malha, Rede &arqRede, int narq,
                 }
             }
         }
-
+        (*vG1d).modoTransiente = 1;
+         (*malha[iP].vg1dSP).modoTransiente = 1;
+         (*malha[iS].vg1dSP).modoTransiente = 1;
         SolveRedeParalelaTrans(malha, arqRede, nrede);
     }
 }
@@ -12010,6 +12073,36 @@ void RedeAnelGL(SProd *malha, Rede &arqRede, int narq,
             malha[i].celula[j].mipC = malha[i].celula[j].flui.ViscOleo(malha[i].celula[j].pres, malha[i].celula[j].temp);
             malha[i].celula[j].migC = malha[i].celula[j].flui.ViscGas(malha[i].celula[j].pres, malha[i].celula[j].temp);
             malha[i].celula[j].micC = malha[i].celula[j].fluicol.VisFlu(malha[i].celula[j].pres, malha[i].celula[j].temp);
+            if (malha[i].arq.tabelaDinamica == 1) {
+            	malha[i].arq.tabelaDinamica = 0;
+                for (int j = 0; j <= malha[i].ncel; j++) {
+                	malha[i].celula[j].flui.tabelaDinamica = 0;
+                    if (malha[i].celula[j].acsr.tipo == 1)
+                    	malha[i].celula[j].acsr.injg.FluidoPro.tabelaDinamica = 0;
+                    else if (malha[i].celula[j].acsr.tipo == 2)
+                    	malha[i].celula[j].acsr.injl.FluidoPro.tabelaDinamica = 0;
+                    else if (malha[i].celula[j].acsr.tipo == 3)
+                    	malha[i].celula[j].acsr.ipr.FluidoPro.tabelaDinamica = 0;
+                    else if (malha[i].celula[j].acsr.tipo == 15) {
+                    	malha[i].celula[j].acsr.radialPoro.flup.tabelaDinamica = 0;
+                        int ncelRad = malha[i].celula[j].acsr.radialPoro.ncel;
+                        for (int k = 0; k < ncelRad; k++) {
+                        	malha[i].celula[j].acsr.radialPoro.celula[k].flup.tabelaDinamica = 0;
+                        }
+                    } else if (malha[i].celula[j].acsr.tipo == 16) {
+                    	malha[i].celula[j].acsr.poroso2D.dados.flup.tabelaDinamica = 0;
+                        int ncelRad = malha[i].celula[j].acsr.poroso2D.dados.transfer.ncel;
+                        for (int k = 0; k < ncelRad; k++) {
+                        	malha[i].celula[j].acsr.poroso2D.dados.transfer.celula[k].flup.tabelaDinamica = 0;
+                        }
+                        int ncelEle = malha[i].celula[j].acsr.poroso2D.malha.nele;
+                        for (int k = 0; k < ncelEle; k++) {
+                        	malha[i].celula[j].acsr.poroso2D.malha.mlh2d[k].flup.tabelaDinamica = 0;
+                        }
+                    } else if (malha[i].celula[j].acsr.tipo == 10)
+                    	malha[i].celula[j].acsr.injm.FluidoPro.tabelaDinamica = 0;
+                }
+            }
 
             if (j > 0) {
                 malha[i].celula[j - 1].rpR = malha[i].celula[j - 1].rpRi = malha[i].celula[j].rpC;
@@ -13087,6 +13180,7 @@ int main(int argc, char **argv) {
                     sistem1.celula[i].mipC = sistem1.celula[i].flui.ViscOleo(sistem1.celula[i].pres, sistem1.celula[i].temp);
                     sistem1.celula[i].migC = sistem1.celula[i].flui.ViscGas(sistem1.celula[i].pres, sistem1.celula[i].temp);
                     sistem1.celula[i].micC = sistem1.celula[i].fluicol.VisFlu(sistem1.celula[i].pres, sistem1.celula[i].temp);
+                    sistem1.celula[i].flui.tabelaDinamica=0;
 
                     if (i > 0) {
                         sistem1.celula[i - 1].rpR = sistem1.celula[i - 1].rpRi = sistem1.celula[i].rpC;

@@ -3468,6 +3468,7 @@ JSON_entrada_perfilProducao::JSON_entrada_perfilProducao(){
 	contents["subResfria"] = make_shared<JSON_entrada_perfilProducao_subResfria>();
 	contents["dadosParafina"] = make_shared<JSON_entrada_perfilProducao_dadosParafina>();
 	contents["correlacaoBB"] = make_shared<JSON_entrada_perfilProducao_correlacaoBB>();
+	contents["titulo"] = make_shared<JSON_entrada_perfilProducao_titulo>();
 }
 
 JSON_entrada_perfilProducao_ativo& JSON_entrada_perfilProducao::ativo(){
@@ -3753,6 +3754,10 @@ JSON_entrada_perfilProducao_dadosParafina& JSON_entrada_perfilProducao::dadosPar
 
 JSON_entrada_perfilProducao_correlacaoBB& JSON_entrada_perfilProducao::correlacaoBB(){
 	return static_cast<JSON_entrada_perfilProducao_correlacaoBB&>(*contents["correlacaoBB"].get());
+}
+
+JSON_entrada_perfilProducao_titulo& JSON_entrada_perfilProducao::titulo(){
+	return static_cast<JSON_entrada_perfilProducao_titulo&>(*contents["titulo"].get());
 }
 
 JSON_entrada_perfilServico::JSON_entrada_perfilServico(){
