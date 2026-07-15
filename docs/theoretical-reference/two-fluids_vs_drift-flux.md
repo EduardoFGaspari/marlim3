@@ -2,6 +2,8 @@
 
 The purpose of this section is therefore to use the comparison between them to provide physical and mathematical insight into the modeling choices adopted in `Marlim3`. In particular, the comparison is useful because it clarifies how each formulation distributes transient information among different wave families. For the present documentation, the main goal is to build practical intuition about which variables are mainly associated with fast pressure-carrying waves, which are associated with slower holdup-carrying waves, and what this implies for the numerical treatment adopted later.
 
+Before introducing the governing equations, a brief note on geometry is warranted. In a long pipe, variations of physical quantities in the radial and azimuthal directions are small relative to those in the axial direction, and it is standard practice to work with cross-sectional averages. This collapses the three-dimensional wave problem to a single propagation direction — the pipe axis — giving rise to **plane waves**, and the one-dimensional formulations that follow rest on this assumption.
+
 ## Two-fluid model
 
 In a one-dimensional, two-phase two-fluid formulation, two mass conservation equations are employed, one for the liquid phase and one for the gas phase. Likewise, two momentum conservation equations are solved, again one for each phase. Energy conservation may be represented either by a mixture equation or by separate equations for each phase, depending on the desired level of detail.

@@ -1,3 +1,5 @@
+In `Marlim3` multiphase flow model, temperature is advected predominantly by the slowest wave family, at a speed close to the mean flow velocity. Pressure, by contrast, adjusts through the much faster acoustic families. As a result, in any transient where an initial imbalance exists — for instance a cold fluid upstream of a hot fluid separated by a closed valve — the pressure profile reaches a quasi-steady distribution long before the thermal front has propagated appreciably. The thermal field remains genuinely hyperbolic and continues to evolve at the slower flow timescale. This separation justifies treating the energy equation with an explicit convective scheme driven by the already-known flow velocity, while pressure is handled implicitly.
+
 Assuming a one-dimensional model, the energy conservation equations for each phase (liquid and gas) of the stream are:
 
 $$\begin{aligned}
