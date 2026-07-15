@@ -88,7 +88,7 @@ It is therefore reasonable to state that both the **degree of phase coupling** a
 The objective here is not to present a full characteristic analysis of the two-fluid model represented by the equations above. It suffices to note that such a model gives rise to **four families of dynamic waves**. For instance, in horizontal stratified flow, the propagation speeds in a two-fluid formulation are approximately given by
 
 $$
-c_{1,2} \sim U_g \pm \sqrt{\left.\frac{\partial p}{\partial \rho}\right}
+c_{1,2} \sim U_g \pm \sqrt{\frac{\partial p}{\partial \rho}}
 $$
 
 and
@@ -97,7 +97,26 @@ $$
 c_{3,4} \sim U_l \pm \sqrt{g h}
 $$
 
-In the expressions above, $h$ denotes a characteristic liquid-level scale, and the derivative $\left.\frac{\partial p}{\partial \rho}\right$ represents an effective gas compressibility contribution, whose precise form depends on the thermodynamic closure adopted.
+In the expressions above, $h$ denotes a characteristic liquid-level scale, and the derivative $\frac{\partial p}{\partial \rho}$ represents an effective gas compressibility contribution, whose precise form depends on the thermodynamic closure adopted.
 
 These four wave families are one of the key mathematical signatures of the two-fluid model. They reflect the fact that the formulation retains separate momentum balances for the two phases.
 
+For subsonic flow, these expressions — even in approximate form — already reveal two wave families with relatively high propagation speeds, primarily associated with gas compressibility, and two slower wave families, closely analogous to gravity waves in open-channel shallow-water models, that is, in the long-wavelength limit relative to the channel height.
+
+Because these are all dynamic waves, every family carries information related to the pressure field. The faster waves do so mainly through gas compression and expansion, whereas the slower waves are associated with variations in liquid level, which modify the mean flow pressure through changes in the hydrostatic liquid head across the pipe cross-section. The actual mechanism is somewhat more involved, but this interpretation captures the dominant effect.
+
+The two faster wave families transport pressure information more efficiently. By contrast, the slower waves require comparatively large variations in liquid-film height to produce small pressure changes. Consequently, even when these slower waves are involved in pressure transmission, the most evident system response is generally a variation in void fraction or, equivalently, in liquid holdup. In simplified terms, the faster dynamic-wave pair is more directly associated with the transport of pressure information, whereas the slower dynamic-wave pair is more closely associated with the transport of void-fraction information.
+
+In addition to these dynamic wave families, the source terms appearing in the momentum equations give rise to another class of waves, of lower hierarchy than the dynamic ones: the so-called **kinematic waves**, or **density waves**. These waves become important when the inertial terms in the momentum equations are comparatively weak relative to frictional and hydrostatic contributions.
+
+It is important to note that the governing system is not a purely hyperbolic system because of the source terms. As the transient evolves, these source terms may become increasingly influential, and a behavior with elliptic character may emerge. In this regime, pressure can be treated approximately as in a quasi-steady problem, so that the pressure gradient becomes determined essentially by the source terms in the momentum equations.
+
+The principal quantity transported by the kinematic wave is the void fraction. In a two-fluid model, the kinematic-wave propagation speed is approximately given by
+
+$$
+c_{\mathrm{kin}} \sim \frac{\partial U_{sg}}{\partial \alpha}
+$$
+
+This value is also often close to the gas velocity itself. This is an important result: whenever the dynamic terms become of secondary relevance, the kinematic wave assumes most of the responsibility for transporting void-fraction information.
+
+In a drift-flux model, a kinematic wave does not arise as directly as in the two-fluid formulation. Nevertheless, the slowest dynamic wave family in the drift-flux model is itself closely related to the mean gas velocity. In this sense, the two approaches become similar with respect to the transport of void-fraction information in two-phase flow.
