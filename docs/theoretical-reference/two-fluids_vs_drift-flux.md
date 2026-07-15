@@ -1,8 +1,12 @@
-In transient simulators for multiphase pipe flow, the most widely used mechanistic formulation is the **two-fluid model**. `OLGA`, for instance, is based on this class of model; see Bendiksen et al. (1991). In a one-dimensional, two-phase two-fluid formulation, two mass conservation equations are employed, one for the liquid phase and one for the gas phase. Likewise, two momentum conservation equations are solved, again one for each phase. Energy conservation may be represented either by a mixture equation or by separate equations for each phase, depending on the desired level of detail.
+`Marlim3` employs a **drift-flux formulation** in its transient multiphase-flow solver. In order to better understand the structure, capabilities, and limitations of this formulation, it is useful to compare it with the **two-fluid model**, which is the most widely used mechanistic framework for transient multiphase pipe flow. `OLGA`, for instance, is based on this class of model; see Bendiksen et al. (1991).
 
-Focusing on mass and momentum conservation, the governing equations can be written as follows.
+The purpose of this section is therefore to use the comparison between them to provide physical and mathematical insight into the modeling choices adopted in `Marlim3`.
 
 ## Two-fluid model
+
+In a one-dimensional, two-phase two-fluid formulation, two mass conservation equations are employed, one for the liquid phase and one for the gas phase. Likewise, two momentum conservation equations are solved, again one for each phase. Energy conservation may be represented either by a mixture equation or by separate equations for each phase, depending on the desired level of detail.
+
+Focusing first on the two-fluid model, the governing mass and momentum equations can be written as follows.
 
 ### Liquid mass conservation
 
@@ -157,6 +161,41 @@ $$
 + \rho_m g A\sin\theta
 $$
 
-Compared with the two-fluid model, the drift-flux formulation replaces the two separate phase-momentum equations by a single mixture momentum balance. This reduction simplifies the mathematical structure of the model and removes the explicit interfacial shear term from the momentum equations. The relative motion between phases is then introduced through an additional closure relation, which plays the central role in the drift-flux framework.
+Compared with the two-fluid model, the drift-flux formulation replaces the two separate phase-momentum equations by a single mixture momentum balance. This reduction simplifies the mathematical structure of the model and removes the explicit interfacial shear term from the momentum equations.
 
-The price paid for this simplification is that the relative motion between phases must now be introduced through an additional closure relation. In the drift-flux framework, this role is played by a constitutive relation linking gas velocity, mixture velocity, and phase distribution. The resulting model is therefore simpler than the two-fluid formulation, while still retaining the essential mechanisms required to describe phase slip in many practical situations.
+The main consequence of this reduction is that the terms associated with interfacial forces — interfacial drag and local pressure disturbances at the interface — become embedded in the model rather than appearing explicitly. Naturally, the formulation now requires an additional constitutive relation so that it can be closed mathematically and still represent, in physical terms, the coupling between phases. Although the interfacial terms are hidden, the coupling still occurs at the interface. Therefore, any constitutive relation introduced in the drift-flux framework must ultimately be derived from the physical processes taking place there.
+
+An instructive way to motivate such a constitutive relation is through a simple experiment. Consider a single bubble rising in a liquid. If the bubble ascends at constant velocity, the net force acting on it must be zero. One of the forces is buoyancy; the other is the resultant of the forces acting at the interface, essentially film drag and form drag. The bubble translational velocity, denoted here by $U_t$, is therefore a direct consequence of the force balance, part of which originates from interfacial effects.
+
+In this sense, analyzing the translational velocity of one phase relative to the surrounding fluid provides an indirect, or hidden, representation of the interfacial forces responsible for phase coupling. If the surrounding medium moves with velocity $j$, the bubble velocity may be written simply as
+
+$$
+U_{\mathrm{bubble}} = j + U_t
+$$
+
+The main advantage of models based on relative velocities between phases is that they are much easier to obtain experimentally and to represent empirically than models attempting to resolve localized pressure disturbances at the interface directly. Of course, relations written specifically for the rise velocity of a single bubble are not directly suitable as a general closure for two-phase pipe flow, but they indicate the appropriate modeling strategy.
+
+One cannot, for example, immediately extrapolate the previous expression to a relation such as $U_g = j + U_t$, with $j$ interpreted as the mixture velocity, without further averaging considerations. Consider dispersed bubbly flow in a pipe. The problem is now more complex than that of a single bubble rising in a quiescent liquid, because the gas velocity must be represented in an averaged sense over the pipe cross-section.
+
+Since the local mixture velocity varies across the cross-section, an averaging procedure is required to obtain a representative gas velocity relative to the mixture. To account for this nonuniformity, the **distribution parameter** is introduced; see Ishii and Hibiki (2006):
+
+$$
+C_0 = \frac{\langle \alpha_g j \rangle}{\langle \alpha_g \rangle \langle j \rangle}
+$$
+
+where $\langle \cdot \rangle$ denotes cross-sectional averaging. With this definition, one may write a more general kinematic relation connecting gas velocity to mixture velocity:
+
+$$
+U_g = C_0 j + U_d
+$$
+
+where $U_d$ is the drift velocity. The value of $C_0$ depends on how the gas fraction is distributed over the pipe cross-section and on the velocity profile of the mixture. When gas is distributed nearly uniformly over the cross-section, $C_0$ tends to be close to 1, as in annular flow. In turbulent flow, when gas is concentrated near the pipe center, $C_0$ tends to approach the multiplier associated with the maximum velocity of the turbulent profile, typically about $1.2$. This behavior is observed, for instance, in the translational velocity of the nose of an elongated bubble or Taylor bubble. In laminar flow, by contrast, $C_0$ may approach 2.
+
+For mixture velocities of order unity or greater, the drift velocity tends to play a secondary role, whereas the distribution parameter becomes more relevant. In segregation-dominated processes — especially those of interest in shut-in analyses or severe slugging — the drift velocity becomes increasingly important.
+
+The key point is that a wide range of drift-flux correlations is now available for different flow configurations. It is true that such correlations are usually derived from steady-state experiments, which may limit their applicability to transient problems. However, this limitation does not appear to be critical for slow transients. Furthermore, because only the mixture momentum equation is retained, the drift-flux model is often regarded as particularly suitable for flow patterns with strong phase coupling; see Ishii and Hibiki (2006). This includes dispersed bubbly flow, slug flow, and, in some cases, annular flow when flooding is absent. More recently, broad drift-flux correlations have been proposed that cover a wide variety of flow situations, including segregation processes; see Bhagwat and Ghajar (2014).
+
+
+Regarding wave propagation, the isothermal drift-flux model exhibits **three wave families**. Two of them, as usual, are primarily associated with gas compressibility. The third is a low-speed dynamic wave whose propagation speed is approximately equal to the mean gas velocity. This third family is especially relevant in the drift-flux model for most transient problems of interest in production and transport systems, since it is the wave family chiefly responsible for transporting void-fraction information. For a complete eigenvalue analysis of the one-dimensional isothermal drift-flux model, see Santin and Rosa (2016).
+
+The next section presents the derivation of the model adopted in the `Marlim3` transient solver.

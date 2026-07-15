@@ -60,6 +60,7 @@ nav:
     - JSON Schema: single-branch-model-reference/json-schema.md
   - Theory:
     - Overview: theoretical-reference/index.md
+    - Drift-Flux vs. Two-Fluid: theoretical-reference/two-fluids_vs_drift-flux.md
     - Mass & Momentum Balances: theoretical-reference/mass-momentum-balances.md
     - Energy Balance: theoretical-reference/energy-balance.md
     - Discretization: theoretical-reference/discretization.md
