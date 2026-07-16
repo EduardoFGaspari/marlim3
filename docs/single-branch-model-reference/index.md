@@ -1,6 +1,6 @@
 # Single-Branch Model Reference
 
-Complete reference for all JSON input fields that define a single-branch (single-pipe) simulation in Marlim3.
+Complete reference for all JSON input fields that define a single-branch (single-pipe) simulation in `Marlim3`.
 
 Each page covers one top-level object or configuration block: its purpose, key fields, accepted values, units, and relationship to other objects.
 

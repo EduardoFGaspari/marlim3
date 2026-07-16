@@ -83,7 +83,11 @@ Special care must therefore be taken in estimating the interfacial friction fact
 
 For stratified flow with a smooth interface — the canonical separated-flow configuration — the interfacial closure is comparatively straightforward. In this regime, interfacial friction is essentially associated with film drag rather than form drag. Since form drag depends strongly on interfacial geometry, its absence greatly simplifies closure development. Moreover, because the interfacial shear is relatively small in smooth stratified flow, the coupling between phases is also weak.
 
-By contrast, in wavy stratified flow the interface is disturbed by dispersive waves whose wavelength is much smaller than the pipe diameter; see Figure 12. Under these conditions, the interfacial phenomena become substantially more complex and more difficult to model. Even the pressure field in the vicinity of the interface may exhibit highly intricate behavior. In addition, the friction factor is no longer associated solely with film drag: a significant contribution from **form drag** typically arises, and this contribution is generally much larger than the film-drag component.
+By contrast, in wavy stratified flow the interface is disturbed by dispersive waves whose wavelength is much smaller than the pipe diameter, as depicted in the following figure:
+
+![wavy_stratified](../img/wavy_stratified.png)
+
+ Under these conditions, the interfacial phenomena become substantially more complex and more difficult to model. Even the pressure field in the vicinity of the interface may exhibit highly intricate behavior. In addition, the friction factor is no longer associated solely with film drag: a significant contribution from **form drag** typically arises, and this contribution is generally much larger than the film-drag component.
 
 As a consequence, the coupling between the liquid and gas phases increases, which is physically expected. In more intuitive terms, strong interfacial drag causes the two phases to move in a more tightly coupled manner, even when the configuration remains clearly separated, as in stratified flow. The same reasoning applies to annular flow, in which the interfacial friction force associated with form drag is also very large, again leading to strong phase coupling.
 
@@ -129,9 +133,19 @@ This value is also often close to the gas velocity itself. This is an important 
 
 In a drift-flux model, a kinematic wave does not arise as directly as in the two-fluid formulation. Nevertheless, the slowest dynamic wave family in the drift-flux model is itself closely related to the mean gas velocity. In this sense, the two approaches become similar with respect to the transport of void-fraction information in two-phase flow.
 
-Consider the initial condition illustrated in the next figure: a pipe divided into two regions by a ball valve. If the valve is opened rapidly, the system undergoes fast transient changes, partly governed by the faster wave families and partly governed by the slower ones.
+Consider the initial condition illustrated in the next figure: a pipe divided into two regions by a ball valve. 
+
+![ball_valve1](../img/ball_valve1.png)
+
+If the valve is opened rapidly, the system undergoes fast transient changes, partly governed by the faster wave families and partly governed by the slower ones.
+
+![ball_valve2](../img/ball_valve2.png)
 
 As expected, pressure information propagates more rapidly than holdup information. The latter is associated with the slower dynamic waves and, once dynamic effects related to fluid acceleration become negligible, the transient behavior is governed predominantly by the kinematic wave, also referred to as the continuity wave or density wave; see Wallis (1969).
+
+The following figure illustrates the holdup information propagation process, when hyperbolic phenomena related to the physical quantity of pressure become of little relevance.
+
+![ball_valve3](../img/ball_valve3.png)
 
 ## Drift-flux model
 
@@ -179,9 +193,7 @@ $$
 
 The main advantage of models based on relative velocities between phases is that they are much easier to obtain experimentally and to represent empirically than models attempting to resolve localized pressure disturbances at the interface directly. Of course, relations written specifically for the rise velocity of a single bubble are not directly suitable as a general closure for two-phase pipe flow, but they indicate the appropriate modeling strategy.
 
-One cannot, for example, immediately extrapolate the previous expression to a relation such as $U_g = j + U_t$, with $j$ interpreted as the mixture velocity, without further averaging considerations. Consider dispersed bubbly flow in a pipe. The problem is now more complex than that of a single bubble rising in a quiescent liquid, because the gas velocity must be represented in an averaged sense over the pipe cross-section.
-
-Since the local mixture velocity varies across the cross-section, an averaging procedure is required to obtain a representative gas velocity relative to the mixture. To account for this nonuniformity, the **distribution parameter** is introduced; see Ishii and Hibiki (2006):
+One cannot, for example, immediately extrapolate the previous expression to a relation such as $U_g = j + U_t$, with $j$ interpreted as the mixture velocity, without further averaging considerations. Consider dispersed bubbly flow in a pipe. The problem is now more complex than that of a single bubble rising in a quiescent liquid, because the gas velocity must be represented in an averaged sense over the pipe cross-section. Since the local mixture velocity varies across the cross-section, an averaging procedure is required to obtain a representative gas velocity relative to the mixture. To account for this nonuniformity, the **distribution parameter** is introduced; see Ishii and Hibiki (2006):
 
 $$
 C_0 = \frac{\langle \alpha_g j \rangle}{\langle \alpha_g \rangle \langle j \rangle}
@@ -205,3 +217,17 @@ Regarding wave propagation, the isothermal drift-flux model exhibits **three wav
 This reduction from four dynamic families in the two-fluid model to three in the drift-flux model helps explain why the latter is attractive for the class of problems targeted by `Marlim3`. The formulation gives up part of the detailed phase-wise dynamic description, but it preserves the transport mechanism that is most important for slow production-system transients: the comparatively slow propagation of gas fraction and liquid holdup. At the same time, the fast pressure-related families remain present through the compressible mixture description, which is why the later numerical treatment still solves pressure implicitly. In short, the drift-flux model may be viewed here as a deliberate compromise: it is simpler than a full two-fluid model, but it still retains the wave structure needed to represent the dominant transient mechanisms in the intended applications.
 
 The next section presents the derivation of the model adopted in the `Marlim3` transient solver.
+
+## References
+
+Bhagwat, S. & Ghajar, A., (2014), A flow pattern independent drift flux model based void fraction correlation for a wide range of gas–liquid two phase flow, International Journal of Multiphase Flow Volume 59, February 2014, pp 186-205;
+
+Ishii, M. & Hibiki, T.  (2006), Thermo-fluid Dynamic of Two-Phase Flow, Springer;
+
+Santim, C. Rosa, E., (2015); Roe-type Riemann solver for gas-liquid flows using drift flux model with an approximate form of the Jacobian matrix, Numerical Methods in Fluids, Volume 80, issue 9;
+
+Stuhmiller, J., H., (1977), The Influence of Interfacial Pressure Forces on the Character of Two-Phase Flow Model Equations; International Journal of Multiphase Flow, Vol 3, pp. 551-560;
+
+Wallis, G.B., (1969); One-Dimensional Two-Phase Flow; McGraw-Hill.
+
+Zuber, N. and Findlay, J.A. (1965) Average Volumetric Concentration in Two-Phase Flow Systems. Journal of Heat Transfer, 87, pp 453-468.

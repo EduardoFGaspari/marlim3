@@ -725,3 +725,7 @@ $$
 \frac{\Delta T_i^k}{\Delta x_i} = \frac{T_{i+1}^k - T_i^k}{0.5(\Delta x_i + \Delta x_{i+1})}
 \end{equation}
 $$
+
+## References
+
+Liles, D. & Reed, Wg. (1978), A semi-implicit method for two-phase fluid dynamics, Journal of Computational Physics, Volume 26, Issue 3, March 1978, pp 390-407.

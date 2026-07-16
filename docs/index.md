@@ -2,7 +2,7 @@
 	<img src="img/logo_marlim3.svg" alt="Marlim3 logo" width="320"/>
 </h1>
 
-Marlim3 is a transient 1D multiphase-flow simulator for production and injection systems in oil and gas applications.
+`Marlim3` is a transient 1D multiphase-flow simulator for production and injection systems in oil and gas applications.
 
 ## Core Capabilities
 
@@ -24,7 +24,7 @@ Marlim3 is a transient 1D multiphase-flow simulator for production and injection
 - **Near wellbore model**: radial and 2D models to consider phenomena such as water coning
 - **Thermal diffusion**: 2D and 3D coupled to the 1D flow model
 
-## How You Can Use Marlim3
+## How You Can Use `Marlim3`
 
 - **Streamlit GUI** for interactive model setup and result inspection (available also as a standalone app in GitHub Releases section)
 - **Python package** for automation, integration, and parametric studies

@@ -127,7 +127,7 @@ In \eqref{eq:energy_111}, a term directly related to the interphase mass transfe
 
 As previously stated, `Marlim3` operates directly with pressure and temperature as primitive variables. It is therefore necessary to invoke the thermodynamic relations between enthalpy, internal energy, pressure, and temperature in order to arrive at the final form of the energy transport equation used in `Marlim3`.
 
-From Van Wylen & Sonntag:
+From Van Wylen & Sonntag (1989):
 
 $$dh=c_pdT+\left(\frac{1}{\rho}-T\left.\frac{\partial\frac{1}{\rho}}{\partial T}\right|_p\right) dp \label{eq:dh_generic}$$
 
@@ -245,3 +245,7 @@ Reorganizing:
 $$\left[\rho_g\alpha A c_{vg}^\prime+\rho_l\left(1-\alpha\right)Ac_{vl}\right]\frac{\partial T}{\partial t}+\rho_g\alpha A\frac{1}{z\rho_g}\left(z+T\left.\frac{\partial z}{\partial T}\right|_p\right)\frac{\partial p}{\partial t}+\left[\rho_g\alpha A u_gc_{pg}+\rho_l\left(1-\alpha\right)Au_lc_{pl}\right]\frac{\partial T}{\partial x}-\left[\rho_g\alpha A u_gJ_g+\rho_l\left(1-\alpha\right)Au_lJ_l\right]\frac{\partial p}{\partial x}+\left(\rho_g\alpha A\right)\left(\frac{\partial\frac{u_g^2}{2}}{\partial t}+u_g^2\frac{\partial u_g}{\partial x}\right)+\left[\rho_l\left(1-\alpha\right)A\right]\left(\frac{\partial\frac{u_l^2}{2}}{\partial t}+u_l^2\frac{\partial u_l}{\partial x}\right)=\left(h_{Fg}-h_g\right)\frac{\mathrm{\Gamma}_g}{\mathrm{\Delta L}}+\left(h_{Flp}-h_l\right)\frac{\mathrm{\Gamma}_{lp}}{\mathrm{\Delta l}}+\left(h_{Flc}-h_l\right)\frac{\mathrm{\Gamma}_{lc}}{\mathrm{\Delta l}}-\left(h_g-h_l\right)\psi-\left[\rho_gu_g\alpha_g+\rho_lu_l\left(1-\alpha\right)\right]Ag+Q_w-\frac{A}{\rho_l}p\left(1-\alpha\right)\left(\rho_{lc}-\rho_{lp}\right)\frac{\partial\beta}{\partial t} \label{eq:energy_final}$$
 
 \eqref{eq:energy_final} is the current form of the equation being used in `Marlim3` for calculating temperature in transient processes.
+
+## References
+
+Van Wylen, G., Sonntag, R., (1989), Fundamentals of Classical Thermodynamics.
