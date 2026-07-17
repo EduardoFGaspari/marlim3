@@ -69,15 +69,15 @@ nav:
     - Num4Main — Main Entry Point: dev-guide/num4main.md
     - Core Domain Classes: dev-guide/core-domain-classes.md
     - Input Parsing: dev-guide/input-parsing.md
-    - Steady-State Branch: dev-guide/steady-state-branch.md
+    - Steady-State Solvers: dev-guide/steady-state-branch.md
     - Transient Solver: dev-guide/transient-solver.md
     - Network Simulation: dev-guide/network-simulation.md
     - Fluid Thermodynamics: dev-guide/fluid-thermodynamics.md
     - Heat Transfer: dev-guide/heat-transfer.md
+    - Embedded Solvers: dev-guide/embedded-solvers.md
+    - Parametric Analysis: dev-guide/parametric-analysis.md
     - Injection Well: dev-guide/injection-well.md
     - Natural Convection: dev-guide/natural-convection.md
-    - Parametric Analysis: dev-guide/parametric-analysis.md
-    - Embedded Solvers: dev-guide/embedded-solvers.md
     - Translations: dev-guide/translations.md
 
 extra:

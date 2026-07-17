@@ -2,6 +2,8 @@
 
 Marlim3 embeds specialised multi-dimensional solvers **inside individual pipeline cells** to resolve phenomena that the 1D pipeline discretisation cannot capture: radial/axial heat conduction through complex pipe walls and near-wellbore reservoir flow with multiphase saturations. These solvers are not standalone simulation modes — they live as member objects of cells or accessories and exchange boundary data with the 1D marching solver at every time step.
 
+> **Note on scope:** the equations in this document are **compact governing forms**. The implementation includes geometry-dependent face reconstructions, capillary/elevation correction terms, relaxation, and iterative coupling procedures that are represented in the code through the assembled finite-volume operators and auxiliary state variables.
+
 **Source files:**
 
 | Solver | Header | Implementation |
@@ -82,7 +84,8 @@ where $\rho$, $c_p$ and $k$ are the local density, specific heat and thermal con
 - **Green-Gauss gradient reconstruction** (`calcGradGreen()`) for computing $\nabla T$ at cell centres
 - **Deferred-correction** for non-orthogonal face gradients using the decomposition into orthogonal (`vecE`) and tangential (`vecT`) components
 - Local matrix has shape `(1, nvert+1)` — one equation per cell with contributions from the cell itself and its `nvert` neighbours
-- Global assembly into a **sparse CSR matrix** (`SparseMtx<double>`)
+- Global coefficients are stored in the sparse structure `SparseMtx<double>`
+- The temperature field is advanced through iterative local reconstruction, local assembly, and global coefficient updates over the finite-volume mesh
 
 ### Boundary Conditions
 
@@ -90,8 +93,8 @@ where $\rho$, $c_p$ and $k$ are the local density, specific heat and thermal con
 |---------|--------|-------------|
 | **Dirichlet** | `detDiriPoisson` | Fixed temperature (time-series capable) |
 | **Von Neumann** | `detVNPoisson` | Fixed heat flux (time-series) |
-| **Robin** | `detRicPoisson` | Convective: $q = h (T - T_{amb})$, time-varying $h$ and $T_{amb}$ |
-| **Coupling** | `rotuloAcop` | Internal face coupled to the 1D pipeline — Robin BC with `condLoc` and `hI` from the pipeline cell |
+| **Robin** | `detRicPoisson` | Convective-type boundary using ambient temperature and heat-transfer coefficient |
+| **Coupling** | `rotuloAcop` | Coupled boundary segment to the 1D pipeline, implemented through a local thermal-resistance formulation using `condLoc`, `hI`, and a wall/interface temperature consistent with the coupled heat-flow balance |
 
 ### Key Methods
 
@@ -100,7 +103,7 @@ where $\rho$, $c_p$ and $k$ are the local density, specific heat and thermal con
 | `solverP(vg1dSP, meshFile, condGlob, condLoc, hE, hInt, Tint, Tamb, diamI, diamE, indCel)` | Full constructor: reads mesh, applies material properties, sets coupling parameters |
 | `permanentePoisson()` | Iterative steady-state solve |
 | `inicializaPermanentePoisson()` / `inicializaTransientePoisson()` | Switch all cells between permanent/transient mode flags |
-| `transientePoisson(delt)` | Advance one time step (matrix assembly + linear solve) |
+| `transientePoisson(delt)` | Advance one time step through transient finite-volume assembly and iterative temperature update |
 | `transientePoissonDummy(delt)` | Same, but also updates `tempC0` — used during initialisation sub-cycling |
 | `defineDeltPoisson()` | Returns $\Delta t$ from a piecewise time schedule |
 | `finalizaPassoTransiente(delt, indTramo)` | Updates `tempC0 = tempC`, prints profile at scheduled output times |
@@ -142,14 +145,14 @@ While the 2D Poisson solver works on a single cross-section for **one** pipeline
 | `dados.tInt[i]` | `double[]` | Fluid temperature from pipeline cell `i` |
 | `dados.hI[i]` | `double[]` | Internal convection coefficient from pipeline cell `i` |
 | `dados.qAcop[i]` | `double[]` | Computed heat flux through coupling surface `i` |
-| `dados.tParede[i]` | `double[]` | Wall temperature at coupling surface `i` |
+| `dados.tParede[i]` | `double[]` | Coupling-side temperature value associated with surface `i`; in the current implementation it is set equal to `tInt[i]` |
 | `dados.CC.rotuloAcop[i]` | `string[]` | UNV region label identifying coupling surface `i` |
 
 ### Key Methods
 
 | Method | Purpose |
 |--------|---------|
-| `solverP3D(meshFile, vg1d, nacop, dutoAux, hi, he, ti)` | Constructor: reads UNV mesh, assigns materials by region, sets BCs |
+| `solverP3D(meshFile, vg1d, nacop, dutoAux, hi, he, ti)` | Constructor: reads UNV mesh, assigns materials by region, and initializes the coupling structures and starting values |
 | `permanentePoisson()` | Steady-state solve (returns divergence flag) |
 | `transientePoisson(delt)` | Single transient time step |
 | `transientePoissonDummy(delt, konta)` | Initialisation sub-cycling variant |
@@ -162,8 +165,8 @@ At lines 13604–13665 of [`Num4Main.cpp`](../../src/Num4Main.cpp):
 
 1. The `solverP3D` object is constructed from the UNV mesh file (`modoDifus3DJson`)
 2. Each coupling surface label is matched to a pipeline cell index
-3. Initial `tInt[]` and `hI[]` are set from cell temperatures and convection coefficients
-4. A sub-cycling loop calls `transientePoissonDummy()` until wall heat flux converges (error < tolerance)
+3. The pipeline refreshes `tInt[]` and `hI[]` from the corresponding cell temperatures and convection coefficients
+4. A sub-cycling loop calls `transientePoissonDummy()` until the change in `qTotal[0]` between successive pseudo-steps falls below the imposed tolerance
 
 ---
 
@@ -251,21 +254,29 @@ This is a full **2D unstructured finite-volume** solver for multiphase porous-me
 
 ### Governing Equations
 
-**IMPES** (Implicit Pressure, Explicit Saturation) for three-phase (oil + water + gas) Darcy flow:
+**IMPES form** (Implicit Pressure, Explicit Saturation) for three-phase Darcy flow:
 
-**Pressure equation** (implicit):
+**Pressure equation**:
 
-$$\nabla \cdot \left[ \lambda_o \nabla \Phi_o + \lambda_w \nabla \Phi_w + \lambda_g \nabla \Phi_g \right] = \phi \, c_t \frac{\partial P}{\partial t}$$
+$$
+\nabla \cdot \left[ \lambda_o \nabla \Phi_o + \lambda_w \nabla \Phi_w + \lambda_g \nabla \Phi_g \right] = \phi \, c_t \frac{\partial P}{\partial t}
+$$
 
-where the phase mobilities and potentials are:
+with mobilities and phase-potential-like terms:
 
-$$\lambda_\alpha = \frac{k_{abs} \, k_{r\alpha}}{\mu_\alpha}, \qquad \Phi_o = P - \rho_o g z, \qquad \Phi_w = P - P_{c,AO} - \rho_w g z, \qquad \Phi_g = P + P_{c,GO} - \rho_g g z$$
+$$
+\lambda_\alpha = \frac{k_{abs} \, k_{r\alpha}}{\mu_\alpha}, \qquad \Phi_o = P - \rho_o g z, \qquad \Phi_w = P - P_{c,AO} - \rho_w g z, \qquad \Phi_g = P + P_{c,GO} - \rho_g g z
+$$
 
-**Saturation equations** (explicit, CFL-limited):
+The porous formulation is implemented together with reconstructed auxiliary gradients such as `gradGreenPcAO`, `gradGreenPcOG`, `gradGreenZdatum`, and `gradGreenAZdatum`, plus pressure/flux exchange with the embedded radial transfer model.
 
-$$\phi \frac{\partial S_w}{\partial t} = -\nabla \cdot (\lambda_w \nabla \Phi_w)$$
+**Saturation update**:
 
-$$\phi \frac{\partial S_L}{\partial t} = -\nabla \cdot \left[(\lambda_o + \lambda_w) (\nabla P - \bar\rho g \nabla z)\right]$$
+$$
+\phi \frac{\partial S}{\partial t} + \nabla \cdot (\text{phase fluxes}) = 0
+$$
+
+Saturations are updated explicitly through face-based transport operators (`evoluiSW(...)`) on both the 2D porous mesh and, when active, the radial transfer model.
 
 ### Mesh
 
@@ -297,7 +308,7 @@ Each `elementoPoroso` stores (beyond the FVM geometry shared with Poisson):
 | **Dirichlet** | `detDiriPoroso` | Fixed pressure + saturation (time-series) |
 | **Von Neumann** | `detVNPoroso` | Fixed flux + saturation (time-series) |
 | **Robin** | `detRicPoroso` | Productivity-index-like BC |
-| **Coupling** | `rotuloAcop` + `satAcop` | Coupling face to the embedded 1D radial solver (`dados.transfer`) |
+| **Coupling** | `rotuloAcop` + `satAcop` | Two-way boundary exchange with the embedded radial transfer model, including averaged boundary pressure/saturation transfer and redistributed coupling fluxes |
 
 ### Internal 1D Radial Annulus
 
@@ -306,8 +317,8 @@ The 2D solver contains an embedded `PorosRad` object (`dados.transfer`) that rep
 ```
 Pipeline cell  ←→  1D radial annulus (PorosRad)  ←→  2D reservoir mesh (solverPoro)
                     │                                     │
-                    Pint, sWPoc                      coupling BCs on mesh boundary
-                    fluxIni, fluxIniG                pressure/saturation solution
+                    Pint, sWPoc                      coupling faces labelled by `rotuloAcop`
+                    fluxIni, fluxIniG               averaged boundary pressure/saturation exchange
 ```
 
 ### Key Methods
@@ -315,12 +326,12 @@ Pipeline cell  ←→  1D radial annulus (PorosRad)  ←→  2D reservoir mesh (
 | Method | Purpose |
 |--------|---------|
 | `solverPoro(vg1dSP, meshFile)` | Constructor: reads mesh, material properties, fluid model, BCs |
-| `avancoPressao()` | Implicit pressure solve: assembles global sparse matrix, solves with GMRES/BiCGStab, computes face fluxes, updates the radial `transfer` object |
+| `avancoPressao()` | Pressure-update stage: assembles sparse global coefficients, updates the 2D pressure field, and exchanges pressure/flux data with the radial `transfer` object |
 | `avancoSW(delt)` | Explicit saturation advance from face fluxes (CFL-limited) |
 | `avancoSWcorrec()` | Saturation correction step |
-| `reavaliaDT(delt)` | Re-evaluate time step after CFL violation; sets `reinicia = -1` |
-| `reiniciaEvoluiSW(delt)` | Redo saturation evolution with reduced $\Delta t$ |
-| `pseudoTransientePoroso()` | Pseudo-transient pressure solve for the steady-state pipeline coupling |
+| `reavaliaDT(delt)` | Re-evaluate time step after CFL violation |
+| `reiniciaEvoluiSW(delt)` | Reset local time-step data before redoing the saturation evolution with reduced $\Delta t$ |
+| `pseudoTransientePoroso()` | Pseudo-transient / pseudo-steady pressure-coupling solve used during the steady marching procedure |
 | `transientePoroso(delt)` | Full transient step: pressure + saturation + CFL check |
 | `defineDT(perm)` | Compute $\Delta t$ from CFL conditions and user-specified schedule |
 | `preparaTabDin()` | Build dynamic PVT tables for the porous domain |
@@ -360,7 +371,11 @@ During the steady-state pressure march (`marchaProdPerm*` methods in `SProd`), w
 3. These mass sources are written back to `fontemassLR` / `fontemassGR` on the pipeline cell
 4. The 1D march continues with the updated source terms
 
-For Poisson 2D, the steady-state coupling is implicit within the `TransCal` heat-balance: the `condLoc` / `hI` coupling BC on the Poisson mesh boundary exchanges heat with the fluid.
+For the porous accessories, the steady marching workflow uses the pseudo-steady coupling methods:
+- **type 15:** `pseudoTrans()`
+- **type 16:** `pseudoTransientePoroso()`
+
+For Poisson 2D, the steady-state thermal coupling is handled through the coupled boundary segments and the associated local/global resistance treatment.
 
 ### Transient Coupling
 
@@ -368,22 +383,22 @@ During the transient time loop in [`SisProd.cpp`](../../src/SisProd.cpp):
 
 | Phase | What happens | Line refs |
 |-------|-------------|-----------|
-| **Pressure advance** | `avancoPressao()` on each type-15/16 accessory (implicit pressure, coupled to pipeline cell pressure) | L4747, L4782 |
+| **Pressure advance** | `avancoPressao()` on each type-15/16 accessory (transient pressure update coupled to pipeline cell pressure) | L4747, L4782 |
 | **Saturation advance** | `avancoSW(dt)` on each type-15/16 accessory (explicit, after 1D fraction evolution `EvoluiFrac()`) | L12619, L12625 |
-| **CFL check** | If any porous solver sets `reinicia == -1`, the pipeline triggers `ReiniEvolFrac0()` (global rollback of 1D fractions), then `reavaliaDT()` + `reiniciaEvoluiSW()` with reduced $\Delta t$ | L12630–L12655 |
+| **CFL check** | If any porous solver sets `reinicia == -1`, the pipeline triggers rollback of the 1D fraction evolution, then calls `reavaliaDT()` and `reiniciaEvoluiSW()` with reduced $\Delta t$ | L12630–L12655 |
 | **Saturation correction** | `avancoSWcorrec()` after convergence | L12663, L12665 |
-| **Poisson 2D** | `transientePoisson(dt)` called within the `TransCal` heat-balance loop; fluid temperature `tInt` and convection coefficient `hI` updated from the pipeline cell | per-cell in TransCal |
-| **Poisson 3D** | `transientePoisson(dt)` called once per time step on the system-level `poisson3D` object; each coupling surface receives its cell's `temp` and `hI` | L12405 in SisProd.cpp |
+| **Poisson 2D** | `transientePoisson(dt)` called within the `TransCal` heat-balance loop; fluid temperature `tInt` and convection data are refreshed from the pipeline cell | per-cell in `TransCal` |
+| **Poisson 3D** | `transientePoisson(dt)` called once per time step on the system-level `poisson3D` object; each coupling surface receives its cell's temperature and convection coefficient | L12405 in `SisProd.cpp` |
 | **Rollback** | On outer-iteration failure, `FeiticoDoTempo()` restores both the 1D pipeline state and all embedded solver states to the previous time level | all solvers |
 
 ### IMPES Time-Step Control
 
-The porous solvers use an IMPES scheme where:
+The porous solvers use an IMPES-like workflow where:
 
-- **Pressure** is solved implicitly (sparse linear system) — unconditionally stable
-- **Saturation** is advanced explicitly — CFL-limited
+- **Pressure** is updated implicitly/iteratively through assembled global coefficients
+- **Saturation** is advanced explicitly and is CFL-limited
 
-When the saturation advance violates the CFL condition, the porous solver sets `reinicia = -1`. The 1D pipeline detects this, rolls back the global 1D state (`ReiniEvolFrac0`), and restarts the step with a smaller $\Delta t$. This ensures that the 1D pipeline and porous solvers remain synchronised.
+When the saturation advance violates the CFL condition, the porous solver sets `reinicia = -1`. The 1D pipeline detects this, rolls back the global 1D state, and restarts the step with a smaller $\Delta t$. This ensures that the 1D pipeline and porous solvers remain synchronised.
 
 ---
 
@@ -393,11 +408,11 @@ All three FVM solvers (Poisson 2D, Poisson 3D, Poroso 2D) share the same numeric
 
 ### Gradient Reconstruction
 
-**Green-Gauss method**: the gradient at cell centre $C$ is computed as:
+**Green-Gauss method**: the gradient at cell centre $C$ is computed conceptually as:
 
 $$(\nabla \phi)_C = \frac{1}{V_C} \sum_{f} \phi_f \, \vec{S}_f$$
 
-where $\phi_f$ is the face value (interpolated from neighbour cells) and $\vec{S}_f$ is the outward face-area vector. Each element stores `gradGreen[]` arrays for the primary variable and auxiliary fields (datum elevation, capillary pressures).
+where $\phi_f$ is the face value (interpolated from neighbour cells) and $\vec{S}_f$ is the outward face-area vector. Each element stores Green-Gauss gradient arrays for the primary variables and auxiliary fields.
 
 ### Non-Orthogonality Correction
 
@@ -411,12 +426,9 @@ where $\vec{E}$ is the vector connecting cell centres and $\vec{T}$ is the tange
 
 | Component | Implementation |
 |-----------|----------------|
-| Matrix format | CSR (`SparseMtx<double>`) |
-| Assembly | Per-element local matrices assembled into the global system |
-| Solvers | GMRES (`solverMat==0`), FGMRES (`solverMat==1`), BiCGStab (`solverMat==2`) |
-| Preconditioner | ILU(k) with configurable fill level (`rankLU`), optional graph colouring for parallelism |
-| Tolerance | $10^{-5}$ (Poisson), $10^{-6}$ (Poroso) |
-| Max iterations | `nele` (number of elements) or 80 (Poroso pressure) |
+| Matrix format | Sparse coefficient storage via `SparseMtx<double>` |
+| Iteration style | Repeated local reconstruction, local assembly, and field update loops |
+| Global update | Each solver builds local finite-volume contributions, stores them in the sparse global structure, and advances the solution through the corresponding iterative update procedure |
 
 ### Rollback Mechanism — FeiticoDoTempo
 

@@ -224,10 +224,10 @@ typedef enum { multifasico, injetor, oleoduto } sistemaSimulacao_t;
 | `detMultiBCS` | Multi-stage BCS configuration | Same plus staging info |
 | `detFONGAS` / `detFONLIQ` / `detFONMASS` | Source time series | `tempo[]`, `valor[]`, `indcel`, `indfluP` |
 | `detValv` | Valve opening schedule | `tempo[]`, `abertura[]`, `Cv[]`, `curvaDinamic` |
-| `detMASTER1` | Master valve (wet christmas tree) | `abertura[]`, `razareaativ`, `tempo[]` |
+| `detMASTER1` | Master valve (wet christmas tree) | `abertura[]`, `razareaativ`, `tempo[]`, `curvaCV`, `ncv`, `cvCurv[]` |
 | `detPSEP` | Separator pressure time series | `tempo[]`, `pres[]` |
-| `detCHOKESUP` | Surface choke | `AreaGarg`, `AreaTub`, `cd`, `tipo` |
-| `detPig` | PIG data | `posicLanc`, `posicReceb`, `velLanc`, mass, friction coefficients |
+| `detCHOKESUP` | Surface choke | `cd`, `modelo`, `abertura[]`, `tempo[]`, `curvaDinamic`, `cvCurv[]` |
+| `detPig` | PIG data | `lanca` (launch cell), `receb` (receive cell), `compL` (launch position), `compR` (receive position), `tempo` (launch time) |
 | `detTempo` | Time discretization | `dtmax[]`, `tempoDT[]`, convergence tolerances |
 | `detPROFP` | Profile output config | Variable flags (`pres`, `temp`, `hol`, `ugs`, `uls`, ...), time interval |
 | `detTRENDP` | Trend output config | Same flags plus cell position |
@@ -270,48 +270,67 @@ Ler::Ler(const string IMPFILE, const string ARQUIVO_LOG,
 lerArq()
   │
   ├─ parseEntrada()                        → JSON_entrada jsonDoc
-  │    └─ jsonDoc.load(path)               → RapidJSON parse + recursive key load
+  │    ├─ RapidJSON FileReadStream + ParseStream
+  │    ├─ (optional) JSONKeyTranslator::translateEnToPt() if language == "en"
+  │    └─ jsonDoc.loadFromDocument(rawDoc) → typed JSON_entrada schema
   │
   ├─ parse_configuracao_inicial(...)       → simulation flags, defaults
-  ├─ parse_condcont_pocinjec(...)          → injection well BCs (if applicable)
+  ├─ parse_condcont_pocinjec(...)          → injection well BCs (if pocinjec == 1)
+  │
+  ├─ (business-rule cross-validations)     → warnings/errors for missing required keys
+  │
+  ├─ parse_parafina(...)                   → wax model (if modoParafina == 1)
   ├─ parse_materiais(...)                  → mat[] (material properties)
   ├─ parse_corte(...)                      → corte[] (cross-sections)
   ├─ parse_tempo(...)                      → dtmax, tfinal, schedule
+  │    (only when pocinjec==0 AND transiente==1; otherwise defaults are set inline)
   ├─ parse_tabela(...)                     → tabent (PVT grid: P/T range, npoints)
-  ├─ parse_parafina(...)                   → wax model (if active)
   ├─ parse_fluidos_producao(...)           → flup[] (ProFlu objects)
   ├─ parse_fluido_complementar(...)        → complementary fluid
   ├─ parse_fluido_gas(...)                 → gas fluid
+  ├─ parse_correcao(...)                   → gradient multiplier corrections (if present)
   │
   ├─ Allocate duto[] (nduto = nunidadep + nunidadeg)
   ├─ parse_unidades_producao(...)          → unidadeP[], duto[] (geometry)
   ├─ Allocate celp[] (ncelp cells)
   ├─ Populate celp[] from unidadeP[]      → interpolate IC profiles per cell
-  ├─ parse_unidades_servico(...)           → service line ducts
+  ├─ parse_unidades_servico(...)           → service line ducts (if lingas > 0)
+  ├─ Populate celg[] from unidadeG[]
   │
+  ├─ parse_hidrato(...)                    → hydrate model (if present)
   ├─ parse_ipr(...)                        → IPRS[] (inflow models)
-  ├─ parse_gasInj(...)                     → gas injection BCs
   ├─ parse_fonte_gaslift(...)              → valvgl[] (gas-lift valve geometry)
+  ├─ parse_fontechk(...)                   → choke-type source (fonteChoke key)
   ├─ parse_fonte_gas(...)                  → gas source time series
-  ├─ parse_valv(...)                       → valve opening schedules
   ├─ parse_fonte_liquido(...)              → liquid source time series
   ├─ parse_fonte_massa(...)                → mass source time series
-  ├─ parse_bcs(...)                        → bcs[] (ESP pump curves)
-  ├─ parse_bomba_volumetrica(...)          → volumetric pumps
-  ├─ parse_delta_pressao(...)              → generic ΔP accessories
-  ├─ parse_multibcs(...)                   → multi-stage BCS
-  ├─ parse_fonteCalor(...)                 → heat source accessories
-  ├─ parse_master1(...)                    → master valve (wet christmas tree)
-  ├─ parse_master2(...)                    → secondary master valve
+  ├─ parse_fonte_PoroRadial(...)           → radial porous inflow sources
+  ├─ parse_fonte_Poro2D(...)              → 2D porous inflow sources
+  │
+  ├─ (pocinjec == 0 block):
+  │    ├─ parse_valv(...)                  → valve opening schedules
+  │    ├─ parse_bcs(...)                   → bcs[] (ESP pump curves)
+  │    ├─ parse_multibcs(...)              → multi-stage BCS
+  │    ├─ parse_bomba_volumetrica(...)     → volumetric pumps
+  │    ├─ parse_delta_pressao(...)         → generic ΔP accessories
+  │    ├─ parse_fonteCalor(...)            → heat source accessories
+  │    ├─ parse_furo(...)                  → leak/puncture sources (fontePressao key)
+  │    ├─ parse_master1(...)               → master valve (wet christmas tree)
+  │    ├─ parse_intermitencia(...)         → intermittent flow settings
+  │    ├─ parse_pig(...)                   → PIG data
+  │    ├─ parse_tendencia_producao(...)    → production trend output config
+  │    ├─ parse_tendencia_trans_producao() → production radial trend config
+  │    └─ (if lingas > 0):
+  │         ├─ parse_gasInj(...)           → gas injection BCs at platform
+  │         ├─ parse_master2(...)          → secondary master valve
+  │         ├─ parse_tendencia_servico(...) → service trend output config
+  │         └─ parse_tendencia_trans_servico()
+  │
   ├─ parse_separador(...)                  → separator pressure schedule
   ├─ parse_chokeSup(...)                   → surface choke settings
-  ├─ parse_chokeInj(...)                   → injection choke
-  ├─ parse_intermitencia(...)              → intermittent flow settings
-  ├─ parse_fontechk(...)                   → choke-type source
-  ├─ parse_pig(...)                        → PIG data
+  ├─ parse_chokeInj(...)                   → injection choke (if lingas > 0)
   ├─ parse_perfil_producao(...)            → output profile configuration
-  ├─ parse_perfil_servico(...)             → service line profile config
-  └─ Business-rule cross-validation        → warnings/errors for inconsistencies
+  └─ parse_perfis_trans_producao(...)      → radial profile configuration
 ```
 
 ### parseEntrada() — JSON File Loading
@@ -319,11 +338,22 @@ lerArq()
 ```cpp
 JSON_entrada Ler::parseEntrada() {
     JSON_entrada jsonDoc;
-    jsonDoc.load(impfile.c_str());       // RapidJSON FileReadStream + ParseStream
-    if (jsonDoc.HasParseError()) {
+    // First pass: raw RapidJSON parse to check syntax and detect "language" key
+    FILE* fp = fopen(impfile.c_str(), "r");
+    char buf[65536];
+    FileReadStream stream(fp, buf, sizeof(buf));
+    Document rawDoc;
+    rawDoc.ParseStream(stream);
+    fclose(fp);
+    if (rawDoc.HasParseError()) {
         // Log error with position, line number, and localized message
         logger.log_write_logs_and_exit(LOGGER_FALHA, ...);
     }
+    // Optional English-input translation:
+    // if rawDoc["language"] == "en", all English keys are translated to
+    // their Portuguese equivalents via JSONKeyTranslator::translateEnToPt()
+    // before the typed schema is populated.
+    jsonDoc.loadFromDocument(rawDoc);   // populate typed JSON_entrada schema
     return jsonDoc;
 }
 ```
@@ -340,15 +370,16 @@ If `validacaoJson == tipoValidacaoJson_t::json`, the process stops after confirm
 
 | Parameter | Default | Meaning |
 |-----------|---------|---------|
-| `lingas` | 0 | No gas-lift service line |
-| `equilterm` | 1 | Thermal equilibrium between phases |
-| `transiente` | 0 | Steady-state mode |
-| `flashCompleto` | 0 | Black-oil fluid model |
-| `mono` | 1e-9 | Monophasic criterion |
-| `critcond` | 1e-9 | Condensate criterion |
-| `escorregaPerm` | 0 | No slip in steady-state |
-| `escorregaTran` | 0 | No slip in transient |
-| `CriterioConvergPerm` | 0.001 | Steady-state convergence tolerance |
+| `perm` | `1` | Steady-state calculation enabled |
+| `lingas` | `0` | No gas-lift service line |
+| `equilterm` | `1` | Thermal equilibrium between phases |
+| `transiente` | `0` | Transient mode disabled |
+| `flashCompleto` | `0` | Black-oil fluid model |
+| `mono` | `1e-4` | Monophasic criterion |
+| `critcond` | `0.001` | Condensate criterion |
+| `escorregaPerm` | `0` | No slip in steady-state |
+| `escorregaTran` | `0` | No slip in transient |
+| `CriterioConvergPerm` | `0.001` | Steady-state convergence tolerance |
 | `origemGeometria` | `montante` | Geometry origin at upstream end |
 
 ### JSON overrides
@@ -369,10 +400,11 @@ The `"Avancado"` sub-object contains expert-level settings:
 | Parameter | JSON path | Meaning |
 |-----------|-----------|---------|
 | `nthrd` | `configuracaoInicial.Avancado.nthrd` | Number of OpenMP threads |
-| `dtmax` | `configuracaoInicial.Avancado.dtmax` | Maximum time step (s) |
 | `CriterioMonofasico` | `configuracaoInicial.Avancado.CriterioMonofasico` | Threshold for single-phase treatment |
 | `taxaDespre` | `configuracaoInicial.Avancado.taxaDespre` | Depressurization rate threshold for adaptive model |
 | `modoDifus3D` | `configuracaoInicial.Avancado.modoDifus3D` | 3D thermal diffusion coupling mode |
+
+> **Note:** `dtmax` is **not** set here; it comes from `parse_tempo()`, which reads the `"tempo"` JSON section (called only in transient production mode — see below).
 
 ---
 
@@ -400,7 +432,7 @@ Each production unit defines a section of the pipeline:
 - Cross-section reference `idCorte`
 - Number of cells `ncel` in this segment
 - Total length `comp`
-- Cell widths `dx[]` (uniform or variable)
+- Cell widths `dx[]` (uniform or variable); when `agrupaDiscre == 1`, discretization is specified as groups of cells rather than individual lengths
 - Initial condition profiles `var[][]` — temperature, pressure, holdup, water cut interpolated along the segment length
 
 Similarly, `parse_unidades_servico()` reads the gas-lift service line segments.
@@ -443,7 +475,7 @@ For each active fluid in the JSON array:
 
 ### `parse_tabela()` — PVT table grid
 
-Reads `"tabela"` → `tabent`:
+Reads `"tabela"` → `detTabelaEntalp tabent`:
 
 ```
 tabent.npont = number of interpolation points
@@ -532,21 +564,22 @@ Reads the downstream pressure BC:
 ### `parse_chokeSup()` — Surface choke
 
 Reads the surface choke (topside) parameters:
-- Throat area (`AreaGarg`), upstream pipe area (`AreaTub`)
+- Relative opening schedule `abertura[]` (fraction of pipe area)
 - Discharge coefficient (`cd`)
-- Choke type flag
+- Multiphase choke model selector (`modelo`; 0 = Sachdeva)
+- Optional Cv curve (`curvaCV`, `cvCurv[]`) and dynamic valve model (`curvaDinamic`)
 
 ### `parse_pig()` — PIG (Pipeline Inspection Gauge)
 
 Reads PIG parameters (the PIG is an accessory that travels inside the pipeline):
-- Launch/receive cell positions
-- Launch velocity
-- Mass and friction coefficients
+- Launch cell index (`lanca`) and receive cell index (`receb`)
+- Launch position along the line (`compL`) and receive position (`compR`), in metres from the well bottom
+- Launch time (`tempo`)
 
 ### Output configuration
 
 - `parse_perfil_producao()` / `parse_perfil_servico()`: which variables to write in spatial profiles, at what time intervals
-- `parse_trend_producao()` / `parse_trend_servico()`: which variables to track over time at specific cell positions
+- `parse_tendencia_producao()` / `parse_tendencia_servico()`: which variables to track over time at specific cell positions
 
 ---
 
@@ -557,17 +590,23 @@ The `SProd` constructor ties everything together:
 ```cpp
 SProd::SProd(string nomeArquivoEntrada, string nomeArquivoLog,
              tipoValidacaoJson_t validacaoJson, tipoSimulacao_t tipoSimulacao,
-             varGlob1D *Vvg1dSP, ...)
+             varGlob1D *Vvg1dSP = 0, int TD = -1, int vbloq = 0,
+             int temporario = 0, int reverso = 0,
+             double *compfonte = 0, int *posicfonte = 0,
+             int nfontes = 0, int redeperm = 1)
     : arq(nomeArquivoEntrada, nomeArquivoLog, validacaoJson, tipoSimulacao,
-          reverso, Vvg1dSP, redeperm),       // ← Ler constructed (full JSON parse)
-      flut(arq.ncelp, arq.nvarprofp + 6),    // profile output table
-      flutG(arq.ncelg, arq.nvarprofg + 7),   // gas-line profile table
-      matglobP(2 * arq.ncelp, 3, 2),          // production banded matrix
-      termolivreP(2 * arq.ncelp),             // production RHS vector
-      matglobG(3 * arq.ncelg, 5, 5),          // gas-line banded matrix
-      termolivreG(3 * arq.ncelg)              // gas-line RHS vector
+          reverso, Vvg1dSP, redeperm),           // ← Ler constructed (full JSON parse)
+      flut(arq.ncelp, arq.nvarprofp + 2 + 1 + 1 + 1 + 1),   // profile output table
+      flutG(arq.ncelg, arq.nvarprofg + 2 + 1 + 1 + 1 + 1 + 1), // gas-line profile table
+      matglobP(2 * arq.ncelp, 3, 2),              // production banded matrix
+      termolivreP(2 * arq.ncelp),                 // production RHS vector
+      matglobG(3 * arq.ncelg, 5, 5),              // gas-line banded matrix
+      termolivreG(3 * arq.ncelg)                  // gas-line RHS vector
 {
     // Zero ~80 member variables
+    // ...
+    if (TD >= 0)
+        arq.tabelaDinamica = TD;    // optional dynamic-table override
     // ...
     montasistema(compfonte, posicfonte, nfontes);  // ← build the mesh
 }
@@ -575,9 +614,19 @@ SProd::SProd(string nomeArquivoEntrada, string nomeArquivoLog,
 
 The initializer list is critical:
 1. **`arq`** (type `Ler`) is constructed first — this triggers the full JSON parse
-2. **`flut` / `flutG`** (profile tables) are sized from the parsed cell counts
+2. **`flut` / `flutG`** (profile tables) are sized from the parsed cell counts plus fixed extra columns
 3. **`matglobP` / `matglobG`** (banded matrices) are sized: 2 DOFs/cell for production (P, ṁ), 3 DOFs/cell for gas line (P, ṁ, T)
 4. **`termolivreP` / `termolivreG`** (RHS vectors) match the matrix sizes
+
+The additional constructor parameters after `Vvg1dSP`:
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `TD` | `-1` | Dynamic-table override index; applied to `arq.tabelaDinamica` when ≥ 0 |
+| `vbloq` | `0` | Network blocking mode — forces an inlet source at cell 1 |
+| `temporario` | `0` | Marks this section as a temporary network segment |
+| `reverso` | `0` | Reverses geometry direction (passed through to `Ler`) |
+| `compfonte` / `posicfonte` / `nfontes` | `0`/`0`/`0` | External gas sources from the network layer |
+| `redeperm` | `1` | Enables steady-state network mode |
 
 ---
 
@@ -733,7 +782,8 @@ The formal JSON schema for a single-branch input file is maintained in [`docs/sc
 | `Ler::parse_materiais()` | Leitura.cpp | Material thermal properties → `mat[]` |
 | `Ler::parse_corte()` | Leitura.cpp | Cross-sections → `corte[]` |
 | `Ler::parse_fluidos_producao()` | Leitura.cpp | Fluid properties → `flup[]` (ProFlu) |
-| `Ler::parse_tabela()` | Leitura.cpp | PVT table grid → `tabent` |
+| `Ler::parse_tabela()` | Leitura.cpp | PVT table grid → `detTabelaEntalp tabent` |
+| `Ler::parse_tempo()` | Leitura.cpp | Time step + schedule → `dtmaxserie`, `tfinal` (transient production mode only) |
 | `Ler::parse_unidades_producao()` | Leitura.cpp | Production line segments → `unidadeP[]`, `duto[]` |
 | `Ler::parse_unidades_servico()` | Leitura.cpp | Gas service line segments |
 | `Ler::parse_ipr()` | Leitura.cpp | IPR definitions → `IPRS[]` |
@@ -742,7 +792,7 @@ The formal JSON schema for a single-branch input file is maintained in [`docs/sc
 | `Ler::parse_valv()` | Leitura.cpp | Valve schedules → `detValv` |
 | `Ler::parse_master1()` | Leitura.cpp | Master valve schedule (wet christmas tree) |
 | `Ler::parse_separador()` | Leitura.cpp | Separator pressure schedule |
-| `Ler::parse_pig()` | Leitura.cpp | PIG parameters |
+| `Ler::parse_pig()` | Leitura.cpp | PIG parameters (`lanca`, `receb`, `compL`, `compR`, `tempo`) |
 | `Ler::geraduto()` | Leitura.cpp | `detduto[]` → `DadosGeo dutosMRT[]` |
 | `Ler::novatrans()` | Leitura.cpp | Build `TransCal` heat-transfer objects per cell |
 | `Ler::geracelp()` | Leitura.cpp | `detcelp[]` → `Cel celula[]` (production cells) |

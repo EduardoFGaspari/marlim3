@@ -52,11 +52,11 @@ The steady-state solver methods on `SProd` are organized into two categories:
 - **"Busca" methods** — root-finding algorithms that drive the marcha residual to zero:
   - `buscaProdPfundoPerm()`: paired with `marchaProdPerm1`. Starts from a user-supplied initial guess or a rough hydrostatic estimate of upstream pressure, then uses Ridder's method to converge. Used when `ConContEntrada == 0` and choke is inactive.
   - `buscaProdPfundoPerm2()`: paired with `marchaProdPerm2`. Same algorithm, different objective. Used when `ConContEntrada == 0` and choke is active.
-  - `buscaProdPfundoPerm3()`: variant for `ConContEntrada == 2` (pressure + injection flow-rate BC).
+  - `buscaProdPfundoPerm3(pentrada)`: performs a **direct march** (not a root search) when both the inlet pressure and the inlet multi-phase flow rates are already known — `pentrada` is the inlet pressure passed as an argument, so no bracketing is needed. Called for `ConContEntrada == 2` (imposed inlet pressure with a multi-phase injection source).
   - `buscaProdPfundoPermRev()`: handles reverse flow conditions (negative source rates).
   - `buscaProdPresPresPerm()`: used when `ConContEntrada == 1` (imposed inlet pressure). The unknown is the mass flow rate at the inlet. Choke inactive.
   - `buscaProdPresPresPerm2()` / `buscaProdPresPresPerm3()`: same, with active / closed choke.
-  - `buscaInjPfundoPerm1..5()`: five variants for injection wells, selected by `condpocinj.CC` (0–4 and default).
+  - `buscaInjPfundoPerm1..5()`: five variants for injection wells. The dispatch covers CC0 through CC5 — `Perm1` handles CC1 and CC3, `Perm2` handles CC0, `Perm3` handles CC2, `Perm4` handles CC4, and `Perm5` handles CC5.
 
 ---
 
@@ -66,7 +66,7 @@ The steady-state solver methods on `SProd` are organized into two categories:
 
 Key design principles:
 
-- **Self-sufficiency**: each cell stores copies of adjacent-cell state (left: `presL`, `tempL`, `dutoL`, `fluiL`; right: `presR`, `tempR`, `dutoR`, `fluiR`) plus pointers to neighbor fluids (`ProFlu *fluiL`, `ProFlu *fluiR`). This allows the cell to compute its own mass, energy, and momentum balances without traversing the array.
+- **Self-sufficiency**: each cell stores copies of adjacent-cell geometry and thermodynamic state (left: `presL`, `tempL`, `dutoL`; right: `presR`, `tempR`, `dutoR`) plus **pointers** to neighbour fluids (`ProFlu *fluiL`, `ProFlu *fluiR`). Note that `fluiL`/`fluiR` are raw pointers, not value copies — the fluid objects are owned by the neighbour cells. This allows the cell to compute its own mass, energy, and momentum balances without traversing the array.
 - **One accessory per cell**: each cell has exactly one `acessorio acsr` member. If two devices must exist at the same axial position, the cell must be split in two.
 - **Fluid association**: each cell owns a `ProFlu flui` (hydrocarbon fluid) and a `ProFluCol fluicol` (complementary fluid), enabling multi-fluid simulations with distinct property models per cell.
 - **Heat transfer**: each cell owns a `TransCal calor` object for radial heat exchange (see [Heat Transfer Modeling](heat-transfer.md)).
@@ -95,19 +95,19 @@ The accessory type is identified by the integer flag `tipo`:
 | 3 | IPR (reservoir inflow) | Mass source |
 | 4 | BCS (ESP pump) | Pressure variation |
 | 5 | Choke valve | Pressure variation |
-| 6 | Diameter change | Pressure variation |
+| 6 | *(reserved / unused — diameter-change behaviour is handled via `celula[i].mudaArea` flag and geometry, not via `acsr.tipo`)* | — |
 | 7 | Generic ΔP | Pressure variation |
 | 8 | Volumetric pump | Pressure variation |
 | 9 | Fonte choke (leak through tubing wall, defined by leak area and external pressure) | Mass source |
 | 10 | Multi-phase mass source (per-phase mass flow rates) | Mass source |
 | 11 | Steam IPR | Mass source |
 | 12 | Steam mass source | Mass source |
-| 14 | Volumetric pump for steam | Pressure variation |
+| 14 | *(reserved — `BomVolVapor` class exists but `tipo = 14` is never assigned in the current codebase)* | — |
 | 15 | Radial porous medium inflow | Mass source |
 | 16 | 2D porous medium inflow | Mass source |
 | 17 | Multi-stage BCS | Pressure variation |
 
-> **Note:** Type 13 is unused (skipped in the enumeration). Steam-related types (11, 12, 14) are implemented in [`SisProdVap.cpp`](../../src/SisProdVap.cpp) for vapor line simulations.
+> **Note:** Type 13 is unused (skipped in the enumeration). Types 6 and 14 appear in the comment block of `acessorios.h` but are never assigned by any construction path in `Leitura.cpp`, `LeituraVapor.cpp`, or `SisProdVap.cpp`. Steam-related types that are implemented (11, 12) are assigned in [`LeituraVapor.cpp`](../../src/LeituraVapor.cpp) for vapour-line simulations.
 
 The accessory classes that implement mass-source functionality are defined in [`FonteMas.h`](../../src/FonteMas.h):
 

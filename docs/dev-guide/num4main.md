@@ -2,7 +2,7 @@
 
 `Num4Main.cpp` is the main source file of the Marlim3 simulator. It contains the `main()` function, global variable declarations, data structures used for network convergence, and all top-level solver orchestration routines for steady-state and transient simulations.
 
-**Source:** [`src/Num4Main.cpp`](../../src/Num4Main.cpp)  
+**Source:** [`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)  
 
 ---
 
@@ -53,12 +53,13 @@ The simulator accepts the following arguments (parsed in `main()`):
 
 | Value | Enum | Description |
 |-------|------|-------------|
+| *(default)* | `tipoValidacaoJson_t::none` | Default initial value; treated as no validation |
 | `JSON` | `tipoValidacaoJson_t::json` | Validate JSON structure/format |
 | `SCHEMA` | `tipoValidacaoJson_t::schema` | Validate JSON + schema syntax |
 | `RULES` | `tipoValidacaoJson_t::rules` | Validate JSON + schema + business rules |
 | `OFF` | `tipoValidacaoJson_t::off` | Skip all validation |
 
-> **Note:** Validation is currently forced to `OFF` regardless of the user's choice (hardcoded override after parsing).
+> **Note:** Validation is currently forced to `OFF` regardless of the user's choice (hardcoded override immediately after parsing the `-v` argument).
 
 ---
 
@@ -99,7 +100,7 @@ main()
  │    ├── ptrSistemaProducao = &sistem1 (for emergency snapshot on signal)
  │    │
  │    ├── IF perm == 1 (steady-state):
- │    │    ├── IF AS == 0: SolveTramoSolteiro(sistem1, chutePerm)
+ │    │    ├── IF AP == 0: SolveTramoSolteiro(sistem1, chutePerm)
  │    │    │    ├── IF compositional (flashCompleto == 2):
  │    │    │    │    ├── Pass 1 — switch all cells to black-oil → permanenteSimples()
  │    │    │    │    ├── Extract pressure/flow-rate result as initial guess
@@ -108,12 +109,12 @@ main()
  │    │    │    │    └── Pass 2 — permanenteSimples() with compositional model
  │    │    │    ├── IF black-oil or flash table: permanenteSimples() directly
  │    │    │    └── Print profiles, trends, Poisson/Poroso outputs, LogEvento
- │    │    ├── IF AS == 1, paralelAS == 0: leituraAS()
- │    │    └── IF AS == 1, paralelAS == 1: leituraASparalelo()
- │    │
+ │    │    ├── IF AP == 1, paralelAP == 0: leituraAP()
+ │    │    └── IF AP == 1, paralelAP == 1: leituraAPparalelo()
+ │
  │    ├── ELSE IF perm == 2 (restart from snapshot):
  │    │    └── ReadSnapShot(sistem1)
- │    │
+ │
  │    ├── IF transiente == 1:
  │    │    ├── IF ConContEntrada == 1 (inlet source → imposed-flow BC):
  │    │    │    └── Convert source terms to MC, Mliqini, QL, QG at cell 0; zero out sources
@@ -139,12 +140,12 @@ main()
  │    │         ├── SolveTrans() → advance one time step
  │    │         ├── WriteSnapShot() at user-specified times (tempsnp[])
  │    │         └── WriteSnapShot() → final snapshot after loop exits
- │    │
+ │
  ├── ELSE IF tipoSimulacao == CONVECNAT
  │    └── solv2D::resolve() → 2D natural convection finite-volume solver
  │
  ├── Log INFO "SUCESSO", logger.writeOutputLog()
- ├── arqRelatorioPerfis.close()
+ ├── arqRelatorioPerfis.close() (skipped if INJETOR; called even for CONVECNAT despite manifest not being opened)
  └── return EXIT_SUCCESS
 ```
 
@@ -207,7 +208,6 @@ These variables are declared at file scope and shared across functions in `Num4M
 |----------|------|---------|
 | `pathArqEntrada` | `string` | Directory of the input file |
 | `pathArqExtEntrada` | `string` | Directory for external inputs (PVTSIM, snapshots) |
-| `pathInputFiles` | `string` | Path to `data/inputs/` (auto-discovered) |
 | `pathPrefixoArqSaida` | `string` | Output directory with trailing separator |
 | `arqSaidaSnapShot` | `string` | Snapshot output filename |
 | `diretorioSaida` | `string` | Output directory from `-d` argument |
@@ -240,7 +240,7 @@ These variables are declared at file scope and shared across functions in `Num4M
 
 ### Easter Eggs
 
-`saidaTexto[11]` and `saidaSubTexto[11]` — arrays of humorous quotes (in Portuguese) displayed on simulation completion. A random quote is selected at each run.
+`saidaTexto[16]` and `saidaSubTexto[16]` — arrays of humorous quotes (in Portuguese) displayed on simulation completion. A random entry is selected with `rand() % 16` at each run.
 
 ---
 
@@ -405,7 +405,7 @@ After convergence, writes:
 
 #### Transient
 
-The single-branch transient simulation is driven by the `SolveTrans()` loop inside `main()` (see [High-Level Execution Flow](#high-level-execution-flow)). `SolveTrans()` is a method on `SProd` ([`SisProd.cpp`](../../src/SisProd.cpp)) rather than a free function in `Num4Main.cpp`. The transient loop in `main()` initialises cell-level properties, calls `determinaDT()`, and iterates `SolveTrans()` → `WriteSnapShot()` until `lixo5 ≥ tfinal`.
+The single-branch transient simulation is driven by the `SolveTrans()` loop inside `main()` (see [High-Level Execution Flow](#high-level-execution-flow)). `SolveTrans()` is a method on `SProd` ([`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) rather than a free function in `Num4Main.cpp`. The transient loop in `main()` initialises cell-level properties, calls `determinaDT()`, and iterates `SolveTrans()` → `WriteSnapShot()` until `lixo5 ≥ tfinal`.
 
 ---
 
@@ -484,7 +484,7 @@ Runs a **sequential parametric analysis**: reads `leituraAP.json`, iterates over
 
 **Parallel parametric analysis** using OpenMP. Each parameter case is solved in its own thread with an independent `SProd` copy.
 
-#### `leituraASparaleloReserva(...)`
+#### `leituraAPparaleloReserva(...)`
 
 Variant of parallel parametric analysis with reservoir-model coupling.
 
@@ -510,7 +510,7 @@ Variant of parallel parametric analysis with reservoir-model coupling.
 
 | Function | Description |
 |----------|-------------|
-| `determinarPathArqEntSai(...)` | Resolves input/output file paths; auto-discovers `data/inputs/` up to 5 parent levels |
+| `determinarPathArqEntSai(...)` | Resolves input/output file paths from the input and log file arguments; sets `pathArqEntrada`, `pathPrefixoArqSaida`, and `arqSaidaSnapShot` |
 | `determinarPathArqExtEntrada(string)` | Sets external input path (PVTSIM tables, snapshots) |
 | `determinarPathSaida(string)` | Sets the output directory |
 
@@ -573,7 +573,7 @@ All simulator output is **plain-text** (no binary files). Every output path is p
 
 ### Logger — Structured JSON Log
 
-The `Logger` class ([`Log.h`](../../src/Log.h) / [`Log.cpp`](../../src/Log.cpp)) accumulates events during a run and serialises them to a JSON file via RapidJSON `PrettyWriter`.
+The `Logger` class ([`Log.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Log.h) / [`Log.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Log.cpp)) accumulates events during a run and serialises them to a JSON file via RapidJSON `PrettyWriter`.
 
 | Severity | Enum | Label in JSON |
 |----------|------|---------------|
@@ -716,6 +716,7 @@ The file includes headers organized into the following groups:
 | `SisProd.h` | `SProd` — production system class |
 | `LerRede.h` | `Rede` — network reader |
 | `Leitura.h` | Input file parsing, enums |
+| `LeituraVapor.h` | Vapor/steam input parsing |
 | `LerAP.h` | Parametric analysis reader |
 | `variaveisGlobais1D.h` | `varGlob1D` — shared simulation state |
 | `Log.h` | `Logger` — structured logging |
@@ -736,9 +737,36 @@ The file includes headers organized into the following groups:
 | `celula3.h` | `Cel` — cell (control volume) data structure |
 | `celulaGas.h` | Gas-phase cell extensions |
 | `celulaVapor.h` | Vapor/steam cell extensions |
+| `celRad.h` | Radial cell (porous medium) |
+| `celRad-Simples.h` | Simplified radial cell |
 | `Geometria.h` | Pipe geometry |
 | `GeometriaPoro.h` | Porous media geometry |
 | `estruturas.h` | Core data structures |
+| `estruturasPoisson3D.h` | 3D Poisson solver data structures |
+| `estruturasPoroso.h` | Porous media data structures |
+| `estruturaTabDin.h` | Dynamic PVT table data structures |
+| `estruturaUNV.h` | UNV mesh data structures (3D coupling) |
+
+### Mesh & 2D Elements
+
+| Header | Module |
+|--------|--------|
+| `Elem2D.h` | 2D finite-volume element |
+| `Elem2DPoroso.h` | 2D porous-medium element |
+| `Elem3DPoisson.h` | 3D Poisson element |
+| `Malha2D.h` | 2D mesh for heat diffusion |
+| `Malha2DPoroso.h` | 2D porous-medium mesh |
+| `Malha3DPoisson.h` | 3D Poisson mesh |
+| `dados1Poisson.h` | 1D Poisson data structures |
+| `dados1Poroso.h` | 1D porous-medium data structures |
+| `dados3DPoisson.h` | 3D Poisson data structures |
+
+### Porous Media
+
+| Header | Module |
+|--------|--------|
+| `PorosoRad.h` | Radial porous-medium model |
+| `PorosoRad-Simples.h` | Simplified radial porous-medium model |
 
 ### Mass & Energy Sources
 
@@ -781,8 +809,10 @@ The file includes headers organized into the following groups:
 |--------|--------|
 | `versao.h` | Version string (`VERSAO` macro) |
 | `FA_Hidratos.h` | Hydrate formation model |
+| `FA_Hidratos_Servico.h` | Hydrate formation — service-line variant |
 | `chokegas.h` | Gas choke model |
 | `estrat.h` | Flow pattern (stratification) |
+| `criterioIntermiSevera.h` | Severe intermittency criterion |
 | `Acidentes2.h` | Pipe fittings / singularities |
 | `acessorios.h` | Accessories (valves, etc.) |
 | `mapa.h` | Output mapping |

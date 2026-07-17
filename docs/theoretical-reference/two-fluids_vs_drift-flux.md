@@ -220,6 +220,8 @@ The next section presents the derivation of the model adopted in the `Marlim3` t
 
 ## References
 
+Bendiksen, K. at al, (1991), The Dynamic Two-Fluid Model OLGA: Theory and Application, SPE Prod Eng 6 (02), pp 171-180;
+
 Bhagwat, S. & Ghajar, A., (2014), A flow pattern independent drift flux model based void fraction correlation for a wide range of gas–liquid two phase flow, International Journal of Multiphase Flow Volume 59, February 2014, pp 186-205;
 
 Ishii, M. & Hibiki, T.  (2006), Thermo-fluid Dynamic of Two-Phase Flow, Springer;

@@ -35,6 +35,7 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 12. [Compositional Model Acceleration](#compositional-model-acceleration)
 13. [Output and Post-Processing](#output-and-post-processing)
 14. [Summary of Key Methods](#summary-of-key-methods)
+15. [Available Steady-State Multiphase Flow Models](#available-steady-state-multiphase-flow-models)
 
 ---
 
@@ -711,3 +712,125 @@ After `permanenteSimples` returns successfully, `SolveTramoSolteiro` writes:
 | `CelG::fric` | `src/core/celulaGas.cpp` | Friction-factor evaluation for gas-line cells |
 | `CelG::Rey` | `src/core/celulaGas.cpp` | Reynolds-number evaluation for gas-line cells |
 | `chokeVGL[].massica` | `src/core/chokegas.cpp` | Compressible gas choke mass-flow model |
+
+
+---
+
+## Available Steady-State Multiphase Flow Models
+
+The steady-state branch solver can evaluate multiphase pressure gradient and liquid holdup with two broad model families:
+
+1. the **default drift-flux formulation**, which is the native Marlim3 branch model and the same base model used by the transient solver, and
+2. the **standalone steady-state correlations/mechanistic models** dispatched from [`src/core/GradientCorrelations.cpp`](../../src/core/GradientCorrelations.cpp), including the Gomez model in [`src/core/GomezModel.cpp`](../../src/core/GomezModel.cpp).
+
+### Default model: drift-flux formulation
+
+The default steady-state model is the internal **drift-flux** formulation used by the branch marcher itself.
+
+This is the same physics family used by the transient solver: each cell updates pressure, holdup/void fraction, mixture properties, source terms, and heat transfer using the native Marlim3 closure variables such as `c0`, `ud`, `term1`, and `term2`, together with the `Cel` and `SProd` marching routines documented in this guide.
+
+Use this model as the **reference / standard** steady-state branch formulation when no standalone correlation is explicitly selected.
+
+### Correlation-based steady-state models
+
+The function `executarCorrelacao(...)` in [`src/core/GradientCorrelations.cpp`](../../src/core/GradientCorrelations.cpp) exposes the following steady-state multiphase models through the integer selector `correlacao`.
+
+| `correlacao` | Model | Summary |
+|---|---|---|
+| `0` | Poettmann-Carpenter | Classical vertical-flow correlation; implemented here with no-slip-style holdup. |
+| `1` | Baxendell-Thomas | Vertical-flow correlation; implemented here with no-slip-style holdup. |
+| `2` | Fancher-Brown | Vertical tubing/well correlation. |
+| `3` | Hagedorn-Brown | Vertical two-phase model with bubble and slug/churn handling and acceleration term. |
+| `4` | Duns-Ros | Vertical model with bubble, slug, mist, and transition regimes. |
+| `5` | Orkiszewski | Vertical model with bubble, slug, mist, and transition handling. |
+| `6` | Beggs & Brill | Inclined-pipe correlation with regime-dependent holdup and gradients. |
+| `7` | Mukherjee-Brill | Inclined-flow model covering bubble, slug, mist, and stratified regimes. |
+| `8` | Aziz | Aziz-Govier-Fogarasi style vertical-flow model. |
+| `9` | Gray | Gas-well-oriented vertical correlation with liquid production. |
+| `10` | Oliemans | Annular/dispersed-flow-oriented model with Dukler-based slip correction. |
+| `11` | Dukler | Dukler pressure-gradient framework with Dukler holdup. |
+| `12` | Beggs & Brill with Palmer correction | Same as `6`, with Palmer correction enabled. |
+| `13` | Dukler + Eaton + Flanigan | Dukler framework using Eaton holdup / Flanigan elevation correction. |
+| `14` | Dukler + Minami I | Dukler framework using Minami I holdup. |
+| `15` | Dukler + Minami II | Dukler framework using Minami II holdup. |
+| `16` | Gomez mechanistic model | Unified mechanistic model for horizontal-to-vertical upward two-phase flow. |
+
+### Correlation family notes
+
+Important implementation notes:
+
+- **Poettmann-Carpenter**, **Baxendell-Thomas**, and **Fancher-Brown** are simpler vertical correlations and, in this implementation, use no-slip-style holdup assumptions.
+- **Hagedorn-Brown**, **Duns-Ros**, **Orkiszewski**, **Beggs & Brill**, **Mukherjee-Brill**, **Aziz**, and **Gray** include explicit slip and/or flow-regime logic.
+- The **Dukler family** (`11`, `13`, `14`, `15`) shares the same pressure-gradient framework and mainly changes the holdup subcorrelation:
+  - `11`: Dukler holdup,
+  - `13`: Eaton holdup,
+  - `14`: Minami I holdup,
+  - `15`: Minami II holdup.
+- **Beggs & Brill with Palmer correction** is exposed as a dedicated option rather than a flag hidden from the user.
+- **Oliemans** is implemented with a slip correction that reuses Dukler-style support quantities.
+
+### Gomez mechanistic model
+
+[`src/core/GomezModel.cpp`](../../src/core/GomezModel.cpp) implements a **unified mechanistic model for steady-state two-phase flow from horizontal to vertical upward flow**, based on Gomez, Shoham, Schmidt, Chokshi, and Northug (2000).
+
+This model is selected in `executarCorrelacao(...)` with `correlacao == 16`.
+
+The main solve is performed by `calculateGomez(...)`, which first predicts a flow pattern and then dispatches to a pattern-specific submodel.
+
+#### Flow patterns represented by the Gomez implementation
+
+The current implementation predicts the following patterns:
+
+- `StratifiedSmooth`
+- `StratifiedWavy`
+- `Slug`
+- `AnnularMist`
+- `Bubble`
+- `DispersedBubble`
+
+#### Main submodels used by Gomez
+
+The implementation uses the following internal pattern-specific solvers:
+
+- `solveStratified(...)`
+- `solveSlug(...)`
+- `solveAnnular(...)`
+- `solveBubble(...)`
+- `solveDispersedBubble(...)`
+
+Flow-pattern selection is performed by `predictFlowPattern(...)`, and boundary smoothing is handled by `applySmoothing(...)`.
+
+#### Main implementation features of the Gomez model
+
+This implementation includes:
+
+- **stratified geometry reconstruction** from liquid level,
+- **annular geometry reconstruction** from film thickness,
+- **pattern-specific force balances** for holdup and pressure gradient,
+- **slug-film bifurcation** between near-vertical and lower-inclination cases, and
+- **transition smoothing** near slug↔bubble and slug↔annular boundaries.
+
+For slug flow, two film treatments are used:
+
+- a **symmetric vertical film** model for inclinations $\theta \ge 86^\circ$, and
+- a **stratified/horizontal film** model for inclinations below that threshold.
+
+#### Quantities returned by the Gomez model
+
+`calculateGomez(...)` returns, in SI-like internal form:
+
+- predicted flow pattern,
+- liquid holdup `HL`,
+- frictional pressure gradient `dpdL_fric`, and
+- gravitational pressure gradient `dpdL_grav`.
+
+Inside `executarCorrelacao(...)`, these are converted into the field-unit outputs expected by the legacy correlation interface:
+
+- `holdup`,
+- `frictionGrad`,
+- `gravityGrad`, and
+- `totalGrad`.
+
+#### Practical interpretation
+
+Among the available steady-state alternatives, Gomez is the most explicitly **mechanistic** option in this codebase. Unlike the more empirical correlations in [`src/core/GradientCorrelations.cpp`](../../src/core/GradientCorrelations.cpp), it first identifies the flow pattern and then applies a pattern-specific closure for holdup and pressure gradient.

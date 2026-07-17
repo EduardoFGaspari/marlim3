@@ -332,8 +332,8 @@ The function iterates `while(totPerm < narq)` — i.e., until every branch has b
    - Gas injection (`tipo == 1`): `QGas ≈ 0`
    - Liquid injection (`tipo == 2`): `QLiq ≈ 0`
    - Mass injection (`tipo == 10`): `MassP + MassG + MassC ≈ 0`
-   - IPR (`tipo == 3`): `pocinjec == 0` and flow index ≈ 0
-2. If zero → `perm = 0`, increment `semPerm` counter
+   - IPR (`tipo == 3`), porous media (`tipo == 15`, `tipo == 16`), and `ConContEntrada == 2` branches: **never deactivated** — always kept active regardless of flow index
+2. If zero (types 1, 2, 10 only) → `perm = 0`, increment `semPerm` counter
 
 **Pass 2 — Non-leaf branches** (`nafluente > 0`):
 
@@ -422,7 +422,11 @@ $$q_{g,ST,k} = q_{o,ST,k} \cdot \text{RGO}_k$$
 
 3. Weighted API (via density mixing):
 
-$$\frac{1}{\text{API}_{mix} + 131.5} = \frac{\sum_k \frac{141.5}{(\text{API}_k + 131.5)} \cdot q_{o,ST,k}}{\sum_k q_{o,ST,k}}$$
+$$\frac{141.5}{\text{API}_{mix} + 131.5} = \frac{\sum_k \frac{141.5}{(\text{API}_k + 131.5)} \cdot q_{o,ST,k}}{\sum_k q_{o,ST,k}}$$
+
+   which is equivalent to:
+
+$$\text{API}_{mix} = \frac{141.5}{\dfrac{\sum_k \frac{141.5}{\text{API}_k + 131.5} \cdot q_{o,ST,k}}{\sum_k q_{o,ST,k}}} - 131.5$$
 
 4. Gas density (weighted by gas rate):
 
@@ -450,9 +454,11 @@ For **compositional models**, `totalizaCicloRedeComp()` performs the same logic 
 
 ## Convergence and Relaxation
 
-The network convergence norm is the RMS pressure change at junction nodes:
+The network convergence norm is the **mean relative pressure change** at junction nodes:
 
-$$\text{norma} = \frac{1}{N_{\text{nodes}}} \sqrt{\sum_{\text{nodes}} (P_{\text{new}} - P_{\text{old}})^2}$$
+$$\text{norma} = \frac{\sqrt{\displaystyle\sum_{\text{nodes}} \left(\frac{P_{\text{new}} - P_{\text{old}}}{P_{\text{old}}}\right)^2}}{N_{\text{nodes}}}$$
+
+> **Note**: this is **not** a standard RMS — it is `sqrt(sum) / N`, not `sqrt(sum/N)`. The squared terms are normalised by $P_\text{old}^2$, making the metric dimensionless and scale-independent.
 
 Convergence criteria:
 
@@ -661,7 +667,7 @@ Evaluates **manifold blocking** configuration at a 2-way junction (2 collectors 
 
 Recursive function returning the depth of the network subtree downstream of branch $i$:
 
-$$\text{rank}(i) = \begin{cases} 0 & \text{if } i \text{ is terminal} \\ \sum_{j \in \text{collectors}(i)} (\text{rank}(j) + 1) & \text{otherwise} \end{cases}$$
+$$\text{rank}(i) = \begin{cases} 1 & \text{if any direct collector of } i \text{ is terminal (ncoleta == 0)} \\ \displaystyle\sum_{j \in \text{non-terminal collectors}(i)} (\text{rank}(j) + 1) & \text{otherwise} \end{cases}$$
 
 Used during master collector selection to prefer the branch with the deepest downstream tree.
 
@@ -694,7 +700,8 @@ solveRedeProd(malha[], arqRede, ...)
   │    │    │    ├─ alteraModoFluidoCompBlack() → switch to black-oil
   │    │    │    ├─ convergeRede() → fast black-oil convergence
   │    │    │    ├─ alteraModoFluidoBlackComp() → restore compositional
-  │    │    │    ├─ cicloRedeCompCego() → build dynamic PVT tables
+  │    │    │    ├─ IF tabelaDinamica == 1:
+  │    │    │    │    └─ cicloRedeCompCego() → build dynamic PVT tables
   │    │    │    └─ convergeRede() → full compositional convergence
   │    │    ├─ ELSE: convergeRede() → black-oil convergence
   │    │    └─ end while
@@ -769,14 +776,15 @@ TransAnel(narq, nfontes, indfonte, indtramo, posicfonte, indAnel, dreno, malha, 
   │    ├─ Coupling loop (kontaAcop):
   │    │    ├─ EvoluiFrac() on all branches (production + annulus)
   │    │    ├─ Restart logic (halve dt if reinicia == -1)
+  │    │    ├─ Porous media sub-solvers (if applicable)
   │    │    ├─ calcCCpres(), renovaterm(), SolveAcopPV()
-  │    │    ├─ renova(), FeiticoDoTempo2()
-  │    │    └─ (repeat for 2nd coupling pass if applicable)
+  │    │    └─ marchaEnergTrans()
+  │    │
+  │    ├─ Post-coupling: update fontechk shared source conditions:
+  │    │    primary → secondary: ambient pressure, temperature, quality
+  │    │    secondary → primary: reciprocal conditions
   │    │
   │    ├─ SolveTrans() on all branches (output trends)
-  │    ├─ Update annulus→well drain pressures/temperatures:
-  │    │    presiniG[well] = annulus cell pressure at drain
-  │    │    tempiniG[well] = annulus cell temperature at drain
   │    └─ WriteSnapShot() at scheduled times
 ```
 
@@ -864,7 +872,7 @@ RedeInj(malha[], arqRede, ...)
   ├─ chutePresRedeInj() → initial bottom-hole pressure guess
   │
   ├─ while restartRede == 1:
-  │    while norma > 0.001 × relax:
+  │    while norma > 0.001 × (*vg1dSP).relax:
   │      norma = cicloRedeInj(malha, arqRede, inativo, indativo)
   │
   └─ Print profiles
@@ -934,8 +942,9 @@ if flashCompleto == 2:
     ┌─ Pass 2 — Compositional Refinement ─────────────────────┐
     │  alteraModoFluidoBlackComp(malha, narq, ...)            │
     │    → Restores flashCompleto=2 on ALL cells/accessories  │
-    │  cicloRedeCompCego(malha, ...)                          │
-    │    → One decoupled pass to prepare dynamic PVT tables   │
+    │  IF tabelaDinamica == 1:                                │
+    │    cicloRedeCompCego(malha, ...)                        │
+    │      → One decoupled pass to prepare dynamic PVT tables │
     │  convergeRede(malha, ...) using cicloRedeComp()         │
     │    → Full compositional iteration with molar mixing     │
     └─────────────────────────────────────────────────────────┘
@@ -1201,7 +1210,7 @@ The `signalHandler()` function writes an emergency snapshot on SIGABRT, SIGFPE, 
 | `convergeRede()` | Num4Main.cpp | Outer convergence loop (max 200 iterations) |
 | `cicloRede()` | Num4Main.cpp | One steady-state network iteration (topological order) |
 | `cicloRedeComp()` | Num4Main.cpp | Compositional variant of `cicloRede()` |
-| `cicloRedeCompCego()` | Num4Main.cpp | Blind compositional cycle (initial iterations) |
+| `cicloRedeCompCego()` | Num4Main.cpp | One-shot decoupled compositional pass (blind) |
 | `cicloRedeInj()` | Num4Main.cpp | Injection network iteration cycle (topological order) |
 | `totalizaCicloRede()` | Num4Main.cpp | Node-level fluid mixing (mass/energy-weighted) |
 | `totalizaCicloRedeComp()` | Num4Main.cpp | Compositional node mixing (molar-weighted) |
