@@ -26,34 +26,20 @@ Marlim3 is a transient 1D multiphase-flow simulator for production and injection
 
 ## How You Can Use Marlim3
 
-- **Streamlit GUI** for interactive model setup and result inspection
+- **Streamlit GUI** for interactive model setup and result inspection (available also as a standalone app in GitHub Releases section)
 - **Python package** for automation, integration, and parametric studies
 - **Command-line executable** for direct simulation workflows
 
 For installation instructions and usage guidelines in any of these settings, please refer to the [official repository](https://github.com/petrobras/marlim3).
 
-## User Guide Map
-
-| Concept | What You Learn |
-|---------|----------------|
-| [Fluids](user-guide/fluids.md) | Fluid-model families, PVT files, and property applicability by model |
-| [Materials](user-guide/materials.md) | Thermal-property definitions for wall layers and special material types |
-| [Cross Sections](user-guide/cross-sections.md) | Radial geometry, annular behavior, and layer construction |
-| [Rock Formation](user-guide/rock-formation.md) | Formation thermal memory and rock property assignment |
-| [Pipes](user-guide/pipes.md) | Segment geometry, discretization, ambient coupling, and thermal links |
-| [Accessories](user-guide/accessories.md) | Sources, valves, pumps, pressure devices, and pigging |
-| [Boundary Conditions](user-guide/boundary-conditions.md) | Inlet/outlet closure strategies and injection boundary modes |
-| [Time](user-guide/time.md) | Initialization strategies, step schedule, segregation windows, snapshots |
-| [General](user-guide/general.md) | Global physics switches, correlations, and advanced numerical controls |
-| [Results](user-guide/results.md) | Profile/trend/cross outputs and interpretation strategy |
-
-## Reference and Tutorials
+## Documentation Map
 
 | Section | Content |
 |---------|---------|
-| [JSON Schema Reference](reference/json-schema.md) | Full field catalog, object structure, and units |
-| [Tutorials](tutorials/index.md) | Practical notebook-based workflows |
-| [Bilingual Support](dev-guide/translations.md) | English ↔ Portuguese key mapping and usage |
+| [Tutorials](tutorials/index.md) | Step-by-step notebook-based workflows for common simulation tasks |
+| [Single-Branch Model Reference](single-branch-model-reference/fluids.md) | Full field catalog for fluids, pipes, accessories, boundary conditions, and more |
+| [Theoretical Reference](theoretical-reference/mass-momentum-balances.md) | Mathematical foundations: mass/momentum/energy balances and discretization |
+| [Developer Guide](dev-guide/index.md) | Internal architecture, domain classes, solvers, and extension points |
 
 ## Build This Documentation
 
