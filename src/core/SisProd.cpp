@@ -6464,6 +6464,90 @@ void SProd::auxMiniTab(ProFlu &flui) {
         fluC.EntalpLiq(flui.miniTabDin.pmax, flui.miniTabDin.tmax);
     flui.miniTabDin.HgF[1][1] =
         fluC.EntalpGas(flui.miniTabDin.pmax, flui.miniTabDin.tmax);
+
+
+    std::pair<double, int> titVec[4];
+
+    for(int j=0;j<2;j++){
+    	for(int k=0;k<2;k++){
+    		titVec[2*j+k]={flui.miniTabDin.tit[j][k],2*j+k};
+    	}
+    }
+    std::sort(titVec, titVec + 4);
+    if(titVec[0].first<1e-3){
+    	int busca=1;
+    	while(busca<4 && titVec[busca].first<1e-3)busca++;
+    	if(busca<4){
+    		int jtroca;
+    		int ktroca;
+    		if(titVec[busca].second==0){
+    			jtroca=0;
+    			ktroca=0;
+    		}
+    		else if(titVec[busca].second==1){
+    			jtroca=0;
+    			ktroca=1;
+    		}
+    		else if(titVec[busca].second==2){
+    			jtroca=1;
+    			ktroca=0;
+    		}
+    		else if(titVec[busca].second==3){
+    			jtroca=1;
+    			ktroca=1;
+    		}
+    	    for(int j=0;j<2;j++){
+    	    	for(int k=0;k<2;k++){
+    	    		if(flui.miniTabDin.tit[j][k]<1e-3){
+    	    			flui.miniTabDin.rhogF[j][k]=flui.miniTabDin.rhogF[jtroca][ktroca];
+    	    			flui.miniTabDin.DrhogDpF[j][k]=flui.miniTabDin.DrhogDpF[jtroca][ktroca];
+    	    			flui.miniTabDin.DrhogDtF[j][k]=flui.miniTabDin.DrhogDtF[jtroca][ktroca];
+    	    			flui.miniTabDin.valZ[j][k]=flui.miniTabDin.valZ[jtroca][ktroca];
+    	    			flui.miniTabDin.valdZdT[j][k]=flui.miniTabDin.valdZdT[jtroca][ktroca];
+    	    			flui.miniTabDin.valdZdP[j][k]=flui.miniTabDin.valdZdP[jtroca][ktroca];
+    	    			flui.miniTabDin.cpgF[j][k]=flui.miniTabDin.cpgF[jtroca][ktroca];
+    	    			flui.miniTabDin.HgF[j][k]=flui.miniTabDin.HgF[jtroca][ktroca];
+    	    		}
+    	    	}
+    	    }
+    	}
+    }
+    if(titVec[3].first>1.-1e-3){
+    	int busca=2;
+    	while(busca>=0 && titVec[busca].first>1.+1e-3)busca--;
+    	if(busca>=0){
+    		int jtroca;
+    		int ktroca;
+    		if(titVec[busca].second==0){
+    			jtroca=0;
+    			ktroca=0;
+    		}
+    		else if(titVec[busca].second==1){
+    			jtroca=0;
+    			ktroca=1;
+    		}
+    		else if(titVec[busca].second==2){
+    			jtroca=1;
+    			ktroca=0;
+    		}
+    		else if(titVec[busca].second==3){
+    			jtroca=1;
+    			ktroca=1;
+    		}
+    	    for(int j=0;j<2;j++){
+    	    	for(int k=0;k<2;k++){
+    	    		if(flui.miniTabDin.tit[j][k]>1.-1e-3){
+    	    			flui.miniTabDin.rholF[j][k]=flui.miniTabDin.rholF[jtroca][ktroca];
+    	    			flui.miniTabDin.valBO[j][k]=flui.miniTabDin.valBO[jtroca][ktroca];
+    	    			flui.miniTabDin.DrholDtF[j][k]=flui.miniTabDin.DrholDtF[jtroca][ktroca];
+    	    			flui.miniTabDin.rs[j][k]=flui.miniTabDin.rs[jtroca][ktroca];
+    	    			flui.miniTabDin.cplF[j][k]=flui.miniTabDin.cplF[jtroca][ktroca];
+    	    			flui.miniTabDin.HlF[j][k]=flui.miniTabDin.HlF[jtroca][ktroca];
+    	    		}
+    	    	}
+    	    }
+    	}
+    }
 }
 
 void SProd::geraMiniTabFlu() {
@@ -6487,7 +6571,7 @@ void SProd::geraMiniTabFlu() {
         delt = arq.miniTabDt;
         celula[i].flui.miniTabDin.tmax = celula[i].temp + delt;
         celula[i].flui.miniTabDin.tmin = celula[i].temp - delt;
-        auxMiniTab(celula[i].flui);
+        if(arq.miniTabAtraso > 0)auxMiniTab(celula[i].flui);
         if (celula[i].acsr.tipo == 1) {
             celula[i].acsr.injg.FluidoPro.miniTabDin.pmax = celula[i].flui.miniTabDin.pmax;
             celula[i].acsr.injg.FluidoPro.miniTabDin.pmin = celula[i].flui.miniTabDin.pmin;
@@ -6500,7 +6584,7 @@ void SProd::geraMiniTabFlu() {
                                                                celula[i].acsr.injg.FluidoPro.oCalculatedVapComposition, arq.pocinjec);
             else
                 celula[i].acsr.injg.FluidoPro.atualizaPropComp(celula[i].pres, celula[i].temp, -1, NULL, NULL, arq.pocinjec);
-            auxMiniTab(celula[i].acsr.injg.FluidoPro);
+            if(arq.miniTabAtraso > 0)auxMiniTab(celula[i].acsr.injg.FluidoPro);
         } else if (celula[i].acsr.tipo == 2) {
             celula[i].acsr.injl.FluidoPro.miniTabDin.pmax = celula[i].flui.miniTabDin.pmax;
             celula[i].acsr.injl.FluidoPro.miniTabDin.pmin = celula[i].flui.miniTabDin.pmin;
@@ -6513,7 +6597,7 @@ void SProd::geraMiniTabFlu() {
                                                                celula[i].acsr.injl.FluidoPro.oCalculatedVapComposition, arq.pocinjec);
             else
                 celula[i].acsr.injl.FluidoPro.atualizaPropComp(celula[i].pres, celula[i].temp, -1, NULL, NULL, arq.pocinjec);
-            auxMiniTab(celula[i].acsr.injl.FluidoPro);
+            if(arq.miniTabAtraso > 0)auxMiniTab(celula[i].acsr.injl.FluidoPro);
         } else if (celula[i].acsr.tipo == 3) {
             celula[i].acsr.ipr.FluidoPro.miniTabDin.pmax = celula[i].flui.miniTabDin.pmax;
             celula[i].acsr.ipr.FluidoPro.miniTabDin.pmin = celula[i].flui.miniTabDin.pmin;
@@ -6526,11 +6610,11 @@ void SProd::geraMiniTabFlu() {
                                                               celula[i].acsr.ipr.FluidoPro.oCalculatedVapComposition, arq.pocinjec);
             else
                 celula[i].acsr.ipr.FluidoPro.atualizaPropComp(celula[i].pres, celula[i].temp, -1, NULL, NULL, arq.pocinjec);
-            auxMiniTab(celula[i].acsr.ipr.FluidoPro);
+            if(arq.miniTabAtraso > 0)auxMiniTab(celula[i].acsr.ipr.FluidoPro);
         } else if (celula[i].acsr.tipo == 15) {
-            celula[i].acsr.radialPoro.geraMiniTabFlu();
+        	if(arq.miniTabAtraso > 0)celula[i].acsr.radialPoro.geraMiniTabFlu();
         } else if (celula[i].acsr.tipo == 16) {
-            celula[i].acsr.poroso2D.geraMiniTabFlu();
+        	if(arq.miniTabAtraso > 0)celula[i].acsr.poroso2D.geraMiniTabFlu();
         } else if (celula[i].acsr.tipo == 9) {
             celula[i].acsr.fontechk.fluidoP.miniTabDin.pmax = celula[i].flui.miniTabDin.pmax;
             celula[i].acsr.fontechk.fluidoP.miniTabDin.pmin = celula[i].flui.miniTabDin.pmin;
@@ -6543,7 +6627,7 @@ void SProd::geraMiniTabFlu() {
                                                                  celula[i].acsr.fontechk.fluidoP.oCalculatedVapComposition, arq.pocinjec);
             else
                 celula[i].acsr.fontechk.fluidoP.atualizaPropComp(celula[i].pres, celula[i].temp, -1, NULL, NULL, arq.pocinjec);
-            auxMiniTab(celula[i].acsr.fontechk.fluidoP);
+            if(arq.miniTabAtraso > 0)auxMiniTab(celula[i].acsr.fontechk.fluidoP);
         } else if (celula[i].acsr.tipo == 10) {
             celula[i].acsr.injm.FluidoPro.miniTabDin.pmax = celula[i].flui.miniTabDin.pmax;
             celula[i].acsr.injm.FluidoPro.miniTabDin.pmin = celula[i].flui.miniTabDin.pmin;
@@ -6556,7 +6640,7 @@ void SProd::geraMiniTabFlu() {
                                                                celula[i].acsr.injm.FluidoPro.oCalculatedVapComposition, arq.pocinjec);
             else
                 celula[i].acsr.injm.FluidoPro.atualizaPropComp(celula[i].pres, celula[i].temp, -1, NULL, NULL, arq.pocinjec);
-            auxMiniTab(celula[i].acsr.injm.FluidoPro);
+            if(arq.miniTabAtraso > 0)auxMiniTab(celula[i].acsr.injm.FluidoPro);
         }
     }
     (*vg1dSP).modoTransiente = 1;
@@ -7181,8 +7265,8 @@ void SProd::renovaTemp() {
                     flutemp.atualizaPropComp(celula[i - 1].pres, celula[i - 1].temp * 0.999, flutemp.dCalculatedBeta,
                                              flutemp.oCalculatedLiqComposition,
                                              flutemp.oCalculatedVapComposition, arq.pocinjec);
-                    boM0T = celula[i - 1].flui.BOFunc(celula[i - 1].pres, celula[i - 1].temp * 0.999);
-                    rsM0T = celula[i - 1].flui.RS(celula[i - 1].pres, celula[i - 1].temp * 0.999);
+                    boM0T = flutemp.BOFunc(celula[i - 1].pres, celula[i - 1].temp * 0.999);
+                    rsM0T = flutemp.RS(celula[i - 1].pres, celula[i - 1].temp * 0.999);
                 } // casoComp
                 DRsBoMT = (rsM / boM - rsM0T / boM0T) / (celula[i - 1].temp * 0.001);
             }
@@ -8953,11 +9037,44 @@ void SProd::renovaFracMol2(ProFlu fluiRev) {
     double dt = celula[1].dt;
     double tL = 0.;
     double tH = 70.;
-    if (kontaRenovaComp == arq.miniTabAtraso)
+    if (kontaRenovaComp == arq.miniTabAtraso  && arq.miniTabAtraso > 0)
         (*vg1dSP).modoTransiente = 0;
     int imin = 1;
     if ((*vg1dSP).chaverede != 0 && (celula[0].acsr.tipo == 10 || arq.ConContEntrada > 0))
         imin = 0;
+
+    auto normalizarFracoes = [](vector<double>& fracMolFase, double* fracMolOriginal, int npseudo) {
+        for (int kfrac = 0; kfrac < npseudo; kfrac++) {
+        	fracMolFase[kfrac] = fracMolOriginal[kfrac];
+        }
+    	// Encontrar o menor valor
+        double menorFracFase = fracMolFase[0];
+        for (int kfrac = 1; kfrac < npseudo; kfrac++) {
+            if (menorFracFase > fracMolFase[kfrac]) {
+                menorFracFase = fracMolFase[kfrac];
+            }
+        }
+        menorFracFase=0.;
+
+        // Subtrair o menor valor
+        for (int kfrac = 0; kfrac < npseudo; kfrac++) {
+        	fracMolFase[kfrac] -= menorFracFase;
+        }
+
+        // Calcular soma total
+        double fracTotFase = 0.;
+        for (int kfrac = 0; kfrac < npseudo; kfrac++) {
+            fracTotFase += fracMolFase[kfrac];
+        }
+
+        // Normalizar
+        if (fracTotFase > 0) {
+        	for (int kfrac = 0; kfrac < npseudo; kfrac++) {
+        		fracMolFase[kfrac] /= fracTotFase;
+            }
+        }
+    };
+
     for (int i = imin; i < ncel; i++) {
 
         double pesoMol0;
@@ -9084,6 +9201,20 @@ void SProd::renovaFracMol2(ProFlu fluiRev) {
             pesoMolC += celula[i].flui.masMol[kfrac] * celula[i].flui.fracMol[kfrac];
         }
 
+        /*double menorFracFase = 0.;
+        for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+            if (menorFracFase > fluC[i].fracMol[kfrac]) {
+                menorFracFase = fluC[i].fracMol[kfrac];
+            }
+        }
+        double fracTotFase = 0.;
+        for (int kfrac = 0; kfrac < ncomp; kfrac++)
+            fluC[i].fracMol[kfrac] -= menorFracFase;
+        for (int kfrac = 0; kfrac < ncomp; kfrac++)
+            fracTotFase += fluC[i].fracMol[kfrac];
+        for (int kfrac = 0; kfrac < ncomp; kfrac++)
+            fluC[i].fracMol[kfrac] /= fracTotFase;*/
+
         if ((i > 0 || arq.ConContEntrada == 1) && celula[i].Mliqini >= 0.) {
             double pe;
             double te;
@@ -9097,77 +9228,166 @@ void SProd::renovaFracMol2(ProFlu fluiRev) {
             double fwV = bsw0;
             double rhoOV = (*celula[i].fluiL).MasEspoleo(pe, te);
             double rhoWV = (*celula[i].fluiL).MasEspAgua(pe, te);
+            double titLocal=(*celula[i].fluiL).FracMass(pe, te);
             titV0 = (1 - fwV) * rhoOV / ((1 - fwV) * rhoOV + fwV * rhoWV);
             vazMasLiq0 -= betI0 * celula[i].QL * celula[i].fluicol.MasEspFlu(pe, te);
             vazMasLiq0 *= titV0;
             pesoMol0O = 0;
+            vector<double> fracMolFase(ncomp);
+            normalizarFracoes(fracMolFase, (*celula[i].fluiL).oCalculatedLiqComposition, ncomp);
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
-                fracMol0O[kfrac] = (*celula[i].fluiL).oCalculatedLiqComposition[kfrac];
-                pesoMol0O += (*celula[i].fluiL).masMol[kfrac] * (*celula[i].fluiL).oCalculatedLiqComposition[kfrac];
+                fracMol0O[kfrac] = fracMolFase[kfrac];
+                pesoMol0O += (*celula[i].fluiL).masMol[kfrac] * fracMolFase[kfrac];
+            }
+            if(pesoMol0O<1e-3 || titLocal>1.-1e-3 || celula[i].alfL>1.-1e-3){
+                pesoMol0O = 0;
+                for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+                    fracMol0O[kfrac] = (*celula[i].fluiL).fracMol[kfrac];
+                    pesoMol0O += (*celula[i].fluiL).masMol[kfrac] * (*celula[i].fluiL).fracMol[kfrac];
+                }
             }
         } else {
             double fwV = bsw0;
             double rhoOV = celula[i].flui.MasEspoleo(celula[i].pres, celula[i].temp);
             double rhoWV = celula[i].flui.MasEspAgua(celula[i].pres, celula[i].temp);
+            double titLocal=celula[i].flui.FracMass(celula[i].pres, celula[i].temp);
             titV0 = (1 - fwV) * rhoOV / ((1 - fwV) * rhoOV + fwV * rhoWV);
             vazMasLiq0 -= betI0 * celula[i].QL * celula[i].fluicol.MasEspFlu(celula[i].pres, celula[i].temp);
             vazMasLiq0 *= titV0;
             pesoMol0O = 0;
+            vector<double> fracMolFase(ncomp);
+            normalizarFracoes(fracMolFase, celula[i].flui.oCalculatedLiqComposition, ncomp);
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
-                fracMol0O[kfrac] = celula[i].flui.oCalculatedLiqComposition[kfrac];
-                pesoMol0O += celula[i].flui.masMol[kfrac] * celula[i].flui.oCalculatedLiqComposition[kfrac];
+                fracMol0O[kfrac] = fracMolFase[kfrac];
+                pesoMol0O += celula[i].flui.masMol[kfrac] * fracMolFase[kfrac];
+            }
+            if(pesoMol0O<1e-3 || titLocal>1.-1e-3 || celula[i].alf>1.-1e-3){
+                pesoMol0O = 0;
+                for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+                    fracMol0O[kfrac] = celula[i].flui.fracMol[kfrac];
+                    pesoMol0O += celula[i].flui.masMol[kfrac] * celula[i].flui.fracMol[kfrac];
+                }
             }
         }
         if (celula[i + 1].Mliqini >= 0.) {
             double fwV = bsw1;
             double rhoOV = celula[i].flui.MasEspoleo(celula[i].pres, celula[i].temp);
             double rhoWV = celula[i].flui.MasEspAgua(celula[i].pres, celula[i].temp);
+            double titLocal=celula[i].flui.FracMass(celula[i].pres, celula[i].temp);
             titV1 = (1 - fwV) * rhoOV / ((1 - fwV) * rhoOV + fwV * rhoWV);
             vazMasLiq1 -= betI1 * celula[i].QL * celula[i].fluicol.MasEspFlu(celula[i].pres, celula[i].temp);
             vazMasLiq1 *= titV1;
             pesoMol1O = 0;
+            vector<double> fracMolFase(ncomp);
+            normalizarFracoes(fracMolFase, celula[i].flui.oCalculatedLiqComposition, ncomp);
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
-                fracMol1O[kfrac] = celula[i].flui.oCalculatedLiqComposition[kfrac];
-                pesoMol1O += celula[i].flui.masMol[kfrac] * celula[i].flui.oCalculatedLiqComposition[kfrac];
+                fracMol1O[kfrac] = fracMolFase[kfrac];
+                pesoMol1O += celula[i].flui.masMol[kfrac] * fracMolFase[kfrac];
+            }
+            if(pesoMol1O<1e-3 || titLocal>1.-1e-3 || celula[i].alf>1-1e-3){
+                pesoMol1O = 0;
+                for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+                    fracMol1O[kfrac] = celula[i].flui.fracMol[kfrac];
+                    pesoMol1O += celula[i].flui.masMol[kfrac] * celula[i].flui.fracMol[kfrac];
+                }
             }
         } else {
             double fwV = bsw1;
             double rhoOV = celula[i + 1].flui.MasEspoleo(celula[i + 1].pres, celula[i + 1].temp);
             double rhoWV = celula[i + 1].flui.MasEspAgua(celula[i + 1].pres, celula[i + 1].temp);
+            double titLocal=celula[i+1].flui.FracMass(celula[i+1].pres, celula[i+1].temp);
             titV1 = (1 - fwV) * rhoOV / ((1 - fwV) * rhoOV + fwV * rhoWV);
             vazMasLiq1 -= betI1 * celula[i + 1].QL * celula[i].fluicol.MasEspFlu(celula[i + 1].pres, celula[i + 1].temp);
             vazMasLiq1 *= titV1;
             pesoMol1O = 0;
+            vector<double> fracMolFase(ncomp);
+            normalizarFracoes(fracMolFase, celula[i + 1].flui.oCalculatedLiqComposition, ncomp);
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
-                fracMol1O[kfrac] = celula[i + 1].flui.oCalculatedLiqComposition[kfrac];
-                pesoMol1O += celula[i + 1].flui.masMol[kfrac] * celula[i + 1].flui.oCalculatedLiqComposition[kfrac];
+                fracMol1O[kfrac] = fracMolFase[kfrac];
+                pesoMol1O += celula[i + 1].flui.masMol[kfrac] * fracMolFase[kfrac];
+            }
+            if(pesoMol1O<1e-3 || titLocal>1.-1e-3 || celula[i+1].alf>1-1e-3){
+                pesoMol1O = 0;
+                for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+                    fracMol1O[kfrac] = celula[i + 1].flui.fracMol[kfrac];
+                    pesoMol1O += celula[i + 1].flui.masMol[kfrac] * celula[i + 1].flui.fracMol[kfrac];
+                }
             }
         }
 
         if ((i > 0 || arq.ConContEntrada == 1) && (celula[i].MC - celula[i].Mliqini) >= 0.) {
-            pesoMol0G = 0;
+            double pe;
+            double te;
+            if (i > 0) {
+                pe = celula[i - 1].pres;
+                te = celula[i - 1].temp;
+            } else {
+                pe = presE;
+                te = tempE;
+            }
+        	pesoMol0G = 0;
+            double titLocal=(*celula[i].fluiL).FracMass(pe, te);
+            vector<double> fracMolFase(ncomp);
+            normalizarFracoes(fracMolFase, (*celula[i].fluiL).oCalculatedVapComposition, ncomp);
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
-                fracMol0G[kfrac] = (*celula[i].fluiL).oCalculatedVapComposition[kfrac];
-                pesoMol0G += (*celula[i].fluiL).masMol[kfrac] * (*celula[i].fluiL).oCalculatedVapComposition[kfrac];
+                fracMol0G[kfrac] = fracMolFase[kfrac];
+                pesoMol0G += (*celula[i].fluiL).masMol[kfrac] * fracMolFase[kfrac];
+            }
+            if(pesoMol0G<1e-3 || titLocal<1e-3 || celula[i].alfL<1e-3){
+                pesoMol0G = 0;
+                for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+                    fracMol0G[kfrac] = (*celula[i].fluiL).fracMol[kfrac];
+                    pesoMol0G += (*celula[i].fluiL).masMol[kfrac] * (*celula[i].fluiL).fracMol[kfrac];
+                }
             }
         } else {
             pesoMol0G = 0;
+            double titLocal=celula[i].flui.FracMass(celula[i].pres, celula[i].temp);
+            vector<double> fracMolFase(ncomp);
+            normalizarFracoes(fracMolFase, celula[i].flui.oCalculatedVapComposition, ncomp);
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
-                fracMol0G[kfrac] = celula[i].flui.oCalculatedVapComposition[kfrac];
-                pesoMol0G += celula[i].flui.masMol[kfrac] * celula[i].flui.oCalculatedVapComposition[kfrac];
+                fracMol0G[kfrac] = fracMolFase[kfrac];
+                pesoMol0G += celula[i].flui.masMol[kfrac] * fracMolFase[kfrac];
+            }
+            if(pesoMol0G<1e-3 || titLocal<1e-3 || celula[i].alf<1e-3){
+                pesoMol0G = 0;
+                for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+                    fracMol0G[kfrac] = celula[i].flui.fracMol[kfrac];
+                    pesoMol0G += celula[i].flui.masMol[kfrac] * celula[i].flui.fracMol[kfrac];
+                }
             }
         }
         if ((celula[i + 1].MC - celula[i + 1].Mliqini) >= 0.) {
             pesoMol1G = 0;
+            double titLocal=celula[i].flui.FracMass(celula[i].pres, celula[i].temp);
+            vector<double> fracMolFase(ncomp);
+            normalizarFracoes(fracMolFase, celula[i].flui.oCalculatedVapComposition, ncomp);
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
-                fracMol1G[kfrac] = celula[i].flui.oCalculatedVapComposition[kfrac];
-                pesoMol1G += celula[i].flui.masMol[kfrac] * celula[i].flui.oCalculatedVapComposition[kfrac];
+                fracMol1G[kfrac] = fracMolFase[kfrac];
+                pesoMol1G += celula[i].flui.masMol[kfrac] * fracMolFase[kfrac];
+            }
+            if(pesoMol1G<1e-3 || titLocal<1e-3 || celula[i].alf<1e-3){
+                pesoMol1G = 0;
+                for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+                    fracMol1G[kfrac] = celula[i].flui.fracMol[kfrac];
+                    pesoMol1G += celula[i].flui.masMol[kfrac] * celula[i].flui.fracMol[kfrac];
+                }
             }
         } else {
             pesoMol1G = 0;
+            double titLocal=celula[i+1].flui.FracMass(celula[i+1].pres, celula[i+1].temp);
+            vector<double> fracMolFase(ncomp);
+            normalizarFracoes(fracMolFase, celula[i + 1].flui.oCalculatedVapComposition, ncomp);
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
-                fracMol1G[kfrac] = celula[i + 1].flui.oCalculatedVapComposition[kfrac];
-                pesoMol1G += celula[i + 1].flui.masMol[kfrac] * celula[i + 1].flui.oCalculatedVapComposition[kfrac];
+                fracMol1G[kfrac] = fracMolFase[kfrac];
+                pesoMol1G += celula[i + 1].flui.masMol[kfrac] * fracMolFase[kfrac];
+            }
+            if(pesoMol1G<1e-3 || titLocal<1e-3 || celula[i+1].alf<1e-3){
+                pesoMol1G = 0;
+                for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+                    fracMol1G[kfrac] = celula[i + 1].flui.fracMol[kfrac];
+                    pesoMol1G += celula[i + 1].flui.masMol[kfrac] * celula[i + 1].flui.fracMol[kfrac];
+                }
             }
         }
 
@@ -9348,7 +9568,7 @@ void SProd::renovaFracMol2(ProFlu fluiRev) {
         double rhoWVol;
         double titVol;
         int limCorrige = 1;
-        if (kontaRenovaComp == arq.miniTabAtraso)
+        if (kontaRenovaComp == arq.miniTabAtraso  || arq.miniTabAtraso == 0)
             limCorrige = 2;
         for (int corrige = 0; corrige < limCorrige; corrige++) {
 
@@ -9367,6 +9587,23 @@ void SProd::renovaFracMol2(ProFlu fluiRev) {
 
             double menorFrac = 0.;
             for (int kfrac = 0; kfrac < ncomp; kfrac++) {
+
+                /*double vazMol1O;
+                double vazMol0O;
+                double vazMol1G;
+                double vazMol0G;
+                vazMol1O=vazMasLiq1*fracMol1O[kfrac]/pesoMol1O;
+                vazMol0O=vazMasLiq0*fracMol0O[kfrac]/pesoMol0O;
+                vazMol1G=vazMasGas1*fracMol1G[kfrac]/pesoMol1G;
+                vazMol0G=vazMasGas0*fracMol0G[kfrac]/pesoMol0G;
+            	fluC[i].fracMol[kfrac] = (celula[i].nMolIni * celula[i].flui.fracMol[kfrac] +
+                                          ((fonteO + fonteG) * fluF.fracMol[kfrac] / pesoMolF -
+                                           (vazMol1O + vazMol1G) +
+                                           (vazMol0O + vazMol0G)) *
+                                              dt) /
+                                         tempMol;*/
+
+
                 fluC[i].fracMol[kfrac] = (celula[i].nMolIni * celula[i].flui.fracMol[kfrac] +
                                           ((fonteO + fonteG) * fluF.fracMol[kfrac] / pesoMolF -
                                            (vazMasLiq1 + vazMasGas1) * fracMol1[kfrac] / pesoMol1 +
@@ -9378,8 +9615,10 @@ void SProd::renovaFracMol2(ProFlu fluiRev) {
                 }
             }
             double fracTot = 0.;
-            for (int kfrac = 0; kfrac < ncomp; kfrac++)
-                fluC[i].fracMol[kfrac] -= menorFrac;
+            if(menorFrac<0.){
+            	for (int kfrac = 0; kfrac < ncomp; kfrac++)
+            		fluC[i].fracMol[kfrac] -= menorFrac;
+            }
             for (int kfrac = 0; kfrac < ncomp; kfrac++)
                 fracTot += fluC[i].fracMol[kfrac];
             for (int kfrac = 0; kfrac < ncomp; kfrac++)
@@ -9387,7 +9626,7 @@ void SProd::renovaFracMol2(ProFlu fluiRev) {
             pesoMolC = 0;
             for (int kfrac = 0; kfrac < ncomp; kfrac++)
                 pesoMolC += fluC[i].masMol[kfrac] * celula[i].flui.fracMol[kfrac];
-            if (kontaRenovaComp == arq.miniTabAtraso) {
+            if (kontaRenovaComp == arq.miniTabAtraso || arq.miniTabAtraso == 0) {
                 fluC[i].atualizaPropCompStandard();
                 if (fluC[i].dCalculatedBeta < 0. || fluC[i].dCalculatedBeta > 1.)
                     fluC[i].atualizaPropComp(celula[i].pres, celula[i].temp, -1, NULL, NULL, arq.pocinjec);
@@ -9728,7 +9967,7 @@ void SProd::renovaFracMol2(ProFlu fluiRev) {
         celula[ncel].flui.TempH = fluiRev.TempH;
     }
     delete[] fluC;
-    (*vg1dSP).modoTransiente = 1;
+    if(arq.miniTabAtraso > 0)(*vg1dSP).modoTransiente = 1;
 }
 
 void SProd::renovaterm(int aflu) {
@@ -12311,7 +12550,8 @@ void SProd::marchaEnergTrans(int ciclo, int ciclomax) {
 }
 
 void SProd::atualizaMiniTab() {
-    geraMiniTabFlu();
+    //if(arq.miniTabAtraso>0)
+    	geraMiniTabFlu();
     double betIV;
     double rsV;
     double boV;
@@ -12396,12 +12636,13 @@ void SProd::SolveTrans(double titRev, double alfRev, double betRev, int nrede, P
             solverHidratoG.solverHidratoG();
         }
 
-        if (arq.flashCompleto == 2 && (*vg1dSP).lixo5 < 1e-15) {
+        if (arq.flashCompleto == 2 && (*vg1dSP).lixo5 < 1e-15 && arq.miniTabAtraso>0) {
             atualizaMiniTab();
         }
-        if ((*vg1dSP).lixo5 >= 996) {
+        if ((*vg1dSP).lixo5 >= 0) {
             int para;
             para = 0;
+            //arq.imprimeProfile(celula, flut, (*vg1dSP).lixo5, indTramo, nrede);
         }
 
         if ((*vg1dSP).lixo5 < 1e-15) {
@@ -13837,7 +14078,7 @@ double SProd::marchaProdPerm1(double pchute) {
                 else
                     RenovaMassPermComp(i);
 
-                if (arq.acopColAnulPermForte == 0 || arq.lingas == 0 || monitConvPerm > 0.1)
+                if (arq.acopColAnulPermForte == 0 || arq.lingas == 0 || monitConvPerm > 0.3)
                     RenovaTempPerm(i, 0); // faz o avanco da temperatura, da celula i-1 para a celula i
                 // verifica se teve algum problema nos limites de temperatura
                 // caso se esteja trabalhando com tabela PVTSim
@@ -13888,7 +14129,7 @@ double SProd::marchaProdPerm1(double pchute) {
                                 "Temperatrura na linha de producao com valor NaN em marchaProdPerm1");
                         else {
                             // apresenta apenas um aviso
-                            cout << "#################PERMANENTE FALHOU EM SUA CONVERGÃŠNCIA##############################" << endl;
+                            cout << "#################PERMANENTE FALHOU EM SUA CONVERGENCIA##############################" << endl;
                             // se for em uma iteracao de rede, apos a primeira iteracao
                             if ((*vg1dSP).iterRede > 0)
                                 return -1.1e10;
@@ -14689,7 +14930,7 @@ double SProd::marchaProdPerm2(double pchute) {
                 else
                     RenovaMassPermComp(i);
 
-                if (arq.acopColAnulPermForte == 0 || arq.lingas == 0 || monitConvPerm > 0.1)
+                if (arq.acopColAnulPermForte == 0 || arq.lingas == 0 || monitConvPerm > 0.3)
                     RenovaTempPerm(i, 0); // faz o avanco da temperatura, da celula i-1 para a celula i
                 // verifica se teve algum problema nos limites de temperatura
                 // caso se esteja trabalhando com tabela PVTSim
@@ -14701,7 +14942,7 @@ double SProd::marchaProdPerm2(double pchute) {
                             "Temperatrura na linha de producao com valor NaN em marchaProdPerm2");
                     else {
                         // apresenta apenas um aviso
-                        cout << "#################PERMANENTE FALHOU EM SUA CONVERGÃŠNCIA##############################" << endl;
+                        cout << "#################PERMANENTE FALHOU EM SUA CONVERGENCIA##############################" << endl;
                         // se for em uma iteracao de rede, apos a primeira iteracao
                         if ((*vg1dSP).iterRede > 0)
                             return -1.1e10;
@@ -20863,11 +21104,21 @@ void SProd::RenovaMassPerm(int i) {
                                    celula[i - 1].correlacaoMR2,
                                    holdup, frictionGrad, gravityGrad, totalGrad,
                                    reynolds, flowType);
-                if(flowType==1 || flowType==2)celula[i].arranjo=0;
-                if(flowType==3)celula[i].arranjo=1;
-                if(flowType==4)celula[i].arranjo=2;
-                if(flowType==6)celula[i].arranjo=-1;
-                if(flowType==5)celula[i].arranjo=-2;
+               if(celula[i - 1].correlacaoMR2==16){
+                if(flowType=='1' || flowType=='2')celula[i].arranjo=0;
+                if(flowType=='3')celula[i].arranjo=1;
+                if(flowType=='4')celula[i].arranjo=2;
+                if(flowType=='6')celula[i].arranjo=-1;
+                if(flowType=='5')celula[i].arranjo=-2;
+               }
+               else{
+            	   if(flowType=='1')celula[i].arranjo=1;
+            	   if(flowType=='2')celula[i].arranjo=2;
+                   if(flowType=='3')celula[i].arranjo=3;
+                   if(flowType=='4')celula[i].arranjo=4;
+                   if(flowType=='6')celula[i].arranjo=5;
+                   if(flowType=='5')celula[i].arranjo=6;
+               }
                 celula[i].alf = 1. - holdup;
             }
         } else {
@@ -25482,6 +25733,8 @@ double SProd::zriddr(double x1, double x2, int prod, int tipoCC) {
         fmin = fl;
         xmin = x1;
     }
+    int minit=0;
+    if(arq.acopColAnulPermForte == 1)minit=10;
     if ((fl > 0.0 && fh < 0.0) || (fl < 0.0 && fh > 0.0)) {
         double xl = x1;
         double xh = x2;
@@ -25499,12 +25752,12 @@ double SProd::zriddr(double x1, double x2, int prod, int tipoCC) {
             double s = sqrt(fm * fm - fl * fh);
             if (s == 0.0) {
                 fmin = multMarcha(xmin, prod, tipoCC);
-                return xmin;
+                if(j>minit)return xmin;
             }
             double xnew = xm + (xm - xl) * ((fl >= fh ? 1.0 : -1.0) * fm / s);
             if (fabs(xnew - ans) <= xacc) {
                 fmin = multMarcha(xmin, prod, tipoCC);
-                return xmin;
+                if(j>minit)return xmin;
             }
             ans = xnew;
             double fnew = multMarcha(ans, prod, tipoCC) / monitConvPermBase;
@@ -25517,7 +25770,7 @@ double SProd::zriddr(double x1, double x2, int prod, int tipoCC) {
             }
             if (fabs(fnew) <= xacc) {
                 fmin = multMarcha(xmin, prod, tipoCC);
-                return xmin;
+                if(j>minit)return xmin;
             }
             if (SIGN(fm, fnew) != fm) {
                 xl = xm;

@@ -2218,6 +2218,7 @@ class JSON_entrada_gasInj : public JSONObject {
 #define JSON_entrada_perfilProducao_subResfria JSONBoolean
 #define JSON_entrada_perfilProducao_dadosParafina JSONBoolean
 #define JSON_entrada_perfilProducao_correlacaoBB JSONBoolean
+#define JSON_entrada_perfilProducao_titulo JSONBoolean
 
 /*!
  * Select variables written to production-line profile files.
@@ -2299,6 +2300,7 @@ class JSON_entrada_perfilProducao : public JSONObject {
     JSON_entrada_perfilProducao_subResfria &subResfria();
     JSON_entrada_perfilProducao_dadosParafina &dadosParafina();
     JSON_entrada_perfilProducao_correlacaoBB &correlacaoBB();
+    JSON_entrada_perfilProducao_titulo &titulo();
 };
 
 #define JSON_entrada_perfilServico_ativo JSONBoolean

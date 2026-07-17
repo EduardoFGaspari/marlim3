@@ -591,8 +591,7 @@ static SlugResult solveSlug(const GomezInput& in) {
     res.LS = LS;
 
     double ReSL = in.rhoL * vM * d / in.muL;
-    double HLLS = std::max(0.48, std::min(1.0,
-              exp(-(7.85e-3 * std::max(in.angle, 0.0) + 2.48e-6 * ReSL))));
+    double HLLS = exp(-(7.85e-3 * std::max(in.angle, 0.0) + 2.48e-6 * ReSL));
     res.HL_LS = HLLS;
 
    
@@ -720,7 +719,8 @@ static AnnularResult solveAnnular(const GomezInput& in) {
             in.rhoL * fabs(vF) * 4.0*delta*(d-delta)/d / in.muL,
             in.roughness / d);
         double FA = pow(pow(0.707*sqrt(ReSL),2.5) + pow(0.0379*pow(ReSL,0.9),2.5), 0.4)
-                  / pow(ReSG, 0.9) * fabs(vF) / (fabs(vC)+1e-20) * sqrt(in.rhoL/in.rhoG);
+                  / pow(ReSG, 0.9) * fabs(vF) / (fabs(vC)+1e-20)
+                  * sqrt(in.rhoL / in.rhoG);
         double fI = fSC * ((1.0 + 850.0 * FA) * cosA_loc * cosA_loc
                          + (1.0 + 300.0 * dod) * sinA * sinA);
         double tauWF = fF  * in.rhoL * fabs(vF) * vF / 2.0;
@@ -731,11 +731,13 @@ static AnnularResult solveAnnular(const GomezInput& in) {
              + (in.rhoL - rhoC) * in.gravity * sinA;
     };
 
-    double lo = 0.001, hi = 0.49, dod_sol = 0.05, prev = annRes(lo);
-    for (int i = 1; i <= 300; i++) {
-        double dod = lo + (hi - lo) * i / 300, val = annRes(dod);
+    double lo = 1.0e-5, hi = 0.49, dod_sol = 0.05, prev = annRes(lo);
+    double bestDod = lo, bestAbs = fabs(prev);
+    for (int i = 1; i <= 600; i++) {
+        double dod = lo + (hi - lo) * i / 600, val = annRes(dod);
+        if (fabs(val) < bestAbs) { bestAbs = fabs(val); bestDod = dod; }
         if (prev * val < 0) {
-            double a = lo + (hi-lo)*(i-1)/300, b = dod;
+            double a = lo + (hi-lo)*(i-1)/600, b = dod;
             for (int j = 0; j < 60; j++) {
                 double mid = (a+b)/2.0, mv = annRes(mid);
                 if (fabs(mv) < 1e-12) { a = mid; break; }
@@ -745,6 +747,8 @@ static AnnularResult solveAnnular(const GomezInput& in) {
         }
         prev = val;
     }
+
+    if (!res.converged) dod_sol = bestDod;
 
     res.delta_over_d = dod_sol;
     res.HL = 1.0 - (1.0 - 2.0*dod_sol) * (1.0 - 2.0*dod_sol) * alphaC;

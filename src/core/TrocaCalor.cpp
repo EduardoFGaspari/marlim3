@@ -874,7 +874,7 @@ double TransCal::nussNatExt(double ra, double pr) {
     double val;
     if (ra < 1e-3)
         ra = 1e-3;
-    val = 0.6 + 0.387 * pow(ra, 0.166667) / pow(1 + pow(0.559 / pr, 0.5625), 0.2963);
+    val = pow(0.6 + 0.387 * pow(ra, 0.166667) / pow(1 + pow(0.559 / pr, 0.5625), 0.2963),2.);
     return val;
 }
 
@@ -953,7 +953,7 @@ double TransCal::CalorLiq(double temp) const {
 
 double TransCal::MasEspAr(double temp) const {
 
-    return 1101325.0 * airMW / (RGas * (temp + 273.15));
+    return 101325.0 * airMW / (RGas * (temp + 273.15));
 }
 
 double TransCal::VisAr(double temp) const {
