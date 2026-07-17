@@ -24,7 +24,7 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 1. [Overview](#overview)
 2. [Call Hierarchy](#call-hierarchy)
 3. [Step 1 — Object Construction](#step-1--object-construction)
-4. [Step 2 — SolveTramoSolteiro: Fluid Model Strategy](#step-2--solvetramosolteirofluid-model-strategy)
+4. [Step 2 — SolveTramoSolteiro: Fluid Model Strategy](#step-2--solvetramosolteiro-fluid-model-strategy)
 5. [Step 3 — permanenteSimples: Boundary Condition Dispatch](#step-3--permanentesimples-boundary-condition-dispatch)
 6. [Step 4 — buscaProdPfundoPerm: Bracket Search & Root Finding](#step-4--buscaprodpfundoperm-bracket-search--root-finding)
 7. [Step 5 — marchaProdPerm1: The Cell-by-Cell March](#step-5--marchaprodperm1-the-cell-by-cell-march)
@@ -94,6 +94,7 @@ main()
 
 ---
 
+<a id="step-1--object-construction"></a>
 ## Step 1 — Object Construction
 
 When `main()` creates the `SProd` object:
@@ -129,6 +130,8 @@ Each cell stores both current and neighboring state information, plus previous-s
 
 ---
 
+<a id="step-2--solvetramosolteirofluid-model-strategy"></a>
+<a id="step-2--solvetramosolteiro-fluid-model-strategy"></a>
 ## Step 2 — SolveTramoSolteiro: Fluid Model Strategy
 
 `SolveTramoSolteiro()` ([`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) is a wrapper that handles the **two-pass strategy** for compositional simulations:
@@ -165,6 +168,7 @@ This avoids the expensive flash calculations during the initial bracket search, 
 
 ---
 
+<a id="step-3--permanentesimples-boundary-condition-dispatch"></a>
 ## Step 3 — permanenteSimples: Boundary Condition Dispatch
 
 `permanenteSimples()` ([`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) selects the solver variant based on the **upstream and downstream boundary conditions**.
@@ -220,6 +224,7 @@ Important implementation notes:
 
 ---
 
+<a id="step-4--buscaprodpfundoperm-bracket-search--root-finding"></a>
 ## Step 4 — buscaProdPfundoPerm: Bracket Search & Root Finding
 
 `buscaProdPfundoPerm()` ([`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) searches for the inlet / bottom-hole pressure that makes the production-line residual vanish. Conceptually it is still a bracketed shooting solve, but the implementation contains several fallback paths and guardrails that are important to mention.
@@ -292,6 +297,7 @@ Each evaluation inside `zriddr()` calls `multMarcha(..., prod=1, tipoCC=0)`, whi
 
 ---
 
+<a id="step-5--marchaprodperm1-the-cell-by-cell-march"></a>
 ## Step 5 — marchaProdPerm1: The Cell-by-Cell March
 
 `marchaProdPerm1()` ([`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) is the **core marching routine**. Given a pressure guess `pchute` at cell 0, it sweeps from cell 1 to cell `ncel`, computing all profiles.

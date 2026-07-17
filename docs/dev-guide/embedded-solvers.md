@@ -29,6 +29,7 @@ Marlim3 embeds specialised multi-dimensional solvers **inside individual pipelin
 
 ---
 
+<a id="architecture-overview"></a>
 ## 1. Architecture Overview
 
 The following diagram shows where each embedded solver lives in the object hierarchy:
@@ -58,6 +59,7 @@ Key points:
 
 ---
 
+<a id="poisson-2d--transverse-heat-diffusion"></a>
 ## 2. Poisson 2D — Transverse Heat Diffusion
 
 **Class:** `solverP` — [`solverPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solverPoisson.h)
@@ -121,6 +123,7 @@ where $\rho$, $c_p$ and $k$ are the local density, specific heat and thermal con
 
 ---
 
+<a id="poisson-3d--axially-extended-heat-diffusion"></a>
 ## 3. Poisson 3D — Axially-Extended Heat Diffusion
 
 **Class:** `solverP3D` — [`solver3DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solver3DPoisson.h)
@@ -170,6 +173,7 @@ At lines 13604–13665 of [`Num4Main.cpp`](https://github.com/petrobras/marlim3/
 
 ---
 
+<a id="radial-porous-flow--accessory-type-15"></a>
 ## 4. Radial Porous Flow — Accessory Type 15
 
 **Class:** `PorosRadSimp` — [`PorosoRad-Simples.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PorosoRad-Simples.h)
@@ -246,6 +250,7 @@ celula[ind].fontemassGR = fluxIniG           (gas mass source → pipeline)
 
 ---
 
+<a id="poroso-2d--accessory-type-16"></a>
 ## 5. Poroso 2D — Accessory Type 16
 
 **Class:** `solverPoro` — [`solverPoroso.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solverPoroso.h)
@@ -360,6 +365,7 @@ celula[ind].fontemassGR = transfer.fluxIniG                     (gas mass → pi
 
 ---
 
+<a id="coupling-to-the-1d-pipeline"></a>
 ## 6. Coupling to the 1D Pipeline
 
 ### Steady-State Coupling
@@ -402,6 +408,7 @@ When the saturation advance violates the CFL condition, the porous solver sets `
 
 ---
 
+<a id="shared-numerical-infrastructure"></a>
 ## 7. Shared Numerical Infrastructure
 
 All three FVM solvers (Poisson 2D, Poisson 3D, Poroso 2D) share the same numerical backbone:
@@ -442,6 +449,7 @@ This mechanism supports the outer coupling iteration: if the 1D pipeline needs t
 
 ---
 
+<a id="output-files"></a>
 ## 8. Output Files
 
 | File pattern | Solver | Content |

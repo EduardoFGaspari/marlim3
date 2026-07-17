@@ -23,11 +23,11 @@ This document describes how the Marlim3 simulator solves **flow networks** — m
 4. [Data Structures](#data-structures)
 5. [Pre-Processing Pipeline](#pre-processing-pipeline)
 6. [Building SProd Objects — preparaRedeProd](#building-sprod-objects--prepararedeprod)
-7. [Zero-Flow branch Removal — avaliaPerm](#zero-flow-tramo-removal--avaliaperm)
+7. [Zero-Flow branch Removal — avaliaPerm](#zero-flow-branch-removal--avaliaperm)
 8. [Steady-State Network Solver](#steady-state-network-solver)
 9. [Node-Level Fluid Mixing — totalizaCicloRede](#node-level-fluid-mixing--totalizaciclorede)
 10. [Convergence and Relaxation](#convergence-and-relaxation)
-11. [Branch-Level Steady-State Dispatch](#tramo-level-steady-state-dispatch)
+11. [Branch-Level Steady-State Dispatch](#branch-level-steady-state-dispatch)
 12. [Initial Pressure Guess — chutePresRede](#initial-pressure-guess--chutepresrede)
 13. [Transient Network Solver](#transient-network-solver)
 14. [Transient Helper Functions](#transient-helper-functions)
@@ -36,8 +36,8 @@ This document describes how the Marlim3 simulator solves **flow networks** — m
 17. [Parallel Network — RedeParalela](#parallel-network--redeparalela)
 18. [Injection Network — RedeInj](#injection-network--redeInj)
 19. [Compositional Model Switching](#compositional-model-switching)
-20. [Compositional Network Cycle — cicloRedeComp](#compositional-network-cycle--ciclordecomp)
-21. [Blind Compositional Cycle — cicloRedeCompCego](#blind-compositional-cycle--ciclordecompcego)
+20. [Compositional Network Cycle — cicloRedeComp](#compositional-network-cycle--cicloredecomp)
+21. [Blind Compositional Cycle — cicloRedeCompCego](#blind-compositional-cycle--cicloredecompcego)
 22. [Cell-Level Composition Propagation](#cell-level-composition-propagation)
 23. [Snapshot and Output](#snapshot-and-output)
 24. [Summary of Key Functions](#summary-of-key-functions)
@@ -289,6 +289,7 @@ Serializes a sub-network to a JSON file for diagnostics. The output includes the
 
 ---
 
+<a id="building-sprod-objects--prepararedeprod"></a>
 ## Building SProd Objects — preparaRedeProd
 
 `preparaRedeProd()` reads the branch JSON files for a sub-network and constructs one `SProd` object per branch:
@@ -318,6 +319,7 @@ $$Q_i = Q_{\text{total}} \cdot \frac{A_i}{\sum_j A_j}$$
 
 ---
 
+<a id="zero-flow-branch-removal--avaliaperm"></a>
 ## Zero-Flow Branch Removal — avaliaPerm
 
 `avaliaPerm()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) performs a multi-pass scan to identify and deactivate branches that carry no flow. It is called after `preparaRedeProd()` but before the steady-state solve.
@@ -406,6 +408,7 @@ cicloRede(malha[], arqRede, ...)
 
 ---
 
+<a id="node-level-fluid-mixing--totalizaciclorede"></a>
 ## Node-Level Fluid Mixing — totalizaCicloRede
 
 `totalizaCicloRede()` computes mixed fluid properties at a junction node from all upstream contributions. It uses **mass- and energy-weighted averaging**:
@@ -505,6 +508,7 @@ For pressure-pressure BCs (imposed pressure at both ends), the unknown is the **
 
 ---
 
+<a id="initial-pressure-guess--chutepresrede"></a>
 ## Initial Pressure Guess — chutePresRede
 
 `chutePresRede()` provides initial node pressures before the first network iteration. It performs a **recursive hydrostatic march** from terminal collectors upstream:
@@ -673,6 +677,7 @@ Used during master collector selection to prefer the branch with the deepest dow
 
 ---
 
+<a id="production-network--solveredeprod--redeprod"></a>
 ## Production Network — solveRedeProd / RedeProd
 
 Production networks (`tipoRede == 0`) use two entry-point functions in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp):
@@ -726,6 +731,7 @@ Follows the same algorithm as `solveRedeProd()` but additionally constructs the 
 
 ---
 
+<a id="gas-lift-loop--redeanelgl"></a>
 ## Gas-Lift Loop — RedeAnelGL
 
 `RedeAnelGL()` solves a gas distribution annulus feeding multiple production wells:
@@ -792,6 +798,7 @@ Key difference from `SolveRedeTrans()`: the annulus branch's gas injection sourc
 
 ---
 
+<a id="parallel-network--redeparalela"></a>
 ## Parallel Network — RedeParalela
 
 `RedeParalela()` solves two co-located pipelines (primary + secondary) coupled at shared source points (`fontechk`):
@@ -856,6 +863,7 @@ SolveRedeParalelaTrans(malha[], arqRede, nrede)
 
 ---
 
+<a id="injection-network--redeInj"></a>
 ## Injection Network — RedeInj
 
 `RedeInj()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) solves injection networks (`tipoRede == 1`) — typically water or gas injection from surface to wells. Steady-state only.
@@ -986,6 +994,7 @@ Reverses the switch after the black-oil pre-solve:
 
 ---
 
+<a id="compositional-network-cycle--cicloredecomp"></a>
 ## Compositional Network Cycle — cicloRedeComp
 
 `cicloRedeComp()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) replaces `cicloRede()` when `flashCompleto == 2`. It follows the same topological traversal pattern (leaves first, then dependents) but adds **molar composition tracking** at network nodes.
@@ -1072,6 +1081,7 @@ This ensures convergence accounts for composition-driven flow redistribution.
 
 ---
 
+<a id="blind-compositional-cycle--cicloredecompcego"></a>
 ## Blind Compositional Cycle — cicloRedeCompCego
 
 `cicloRedeCompCego()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) is a simplified, **decoupled** compositional pass used as a **transition step** between the black-oil pre-solve and the full compositional iteration. "Cego" (Portuguese for "blind") means it solves without inter-branch pressure coupling.

@@ -206,6 +206,7 @@ The input JSON file (typically `parametros.json`) contains all 2D solver setting
 
 ---
 
+<a id="physical-models"></a>
 ## Governing Equations
 
 ### Momentum (incompressible Navier–Stokes with variable density)
@@ -306,6 +307,7 @@ where $d_f = \overline{a_P^{-1}}$ is the average inverse momentum coefficient (`
 
 ---
 
+<a id="linear-solvers"></a>
 ## Pressure-Velocity Coupling
 
 ### SIMPLE-based algorithm variants
@@ -400,6 +402,7 @@ At inlets: `holC` inlet specification is currently a **TODO** — the implementa
 
 ---
 
+<a id="time-stepping-and-convergence"></a>
 ## 1D Wall Coupling
 
 When one-dimensional wall heat transfer is enabled, the 2D fluid domain is thermally coupled to a 1D radial wall conduction model via the `TransCal` module. See the full documentation in [`heat-transfer.md`](heat-transfer.md).
@@ -436,6 +439,7 @@ This allows simulation of heat transfer through multi-layer pipe walls (steel, i
 | `elem2d::calcGradGreenTemp()` | `Elem2D.cpp` | Temperature gradient with coupled BC handling |
 ---
 
+<a id="output-formats"></a>
 ## Overall Algorithm Flow
 
 The simulation proceeds in the following steps:

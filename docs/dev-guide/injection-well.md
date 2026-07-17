@@ -30,7 +30,7 @@ This document describes the **injection well** simulation mode in Marlim3 (`-s I
    - [buscaInjPfundoPerm5 — CC 5](#buscainjpfundoperm5--cc-5)
 8. [IPR Model for Injection](#ipr-model-for-injection)
 9. [Pressure Drop Estimation — delpInjPerm](#pressure-drop-estimation--delpinjperm)
-10. [Injection Network — RedeInj](#injection-network--redeinjj)
+10. [Injection Network — RedeInj](#injection-network--redeinj)
 11. [Compositional Injection](#compositional-injection)
 12. [Key Differences from Production](#key-differences-from-production)
 13. [Summary of Key Methods](#summary-of-key-methods)
@@ -153,6 +153,7 @@ main()
 
 ---
 
+<a id="the-marching-method--marchainjperm1"></a>
 ## The Marching Method — marchaInjPerm1
 
 `SProd::marchaInjPerm1(double chute)` ([`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) is the core marching function for injection wells.
@@ -200,6 +201,7 @@ The injection-well solution methods fall into two groups:
 1. **Bracketed scalar solves** using `zriddr` (Ridder's method)
 2. **Direct or iterative profile construction** without Ridder bracketing
 
+<a id="buscainjpfundoperm1--cc-1-or-3"></a>
 ### buscaInjPfundoPerm1 — CC 1 or 3
 
 - **Given:** injection pressure (or both pressures for CC 3)
@@ -208,6 +210,7 @@ The injection-well solution methods fall into two groups:
 - **Bracketing:** multiplies guess by 0.9 / 1.1 until sign change in `marchaInjPerm1`
 - **Root-finding:** `zriddr(chuteNeg, chutePos)`
 
+<a id="buscainjpfundoperm2--cc-0"></a>
 ### buscaInjPfundoPerm2 — CC 0
 
 - **Given:** injection flow rate + IPR at bottom
@@ -216,6 +219,7 @@ The injection-well solution methods fall into two groups:
 - **Bracketing:** multiplies by 0.9 / 1.1
 - **Root-finding:** `zriddr`
 
+<a id="buscainjpfundoperm3--cc-2"></a>
 ### buscaInjPfundoPerm3 — CC 2
 
 - **Given:** bottom-hole pressure + IPR
@@ -225,6 +229,7 @@ The injection-well solution methods fall into two groups:
 - **Pressure update:** uses `delpInjPerm()` during the reverse pressure reconstruction step
 - **Convergence:** $|P_{\text{computed}} - P_{\text{specified}}| / P_{\text{specified}} < 0.01\%$
 
+<a id="buscainjpfundoperm4--cc-4"></a>
 ### buscaInjPfundoPerm4 — CC 4
 
 - **Given:** flow rate + injection pressure
@@ -232,6 +237,7 @@ The injection-well solution methods fall into two groups:
 - **Algorithm:** performs a forward march with the prescribed inlet condition and computes the resulting bottom pressure/profile as an output
 - Returns net mass flow at bottom for diagnostics
 
+<a id="buscainjpfundoperm5--cc-5"></a>
 ### buscaInjPfundoPerm5 — CC 5
 
 - **Given:** flow rate + bottom-hole pressure
@@ -261,6 +267,7 @@ Multiple injection zones along the wellbore are supported — each cell can inde
 
 ---
 
+<a id="pressure-drop-estimation--delpinjperm"></a>
 ## Pressure Drop Estimation — delpInjPerm
 
 `SProd::delpInjPerm(int i)` estimates the pressure drop across the interface between cells $i-1$ and $i$ using a **two-half-cell evaluation**: one contribution from the right half of cell $i-1$ / left connection, and another from the left half of cell $i$. In each half-step, the code reevaluates local geometry, temperature, density, viscosity, Reynolds number, and friction factor.
@@ -277,6 +284,7 @@ This method is used mainly in reverse pressure reconstruction and pressure-guess
 
 ---
 
+<a id="injection-network--redeinj"></a>
 ## Injection Network — RedeInj
 
 When the simulation type is `REDE` and the network is tagged as injection (`arqRede.injec == 1`), the `RedeInj()` function ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) manages the network-level solve.

@@ -1,6 +1,6 @@
 ﻿# Transient Solver for a Single Branch
 
-This document describes the logic and algorithms used by the Marlim3 simulator to compute the **transient (time-dependent) solution** of a single pipeline segment (*branch*). While the [steady-state solver](steady-state-tramo.md) uses a shooting method with cell-by-cell spatial marching, the transient solver advances the entire domain in time, coupling mass, momentum, and energy equations through a **drift-flux multi-phase model** on a staggered grid.
+This document describes the logic and algorithms used by the Marlim3 simulator to compute the **transient (time-dependent) solution** of a single pipeline segment (*branch*). While the [steady-state solver](steady-state-branch.md) uses a shooting method with cell-by-cell spatial marching, the transient solver advances the entire domain in time, coupling mass, momentum, and energy equations through a **drift-flux multi-phase model** on a staggered grid.
 
 **Key source files:**
 
@@ -204,6 +204,7 @@ If the explicit advance of $\alpha$ produces out-of-bounds values ($\alpha < 0$ 
 
 ---
 
+<a id="solvetrans--top-level-walkthrough"></a>
 ## SolveTrans — Top-Level Walkthrough
 
 `SProd::SolveTrans()` (`SisProd.cpp`) orchestrates the entire transient computation. Here is the step-by-step logic:
@@ -299,6 +300,7 @@ When `modeloCompleto == 0` (quasi-steady periods), only one pass is executed, sa
 
 ---
 
+<a id="evoluifrac--void-fraction-evolution"></a>
 ## EvoluiFrac — Void Fraction Evolution
 
 `SProd::EvoluiFrac()` advances the void fraction $\alpha$ and complementary liquid fraction $\beta$ by one time step. It consists of four OpenMP-parallel loops:
@@ -346,6 +348,7 @@ Serial loop that checks if any cell flagged `reiniciaAlf < 0`, `reiniciaBet < 0`
 
 ---
 
+<a id="solveacoppv--pressure-velocity-coupling"></a>
 ## SolveAcopPV — Pressure-Velocity Coupling
 
 `SProd::SolveAcopPV()` is the implicit core of the transient solver. It assembles and solves the linearized pressure-velocity system.
@@ -405,6 +408,7 @@ The default is `true` (simplified averaging).
 
 ---
 
+<a id="marchaenergtrans--transient-energy-equation"></a>
 ## marchaEnergTrans — Transient Energy Equation
 
 `SProd::marchaEnergTrans()` advances the temperature field. The strategy is:
@@ -490,6 +494,7 @@ $$
 
 ---
 
+<a id="closurelaw-update-renovaterm"></a>
 ## Closure-Law Update (renovaterm)
 
 `SProd::renovaterm()` runs between `EvoluiFrac` and `SolveAcopPV` to refresh the drift-flux closure parameters:
@@ -527,6 +532,7 @@ $$
 
 Interphase mass transfer between phases (evaporation, condensation, dissolution) is modeled through source terms that modify the mass fractions in each cell. The transfer terms affect the void fraction evolution (`EvoluiFrac`), the complementary liquid fraction evolution, and the mixture mass equation.
 
+<a id="tmmodell--mass-transfer-model-selection"></a>
 ### TMModelL — Mass Transfer Model Selection
 
 The `TMModelL` attribute on each cell controls the mass transfer behavior. This is a per-cell integer that defaults to 0 (complete model) but can vary across cells:
@@ -540,6 +546,7 @@ The `TMModelL` attribute on each cell controls the mass transfer behavior. This 
 
 **Accessory cells:** When a cell contains an accessory (BCS, valve, leak, etc.), `TMModelL` is automatically forced to mode 3 (no transfer). The compact geometry of accessories does not support the distributed mass-transfer processes modeled in regular pipeline cells.
 
+<a id="critcond--phase-transition-cutoff"></a>
 ### CritCond — Phase Transition Cutoff
 
 Near the monophase boundaries (α = 0 or α = 1), mass transfer terms can become unstable and cause infinite time-step oscillation loops. During evaporation or condensation, the transfer rate may be tiny but sufficient to push α slightly beyond the monophase threshold (e.g., α = 1 + 10⁻¹⁵), triggering a time-step halving that doesn't actually resolve the issue — the next step produces the same tiny overshoot.

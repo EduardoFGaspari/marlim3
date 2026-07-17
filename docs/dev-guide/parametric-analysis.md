@@ -200,6 +200,7 @@ The constructor calls `lerArq()`, which:
 
 ---
 
+<a id="sequence-generation--full-factorial"></a>
 ## Sequence Generation — Full Factorial
 
 The sweep generates all combinations using a Cartesian product. The total number of cases is
@@ -222,6 +223,7 @@ where $n_k$ is the number of values for dimension $k$, stored in `vecParSerie[k]
 
 ---
 
+<a id="parameter-selection--selecaoap"></a>
 ## Parameter Selection — selecaoAP
 
 `selecaoAP()` and its variants (`selecaoAPsemImpre()`, `selecaoAPImex()`, `selecaoAPImexsemImpre()`) apply a given case to the simulation state.
@@ -244,6 +246,7 @@ Geometry and material changes are handled through helper methods such as `atuali
 
 ---
 
+<a id="serial-execution--leituraap"></a>
 ## Serial Execution — leituraAP
 
 `leituraAP()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) runs cases sequentially:
@@ -270,6 +273,7 @@ In serial mode, the previous converged solution is reused as the initial guess w
 
 ---
 
+<a id="parallel-execution--leituraapparalelo"></a>
 ## Parallel Execution — leituraAPparalelo
 
 `leituraAPparalelo()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) uses **OpenMP** to solve cases concurrently.

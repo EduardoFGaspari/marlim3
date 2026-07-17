@@ -72,6 +72,7 @@ The `Ler` object (`arq`) is stored as a member of `SProd` and remains accessible
 
 ---
 
+<a id="architecture--the-three-layer-pipeline"></a>
 ## Architecture — The Three-Layer Pipeline
 
 | Layer | Class(es) | Responsibility |
@@ -87,6 +88,7 @@ This separation means:
 
 ---
 
+<a id="layer-1--jsondatamodel-generic-json-parser"></a>
 ## Layer 1 — JSONDataModel: Generic JSON Parser
 
 Defined in [`JSONDataModel.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSONDataModel.h) / [`JSONDataModel.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSONDataModel.cpp), built on top of the **RapidJSON** library.
@@ -126,6 +128,7 @@ Each `JSONInstance` subclass tracks whether its value was present in the JSON vi
 
 ---
 
+<a id="layer-2--json_entrada-typed-schema-classes"></a>
 ## Layer 2 — JSON_entrada: Typed Schema Classes
 
 Defined in [`JSON_entrada.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSON_entrada.h) / [`JSON_entrada.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSON_entrada.cpp).
@@ -192,6 +195,7 @@ The root `JSON_entrada` class registers these top-level keys:
 
 ---
 
+<a id="layer-3--ler-the-data-reader"></a>
 ## Layer 3 — Ler: The Data Reader
 
 Defined in [`Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) / [`Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) (~21,400 lines).
@@ -362,6 +366,7 @@ If `validacaoJson == tipoValidacaoJson_t::json`, the process stops after confirm
 
 ---
 
+<a id="parse_configuracao_inicial--simulation-configuration"></a>
 ## parse_configuracao_inicial — Simulation Configuration
 
 `parse_configuracao_inicial()` reads the `"configuracaoInicial"` JSON object and sets ~80 simulation flags and parameters. It follows a **defaults-then-override** pattern:
@@ -408,6 +413,7 @@ The `"Avancado"` sub-object contains expert-level settings:
 
 ---
 
+<a id="geometry-parsing--cross-sections-ducts-and-cells"></a>
 ## Geometry Parsing — Cross-Sections, Ducts, and Cells
 
 The geometry is parsed in three stages: cross-sections → duct segments → individual cells.
@@ -493,6 +499,7 @@ Read the gas fluid (`flug`) and complementary (water) fluid (`flucol`) propertie
 
 ---
 
+<a id="accessory-parsing--sources-pumps-valves"></a>
 ## Accessory Parsing — Sources, Pumps, Valves
 
 Accessories are devices placed at specific cell positions. Each type is identified by an integer `acsr.tipo`:
@@ -630,6 +637,7 @@ The additional constructor parameters after `Vvg1dSP`:
 
 ---
 
+<a id="montasistema--building-the-simulation-mesh"></a>
 ## montasistema — Building the Simulation Mesh
 
 `SProd::montasistema()` transforms the parsed `arq` data into the simulation-ready `Cel[]` and `CelG[]` arrays:

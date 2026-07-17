@@ -30,6 +30,7 @@ This document provides a high-level overview of the main classes that compose a 
 
 ---
 
+<a id="sprod--production-system"></a>
 ## SProd — Production System
 
 `SProd` ([`SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) / [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) represents a single **branch** (pipeline segment) and contains all the methods needed to simulate it. A network is represented as a vector of `SProd` objects.
@@ -60,6 +61,7 @@ The steady-state solver methods on `SProd` are organized into two categories:
 
 ---
 
+<a id="cel--the-cell-control-volume"></a>
 ## Cel — The Cell (Control Volume)
 
 `Cel` ([`celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) / [`celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp)) is the fundamental discretised unit of the pipeline. An `SProd` object is composed of an array of `Cel` objects (`celula[0..ncel]`), plus boundary conditions and events stored in `arq`.
@@ -73,12 +75,14 @@ Key design principles:
 
 ---
 
+<a id="dadosgeo--pipe-geometry"></a>
 ## DadosGeo — Pipe Geometry
 
 `DadosGeo` ([`Geometria.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Geometria.h)) stores the cross-sectional dimensions of the pipe (inner diameter, wall layers, roughness, area, perimeter, inclination), as well as the thermal properties of each wall layer (conductivity, density, Cp). It also supports confined fluid layers within the wall (e.g. gas-filled or liquid-filled annuli), identified by the `tipomat` flag (`0` = solid, `2` = liquid, `3` = gas). See [Heat Transfer Modeling](heat-transfer.md) for the full member list.
 
 ---
 
+<a id="acessorio--cell-accessories"></a>
 ## acessorio — Cell Accessories
 
 The `acessorio` class ([`acessorios.h`](https://github.com/petrobras/marlim3/blob/main/src/include/acessorios.h)) represents any device inserted inside a cell that modifies the flow conditions beyond what the boundary balances would produce. Each accessory must be associated with exactly one cell.
@@ -125,18 +129,21 @@ Pipe area changes and multiphase choke valves are handled by the `Acidentes` mod
 
 ---
 
+<a id="estratificado--stratified-flow-parameters"></a>
 ## estratificado — Stratified Flow Parameters
 
 The `estratificado` class ([`estrat.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estrat.h)) stores the detailed stratified-flow calculation results for a cell: film height (`hfilm`), liquid holdup (`holliq`), gas/liquid wall shear stresses (`twg`, `twl`), interfacial friction factor (`fi`), phase Reynolds numbers (`reyL`, `reyG`), superficial velocities (`uls`, `ugs`), pipe inclination (`ang`), drift-flux parameters (`coefC0`, `valUd`), and flow regime indicator (`arr`).
 
 ---
 
+<a id="celg--gas-lift-service-line-cell"></a>
 ## CelG — Gas-Lift Service Line Cell
 
 `CelG` ([`celulaGas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaGas.h)) provides the cell type and marching methods for gas injection service lines (gas-lift annulus). It uses `ChokeGas` ([`chokegas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/chokegas.h)) for modeling compressible gas flow through injection orifices and valves.
 
 ---
 
+<a id="chokegas--gas-injection-choke"></a>
 ## ChokeGas — Gas Injection Choke
 
 `ChokeGas` ([`chokegas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/chokegas.h)) models compressible-gas choke valves used in gas-lift injection, including subcritical, critical, and liquid flow regimes. It contains a pre-computed table (`ventCR`) for critical flow calculations.

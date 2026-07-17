@@ -66,6 +66,7 @@ This document describes the fluid property modeling framework in Marlim3 — fro
 
 ---
 
+<a id="overview--three-fluid-modeling-modes"></a>
 ## Overview — Three Fluid Modeling Modes
 
 The `ProFlu` class supports three main modeling modes, controlled primarily by the `flashCompleto` flag:
@@ -80,6 +81,7 @@ This flag is the main dispatcher, but actual property evaluation is more nuanced
 
 ---
 
+<a id="the-proflu-class"></a>
 ## The ProFlu Class
 
 `ProFlu` (defined in [`src/include/PropFlu.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFlu.cpp)) is the central fluid-property engine. Each simulation cell holds one `ProFlu` object (`flui`).
@@ -130,6 +132,7 @@ Recalculates all derived constants when primary inputs change:
 
 ---
 
+<a id="black-oil-correlations"></a>
 ## Black-Oil Correlations
 
 ### Solution Gas-Oil Ratio (Rs)
@@ -394,6 +397,7 @@ For compositional transient mode: precomputed uniform P-T grids with `npontosP �
 
 ---
 
+<a id="compositional-modeling--fortran-eos-library"></a>
 ## Compositional Modeling — Fortran EOS Library
 
 The compositional thermodynamic library is implemented in Fortran 90 modules called from C++ via `bind(C)` interfaces.
@@ -508,6 +512,7 @@ $$\sigma = \left[\sum_i \mathcal{P}_i (\rho_L^{mol} x_i - \rho_V^{mol} y_i)\righ
 
 where $\mathcal{P}_i$ is the parachor of component $i$.
 
+<a id="viscosity--pedersen-csp"></a>
 ### Viscosity — Pedersen CSP
 
 The **Pedersen Corresponding States Principle** method (references: Pedersen, Fredenslund & Thomassen, 1989; Pedersen et al., Chem. Eng. Sci., 1984):
@@ -594,6 +599,7 @@ When `modoParafina == 1`, `ProFlu::atualizaPropParafina(P, T)` calls the Fortran
 
 ---
 
+<a id="complementary-fluid--proflucol"></a>
 ## Complementary Fluid — ProFluCol
 
 `ProFluCol` ([`src/include/PropFluCol.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFluCol.h) / [`src/core/PropFluCol.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFluCol.cpp)) models the **complementary fluid** used by the simplified flow model. In practice it is a property model/holder for an additional liquid or injected fluid, not a full thermodynamic package with phase equilibrium or dissolution into the hydrocarbon system.
@@ -645,6 +651,7 @@ It is best understood as a VF-oriented extension of the complementary-fluid prop
 
 ---
 
+<a id="steam-properties--provap"></a>
 ## Steam Properties — ProVap
 
 `ProVap` ([`src/include/PropVapor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropVapor.h) / [`src/core/PropVapor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropVapor.cpp)) is a thermodynamic package for **pure water/steam**, independent of `ProFlu`. It supports compressed liquid, two-phase, and superheated-vapour regions through interpolation on JSON-format steam tables.
@@ -687,6 +694,7 @@ Derived quantities include: $C_v$, $C_p$, isentropic exponent $\kappa$, Joule-Th
 
 ---
 
+<a id="multiphase-gradient-correlations"></a>
 ## Summary of Named Correlations
 
 | Property | Authors / Methods |

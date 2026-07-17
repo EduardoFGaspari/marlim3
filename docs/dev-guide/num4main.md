@@ -15,7 +15,7 @@
 5. [Local Data Structures](#local-data-structures)
 6. [Key Functions](#key-functions)
    - [main()](#main)
-   - [Single-Branch Solvers](#single-tramo-solvers)
+   - [Single-Branch Solvers](#single-branch-solvers)
    - [Network Simulation](#network-simulation)
    - [Parametric Analysis](#parametric-analysis)
    - [Utility / Support Functions](#utility--support-functions)
@@ -490,6 +490,7 @@ Variant of parallel parametric analysis with reservoir-model coupling.
 
 ---
 
+<a id="utility--support-functions"></a>
 ### Utility / Support Functions
 
 #### Snapshot I/O

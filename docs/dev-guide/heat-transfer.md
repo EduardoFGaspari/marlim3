@@ -114,6 +114,7 @@ Three radial heat transfer modes:
 
 `TransCal` (defined in [`TrocaCalor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/TrocaCalor.h) / [`TrocaCalor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/TrocaCalor.cpp)) is the central radial heat transfer engine.
 
+<a id="geometry--dadosgeo"></a>
 ### Geometry — DadosGeo
 
 The `DadosGeo` structure ([`Geometria.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Geometria.h)) describes the pipe cross-section:
@@ -136,6 +137,7 @@ The `DadosGeo` structure ([`Geometria.h`](https://github.com/petrobras/marlim3/b
 | `tipomat[i]` | `int*` | — | **0** = solid (conduction), **2** = liquid (convection), **3** = gas (convection) |
 | `revest` | `int` | — | 0 = circular pipe, 1 = annular (lined) pipe |
 
+<a id="temperature-and-heat-flux-fields"></a>
 ### Temperature and Heat Flux Fields
 
 | Member | Type | Units | Description |
@@ -150,6 +152,7 @@ The `DadosGeo` structure ([`Geometria.h`](https://github.com/petrobras/marlim3/b
 | `fluxFim` | `double` | W/m | Heat flux at outer wall |
 | `resGlob` | `double` | m·K/W | Overall thermal resistance |
 
+<a id="internal-fluid-properties"></a>
 ### Internal Fluid Properties
 
 | Member | Type | Units | Description |
@@ -161,6 +164,7 @@ The `DadosGeo` structure ([`Geometria.h`](https://github.com/petrobras/marlim3/b
 | `betint` | `double` | 1/K | Thermal expansion coefficient |
 | `Vint` | `double` | m/s | Flow velocity |
 
+<a id="external-fluid-properties"></a>
 ### External Fluid Properties
 
 Two sets of external properties are stored (primary and secondary):
@@ -175,6 +179,7 @@ Two sets of external properties are stored (primary and secondary):
 | `Vextern1` | m/s | External flow velocity |
 | `Vconf` | m/s | Annulus flow velocity |
 
+<a id="control-flags"></a>
 ### Control Flags
 
 | Flag | Type | Values |
@@ -188,6 +193,7 @@ Two sets of external properties are stored (primary and secondary):
 | `difus2D` | `int` | **0** = 1D radial, **1** = 2D Poisson solver (buried pipe) |
 | `npet` | `double` | Petukhov viscosity-ratio exponent (0.25 cooling, 0.11 heating) |
 
+<a id="formation--wellbore-parameters"></a>
 ### Formation / Wellbore Parameters
 
 | Member | Type | Units | Description |
@@ -198,6 +204,7 @@ Two sets of external properties are stored (primary and secondary):
 | `rhoform` | `double` | kg/m³ | Formation density |
 | `resFim` | `double` | m·K/W | Computed formation resistance |
 
+<a id="gas-properties-for-annulus"></a>
 ### Gas Properties for Annulus
 
 | Member | Value / Type | Description |
@@ -258,6 +265,7 @@ $$\mathrm{Re} = \frac{D \, \rho \, |V|}{\mu}$$
 
 ## Convection Correlations
 
+<a id="internal-forced-convection--petukhov-gnielinski"></a>
 ### Internal Forced Convection — Petukhov-Gnielinski
 
 `nussPet(Re, Pr, ε, μ_b, μ_w)` — primary internal convection correlation.
@@ -282,6 +290,7 @@ $$a = 0.88 - \frac{0.24}{4 + \mathrm{Pr}}, \quad b = 0.33 + 0.5 \, e^{-0.6 \, \m
 
 $$\mathrm{Nu} = 3.6$$
 
+<a id="external-cross-flow--churchill-bernstein"></a>
 ### External Cross-Flow — Churchill-Bernstein
 
 `nussChuBer(Re, Pr)` — external convection over a cylinder in cross-flow.
@@ -292,6 +301,7 @@ $$\mathrm{Nu} = 0.3 + \frac{0.62\sqrt{\mathrm{Re}}\;\mathrm{Pr}^{1/3}}{\left[1 +
 
 A variant exponent of 1/2 is used for $20000 < \mathrm{Re} < 400000$.
 
+<a id="external-natural-convection--churchill-chu"></a>
 ### External Natural Convection — Churchill-Chu
 
 `nussNatExt(Ra, Pr)` — free convection from an isothermal cylinder.
@@ -300,6 +310,7 @@ A variant exponent of 1/2 is used for $20000 < \mathrm{Re} < 400000$.
 
 $$\mathrm{Nu} = \left[0.6 + \frac{0.387 \, \mathrm{Ra}^{1/6}}{\left(1 + (0.559/\mathrm{Pr})^{9/16}\right)^{8/27}}\right]^2$$
 
+<a id="confined-natural-convection-annulus--hollands--catton"></a>
 ### Confined Natural Convection (Annulus) — Hollands / Catton
 
 `NussConf2(Ra, H, δ, θ)` — natural convection in an inclined annular gap. Three angle regimes:
@@ -323,6 +334,7 @@ $$\mathrm{Nu}_{90} = \max\!\left(0.0605\,\mathrm{Ra}^{1/3},\;\left[1 + \left(\fr
 - $\mathrm{Ra} > 2 \times 10^5$: $C = 0.073$, $n = 1/3$, $m = -1/9$
 - Otherwise: $\mathrm{Nu} = 1$ (pure conduction)
 
+<a id="mixed-convection-regime"></a>
 ### Mixed Convection Regime
 
 At low external Reynolds number, if $\mathrm{Gr}/\mathrm{Re}^2 > 0.9$, the natural convection Nusselt is **added** to the forced convection Nusselt:
@@ -331,6 +343,7 @@ $$\mathrm{Nu}_{\text{eff}} = \mathrm{Nu}_{\text{forced}} + \mathrm{Nu}_{\text{na
 
 ---
 
+<a id="friction-factor--haaland"></a>
 ## Friction Factor — Haaland
 
 `fric(Re, ε/D)` — used inside the Petukhov-Gnielinski correlation.
@@ -345,6 +358,7 @@ $$f = \frac{64}{\mathrm{Re}}$$
 
 ---
 
+<a id="formation-thermal-resistance--ramey"></a>
 ## Formation Thermal Resistance — Ramey
 
 `ResForm()` — wellbore formation resistance based on Ramey (1962).
@@ -373,6 +387,7 @@ $$R_{\text{form}} = \frac{f(\tau_D)}{2\pi \, k_f}$$
 
 ## Ambient Fluid Properties
 
+<a id="seawater"></a>
 ### Seawater / External Liquid
 
 When `ambext == 1`, external liquid properties are updated automatically at the film temperature $T_f = 0.5(T_{\text{ext}} + T_{\text{wall,outer}})$.
@@ -399,6 +414,7 @@ When `ambext == 2`, air properties are updated from fitted correlations:
 | Conductivity | $k = 0.0241 + 7.586 \times 10^{-5} T$ W/(m·K) |
 | Specific heat | $c_p = 1000(1.005 + 1.096 \times 10^{-5} T + 4.600 \times 10^{-7} T^2)$ J/(kg·K) |
 
+<a id="gas--nitrogen-annulus"></a>
 ### Gas / Nitrogen (Annulus)
 
 For gas-filled annular layers (`tipomat == 3`), the implementation uses internal fitted correlations for compressed-gas density, heat capacity, conductivity, and viscosity.
@@ -428,6 +444,9 @@ where $\delta T = 0.01 T$ (or 0.1 if $T \approx 0$). Type: 1 = external liquid, 
 
 ---
 
+<a id="radial-resistance-network"></a>
+<a id="layer-resistance-types"></a>
+<a id="internal-convection-coefficient--hint"></a>
 ### Internal Convection Coefficient — hInt()
 
 ```
@@ -447,6 +466,7 @@ h_i = Nu · k_int / D_inner
 
 **Implementation note:** `novoHi` does **not** generally override `hInt()`. It is only used in the prescribed-wall-temperature branch of `transcel()` (`condiTparede == 1`), where a user-specified boundary coefficient can replace the default large penalty coefficient.
 
+<a id="external-convection-coefficient--hext"></a>
 ### External Convection Coefficient — hExt()
 
 ```
@@ -467,6 +487,7 @@ if formacPoc == 1 (wellbore):
 
 For cross-flow cases, an additional natural-convection contribution is added only in the specific branches where the code evaluates mixed external convection, namely when the outer region is fluid (`formacPoc == 0`), `dirconvExt == 0`, and the relevant steady/transient branch enables the low-Reynolds correction.
 
+<a id="wall-conductance--condparede"></a>
 ### Wall Conductance — condParede()
 
 Builds the per-unit-length thermal conductance `tec[j]` for each wall layer or intermediate annular region:
@@ -487,6 +508,7 @@ $$k_{\text{wall}} = \left(\sum_j \frac{1}{\text{tec}_j}\right)^{-1}$$
 
 ---
 
+<a id="steady-state-solver--transperm"></a>
 ## Steady-State Solver — transperm()
 
 `TransCal::transperm()` computes the steady radial heat flux per unit length.
@@ -516,6 +538,7 @@ If `difus2D == 1`, the routine delegates the external-soil problem to `transperm
 
 ---
 
+<a id="transient-solver--transtrans"></a>
 ## Transient Solver — transtrans()
 
 `TransCal::transtrans()` solves the transient radial thermal problem across the multilayer wall.
@@ -536,6 +559,7 @@ The total number of algebraic unknowns is therefore:
 
 $$N_{\text{unk}} = 2\left(1 + \sum_i n_{\text{camada},i}\right).$$
 
+<a id="radial-discretization"></a>
 ### Radial Discretization and Local Assembly
 
 `transcel(icam, idisc)` assembles a 2-row local contribution stored in `localmat[2][6]` and `localvet[2]`. The exact coefficients depend on whether the point is:
@@ -568,6 +592,10 @@ If `difus2D == 1`, the routine delegates the soil-side problem to `transtrans2D(
 
 ---
 
+<a id="axial-energy-equation"></a>
+<a id="energy-balance-terms"></a>
+<a id="coupling-radial-heat-flux--axial-solver"></a>
+<a id="thermal-members-in-cell-classes"></a>
 ## 2D Buried-Pipe Solver (Poisson)
 
 When `difus2D == 1`, the external buried-soil problem is handled by a 2D finite-volume Poisson / diffusion solver, while the pipe wall and internal convection remain represented through equivalent 1D conductances.
@@ -616,6 +644,7 @@ Defined in [`estruturasPoisson.h`](https://github.com/petrobras/marlim3/blob/mai
 | **Richardson** | `detRicPoisson` | Convective boundary condition |
 | **Coupled** | `rotuloAcop` | Coupling between buried-soil domain and equivalent pipe-wall model |
 
+<a id="assembly--geralocal"></a>
 ### Assembly — GeraLocal()
 
 For each element, `GeraLocal()` assembles:
@@ -626,10 +655,12 @@ For each element, `GeraLocal()` assembles:
 
 The method uses a face-based finite-volume balance, with conductivity interpolation and boundary-condition-specific source / coefficient terms.
 
+<a id="gradient-reconstruction--green-gauss"></a>
 ### Gradient Reconstruction — Green-Gauss
 
 `calcGradGreen()` reconstructs temperature gradients from face values using a Green-Gauss approach with non-orthogonality correction. Distortion filtering is applied when the angle between centroid-connecting vectors and face-area vectors becomes unfavorable.
 
+<a id="local-element-matrix--transcel"></a>
 ### Linear Solve
 
 The global sparse system is assembled and solved iteratively in both steady and transient modes. The solver workflow includes:
@@ -738,6 +769,7 @@ $$h_e = \frac{1}{\pi D_{\text{outer}} R_{\text{form}}}.$$
 
 This is the main mechanism used to represent radial heat exchange with the formation in wellbore-like configurations.
 
+<a id="buried--trenched-pipelines"></a>
 ### Buried / Trenched Pipelines
 
 For buried or trenched pipelines, the external thermal domain can be treated in two different ways:
@@ -747,6 +779,7 @@ For buried or trenched pipelines, the external thermal domain can be treated in 
 
 In both cases, the pipe wall itself is still represented through equivalent 1D conductances, while the surrounding soil is handled by the external Poisson / diffusion solver.
 
+<a id="lined--annular-pipes"></a>
 ### Lined / Annular Pipes
 
 Annular or lined geometries are identified by `geom.revest == 1`.
