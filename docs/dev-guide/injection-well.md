@@ -6,11 +6,11 @@ This document describes the **injection well** simulation mode in Marlim3 (`-s I
 
 | File | Role |
 |------|------|
-| [`src/Num4Main.cpp`](../../src/Num4Main.cpp) | Entry point: `SolveTramoSolteiro()`, `permanenteSimples()` dispatching |
-| [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` class: `marchaInjPerm1()`, `buscaInjPfundoPerm1–5()`, `delpInjPerm()` |
-| [`src/Leitura.h`](../../src/Leitura.h) / [`Leitura.cpp`](../../src/Leitura.cpp) | `detCondConInjec` structure, `parse_condcont_pocinjec()` |
-| [`src/PropFluCol.h`](../../src/PropFluCol.h) / [`PropFluCol.cpp`](../../src/PropFluCol.cpp) | `ProFluCol` — injection fluid properties (water, CO₂, compositional) |
-| [`src/FonteMas.h`](../../src/FonteMas.h) / [`FonteMas.cpp`](../../src/FonteMas.cpp) | `IPR` class — injectivity index model |
+| [`src/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) | Entry point: `SolveTramoSolteiro()`, `permanenteSimples()` dispatching |
+| [`src/SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) / [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | `SProd` class: `marchaInjPerm1()`, `buscaInjPfundoPerm1–5()`, `delpInjPerm()` |
+| [`src/Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) / [`Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) | `detCondConInjec` structure, `parse_condcont_pocinjec()` |
+| [`src/PropFluCol.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFluCol.h) / [`PropFluCol.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFluCol.cpp) | `ProFluCol` — injection fluid properties (water, CO₂, compositional) |
+| [`src/FonteMas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/FonteMas.h) / [`FonteMas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/FonteMas.cpp) | `IPR` class — injectivity index model |
 
 ---
 
@@ -56,7 +56,7 @@ The key constraint: **injection wells are steady-state only** (no transient simu
 
 ## Boundary Condition Types
 
-The `detCondConInjec` structure ([`Leitura.h`](../../src/Leitura.h)) defines six BC configurations via the `CC` flag:
+The `detCondConInjec` structure ([`Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h)) defines six BC configurations via the `CC` flag:
 
 | CC | Given | Solved for | Root-finding? |
 |----|-------|-----------|---------------|
@@ -155,7 +155,7 @@ main()
 
 ## The Marching Method — marchaInjPerm1
 
-`SProd::marchaInjPerm1(double chute)` ([`SisProd.cpp`](../../src/SisProd.cpp)) is the core marching function for injection wells.
+`SProd::marchaInjPerm1(double chute)` ([`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) is the core marching function for injection wells.
 
 ### Input interpretation
 
@@ -279,7 +279,7 @@ This method is used mainly in reverse pressure reconstruction and pressure-guess
 
 ## Injection Network — RedeInj
 
-When the simulation type is `REDE` and the network is tagged as injection (`arqRede.injec == 1`), the `RedeInj()` function ([`Num4Main.cpp`](../../src/Num4Main.cpp)) manages the network-level solve.
+When the simulation type is `REDE` and the network is tagged as injection (`arqRede.injec == 1`), the `RedeInj()` function ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) manages the network-level solve.
 
 ### Algorithm
 

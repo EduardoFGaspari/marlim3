@@ -415,7 +415,7 @@ The single-branch transient simulation is driven by the `SolveTrans()` loop insi
 
 #### Pre-Processing
 
-> Detailed documentation: [Network Simulation — Pre-Processing Pipeline](network-simulation.md#pre-processing-pipeline)
+> Detailed documentation: [Network Simulation — Pre-Processing Pipeline](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#pre-processing-pipeline)
 
 | Function | Purpose |
 |----------|---------|
@@ -423,11 +423,11 @@ The single-branch transient simulation is driven by the `SolveTrans()` loop insi
 | `preProcRede(Rede&, int)` | DFS graph decomposition into independent sub-networks; write `RedeInterna-{i}.json` per sub-network |
 | `gravaRedeInterna(...)` | Serialize a sub-network to JSON (configuration + re-indexed topology) |
 | `preparaRedeProd(...)` | Build SProd objects for a sub-network from branch JSON files |
-| `avaliaPerm(...)` | Multi-pass scan to deactivate zero-flow branches (see [avaliaPerm](network-simulation.md#zero-flow-tramo-removal--avaliaperm)) |
+| `avaliaPerm(...)` | Multi-pass scan to deactivate zero-flow branches (see [avaliaPerm](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#zero-flow-tramo-removal--avaliaperm)) |
 
 #### Steady-State Solvers and Convergence
 
-> Detailed documentation: [Network Simulation — Steady-State Network Solver](network-simulation.md#steady-state-network-solver), [Convergence](network-simulation.md#convergence-and-relaxation), [Node-Level Fluid Mixing](network-simulation.md#node-level-fluid-mixing--totalizaciclorede), [Initial Pressure Guess](network-simulation.md#initial-pressure-guess--chutepresrede)
+> Detailed documentation: [Network Simulation — Steady-State Network Solver](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#steady-state-network-solver), [Convergence](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#convergence-and-relaxation), [Node-Level Fluid Mixing](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#node-level-fluid-mixing--totalizaciclorede), [Initial Pressure Guess](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#initial-pressure-guess--chutepresrede)
 
 **Convergence loop and iteration cycles:**
 
@@ -451,7 +451,7 @@ The single-branch transient simulation is driven by the `SolveTrans()` loop insi
 
 **Topology variant drivers:**
 
-> Detailed documentation: [Network Simulation — Production](network-simulation.md#production-network--solveredeprod--redeprod), [Gas-Lift](network-simulation.md#gas-lift-loop--redeanelgl), [Parallel](network-simulation.md#parallel-network--redeparalela), [Injection](network-simulation.md#injection-network--redeInj)
+> Detailed documentation: [Network Simulation — Production](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#production-network--solveredeprod--redeprod), [Gas-Lift](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#gas-lift-loop--redeanelgl), [Parallel](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#parallel-network--redeparalela), [Injection](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#injection-network--redeInj)
 
 | Function | Purpose |
 |----------|---------|
@@ -463,7 +463,7 @@ The single-branch transient simulation is driven by the `SolveTrans()` loop insi
 
 #### Transient Solvers
 
-> Detailed documentation: [Network Simulation — Transient Network Solver](network-simulation.md#transient-network-solver)
+> Detailed documentation: [Network Simulation — Transient Network Solver](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#transient-network-solver)
 
 | Function | Purpose |
 |----------|---------|
@@ -523,7 +523,7 @@ Variant of parallel parametric analysis with reservoir-model coupling.
 
 #### Network Helper Functions
 
-> Detailed documentation: [Network Simulation — Transient Helper Functions](network-simulation.md#transient-helper-functions)
+> Detailed documentation: [Network Simulation — Transient Helper Functions](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#transient-helper-functions)
 
 | Function | Description |
 |----------|-------------|
@@ -548,7 +548,7 @@ Variant of parallel parametric analysis with reservoir-model coupling.
 
 #### Compositional Fluid Updates
 
-> Detailed documentation: [Network Simulation — Compositional Model Switching](network-simulation.md#compositional-model-switching), [Cell-Level Composition Propagation](network-simulation.md#cell-level-composition-propagation)
+> Detailed documentation: [Network Simulation — Compositional Model Switching](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#compositional-model-switching), [Cell-Level Composition Propagation](https://github.com/petrobras/marlim3/blob/main/network-simulation.md#cell-level-composition-propagation)
 
 | Function | Description |
 |----------|-------------|

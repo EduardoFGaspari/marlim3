@@ -6,15 +6,15 @@ This document provides a high-level overview of the main classes that compose a 
 
 | File | Role |
 |------|------|
-| [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` — production system (branch) |
-| [`src/celula3.h`](../../src/celula3.h) / [`celula3.cpp`](../../src/celula3.cpp) | `Cel` — cell (control volume) |
-| [`src/Geometria.h`](../../src/Geometria.h) | `DadosGeo` — pipe geometry |
-| [`src/acessorios.h`](../../src/acessorios.h) | `acessorio` — cell accessories |
-| [`src/FonteMas.h`](../../src/FonteMas.h) | `AbsFonte`, `IPR`, `InjGas`, `InjLiq`, `InjMult` — mass sources |
-| [`src/Acidentes2.h`](../../src/Acidentes2.h) | `MudaArea`, `choke` — area changes and choke valves |
-| [`src/estrat.h`](../../src/estrat.h) | `estratificado` — stratified-flow parameters |
-| [`src/celulaGas.h`](../../src/celulaGas.h) | `CelG` — gas-lift service-line cell |
-| [`src/chokegas.h`](../../src/chokegas.h) | `ChokeGas` — compressible-gas choke valve |
+| [`src/SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) / [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | `SProd` — production system (branch) |
+| [`src/celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) / [`celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp) | `Cel` — cell (control volume) |
+| [`src/Geometria.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Geometria.h) | `DadosGeo` — pipe geometry |
+| [`src/acessorios.h`](https://github.com/petrobras/marlim3/blob/main/src/include/acessorios.h) | `acessorio` — cell accessories |
+| [`src/FonteMas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/FonteMas.h) | `AbsFonte`, `IPR`, `InjGas`, `InjLiq`, `InjMult` — mass sources |
+| [`src/Acidentes2.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Acidentes2.h) | `MudaArea`, `choke` — area changes and choke valves |
+| [`src/estrat.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estrat.h) | `estratificado` — stratified-flow parameters |
+| [`src/celulaGas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaGas.h) | `CelG` — gas-lift service-line cell |
+| [`src/chokegas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/chokegas.h) | `ChokeGas` — compressible-gas choke valve |
 
 ---
 
@@ -32,7 +32,7 @@ This document provides a high-level overview of the main classes that compose a 
 
 ## SProd — Production System
 
-`SProd` ([`SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp)) represents a single **branch** (pipeline segment) and contains all the methods needed to simulate it. A network is represented as a vector of `SProd` objects.
+`SProd` ([`SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) / [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) represents a single **branch** (pipeline segment) and contains all the methods needed to simulate it. A network is represented as a vector of `SProd` objects.
 
 In `main()`, the objects are named:
 
@@ -62,7 +62,7 @@ The steady-state solver methods on `SProd` are organized into two categories:
 
 ## Cel — The Cell (Control Volume)
 
-`Cel` ([`celula3.h`](../../src/celula3.h) / [`celula3.cpp`](../../src/celula3.cpp)) is the fundamental discretised unit of the pipeline. An `SProd` object is composed of an array of `Cel` objects (`celula[0..ncel]`), plus boundary conditions and events stored in `arq`.
+`Cel` ([`celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) / [`celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp)) is the fundamental discretised unit of the pipeline. An `SProd` object is composed of an array of `Cel` objects (`celula[0..ncel]`), plus boundary conditions and events stored in `arq`.
 
 Key design principles:
 
@@ -75,13 +75,13 @@ Key design principles:
 
 ## DadosGeo — Pipe Geometry
 
-`DadosGeo` ([`Geometria.h`](../../src/Geometria.h)) stores the cross-sectional dimensions of the pipe (inner diameter, wall layers, roughness, area, perimeter, inclination), as well as the thermal properties of each wall layer (conductivity, density, Cp). It also supports confined fluid layers within the wall (e.g. gas-filled or liquid-filled annuli), identified by the `tipomat` flag (`0` = solid, `2` = liquid, `3` = gas). See [Heat Transfer Modeling](heat-transfer.md) for the full member list.
+`DadosGeo` ([`Geometria.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Geometria.h)) stores the cross-sectional dimensions of the pipe (inner diameter, wall layers, roughness, area, perimeter, inclination), as well as the thermal properties of each wall layer (conductivity, density, Cp). It also supports confined fluid layers within the wall (e.g. gas-filled or liquid-filled annuli), identified by the `tipomat` flag (`0` = solid, `2` = liquid, `3` = gas). See [Heat Transfer Modeling](heat-transfer.md) for the full member list.
 
 ---
 
 ## acessorio — Cell Accessories
 
-The `acessorio` class ([`acessorios.h`](../../src/acessorios.h)) represents any device inserted inside a cell that modifies the flow conditions beyond what the boundary balances would produce. Each accessory must be associated with exactly one cell.
+The `acessorio` class ([`acessorios.h`](https://github.com/petrobras/marlim3/blob/main/src/include/acessorios.h)) represents any device inserted inside a cell that modifies the flow conditions beyond what the boundary balances would produce. Each accessory must be associated with exactly one cell.
 
 Accessories fall into two broad categories: **mass sources** and **localized pressure variations**.
 
@@ -107,9 +107,9 @@ The accessory type is identified by the integer flag `tipo`:
 | 16 | 2D porous medium inflow | Mass source |
 | 17 | Multi-stage BCS | Pressure variation |
 
-> **Note:** Type 13 is unused (skipped in the enumeration). Types 6 and 14 appear in the comment block of `acessorios.h` but are never assigned by any construction path in `Leitura.cpp`, `LeituraVapor.cpp`, or `SisProdVap.cpp`. Steam-related types that are implemented (11, 12) are assigned in [`LeituraVapor.cpp`](../../src/LeituraVapor.cpp) for vapour-line simulations.
+> **Note:** Type 13 is unused (skipped in the enumeration). Types 6 and 14 appear in the comment block of `acessorios.h` but are never assigned by any construction path in `Leitura.cpp`, `LeituraVapor.cpp`, or `SisProdVap.cpp`. Steam-related types that are implemented (11, 12) are assigned in [`LeituraVapor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LeituraVapor.cpp) for vapour-line simulations.
 
-The accessory classes that implement mass-source functionality are defined in [`FonteMas.h`](../../src/FonteMas.h):
+The accessory classes that implement mass-source functionality are defined in [`FonteMas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/FonteMas.h):
 
 | Class | Accessory types | Description |
 |-------|-----------------|-------------|
@@ -119,7 +119,7 @@ The accessory classes that implement mass-source functionality are defined in [`
 | `InjLiq` | 2 | Liquid injection at specified rate/pressure |
 | `InjMult` | 10 | Multi-phase mass injection (per-phase rates) |
 
-Pipe area changes and multiphase choke valves are handled by the `Acidentes` module ([`Acidentes2.h`](../../src/Acidentes2.h)), which provides:
+Pipe area changes and multiphase choke valves are handled by the `Acidentes` module ([`Acidentes2.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Acidentes2.h)), which provides:
 - `MudaArea` — models contraction/expansion with upstream/downstream area and pressure-drop / temperature-drop methods
 - `choke` — multiphase choke valve model with subcritical/critical flow, area interpolation, and maximum mass flow calculation
 
@@ -127,16 +127,16 @@ Pipe area changes and multiphase choke valves are handled by the `Acidentes` mod
 
 ## estratificado — Stratified Flow Parameters
 
-The `estratificado` class ([`estrat.h`](../../src/estrat.h)) stores the detailed stratified-flow calculation results for a cell: film height (`hfilm`), liquid holdup (`holliq`), gas/liquid wall shear stresses (`twg`, `twl`), interfacial friction factor (`fi`), phase Reynolds numbers (`reyL`, `reyG`), superficial velocities (`uls`, `ugs`), pipe inclination (`ang`), drift-flux parameters (`coefC0`, `valUd`), and flow regime indicator (`arr`).
+The `estratificado` class ([`estrat.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estrat.h)) stores the detailed stratified-flow calculation results for a cell: film height (`hfilm`), liquid holdup (`holliq`), gas/liquid wall shear stresses (`twg`, `twl`), interfacial friction factor (`fi`), phase Reynolds numbers (`reyL`, `reyG`), superficial velocities (`uls`, `ugs`), pipe inclination (`ang`), drift-flux parameters (`coefC0`, `valUd`), and flow regime indicator (`arr`).
 
 ---
 
 ## CelG — Gas-Lift Service Line Cell
 
-`CelG` ([`celulaGas.h`](../../src/celulaGas.h)) provides the cell type and marching methods for gas injection service lines (gas-lift annulus). It uses `ChokeGas` ([`chokegas.h`](../../src/chokegas.h)) for modeling compressible gas flow through injection orifices and valves.
+`CelG` ([`celulaGas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaGas.h)) provides the cell type and marching methods for gas injection service lines (gas-lift annulus). It uses `ChokeGas` ([`chokegas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/chokegas.h)) for modeling compressible gas flow through injection orifices and valves.
 
 ---
 
 ## ChokeGas — Gas Injection Choke
 
-`ChokeGas` ([`chokegas.h`](../../src/chokegas.h)) models compressible-gas choke valves used in gas-lift injection, including subcritical, critical, and liquid flow regimes. It contains a pre-computed table (`ventCR`) for critical flow calculations.
+`ChokeGas` ([`chokegas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/chokegas.h)) models compressible-gas choke valves used in gas-lift injection, including subcritical, critical, and liquid flow regimes. It contains a pre-computed table (`ventCR`) for critical flow calculations.

@@ -6,16 +6,16 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 
 | File | Role |
 |------|------|
-| [`src/SisProd.cpp`](../../src/SisProd.cpp) | `SolveTrans()` main loop and all system-level transient methods |
-| [`src/SisProd.h`](../../src/SisProd.h) | `SProd` class declaration |
-| [`src/celula3.cpp`](../../src/celula3.cpp) | `Cel` class — cell-level transport, matrix assembly, state rewind |
-| [`src/celula3.h`](../../src/celula3.h) | `Cel` class declaration and member variables |
-| [`src/PropFlu.h`](../../src/PropFlu.h) / [`PropFlu.cpp`](../../src/PropFlu.cpp) | Fluid property correlations (black-oil & compositional) |
-| [`src/estrat.cpp`](../../src/estrat.cpp) | Stratified flow model (Taitel-Dukler map) |
-| [`src/FonteMas.cpp`](../../src/FonteMas.cpp) | Mass source term evaluation |
-| [`src/TrocaCalor.cpp`](../../src/TrocaCalor.cpp) | Radial heat-transfer (pipe wall, insulation, seabed) |
-| [`src/celulaGas.h`](../../src/celulaGas.h) / [`celulaGas.cpp`](../../src/celulaGas.cpp) | `CelG` class — gas-lift service line cell state, matrix assembly, rewind |
-| [`src/chokegas.h`](../../src/chokegas.h) / [`chokegas.cpp`](../../src/chokegas.cpp) | `ChokeGas` — compressible gas choke model for VGL orifices |
+| [`src/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | `SolveTrans()` main loop and all system-level transient methods |
+| [`src/SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) | `SProd` class declaration |
+| [`src/celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp) | `Cel` class — cell-level transport, matrix assembly, state rewind |
+| [`src/celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) | `Cel` class declaration and member variables |
+| [`src/PropFlu.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFlu.h) / [`PropFlu.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFlu.cpp) | Fluid property correlations (black-oil & compositional) |
+| [`src/estrat.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/estrat.cpp) | Stratified flow model (Taitel-Dukler map) |
+| [`src/FonteMas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/FonteMas.cpp) | Mass source term evaluation |
+| [`src/TrocaCalor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/TrocaCalor.cpp) | Radial heat-transfer (pipe wall, insulation, seabed) |
+| [`src/celulaGas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaGas.h) / [`celulaGas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celulaGas.cpp) | `CelG` class — gas-lift service line cell state, matrix assembly, rewind |
+| [`src/chokegas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/chokegas.h) / [`chokegas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/chokegas.cpp) | `ChokeGas` — compressible gas choke model for VGL orifices |
 
 ---
 
@@ -574,14 +574,14 @@ These attributes are computed by `renovaterm()` (for implicit models) and applie
 
 ## Gas-Lift Service Line Coupling
 
-`SProd::solveLinGas()` couples the gas-lift service line to the production line. The gas-lift line has its own 1D cell array `celulaG[]` of type `CelG` (defined in [`celulaGas.h`](../../src/celulaGas.h) / [`celulaGas.cpp`](../../src/celulaGas.cpp)), modelling **single-phase compressible gas** above the liquid interface and completion fluid below it.
+`SProd::solveLinGas()` couples the gas-lift service line to the production line. The gas-lift line has its own 1D cell array `celulaG[]` of type `CelG` (defined in [`celulaGas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaGas.h) / [`celulaGas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celulaGas.cpp)), modelling **single-phase compressible gas** above the liquid interface and completion fluid below it.
 
 ### solveLinGas — Orchestration
 
 The top-level coupling method performs three steps:
 
 1. **`ValvGasTrans()`**: solves the transient gas-lift valve model. For each VGL:
-   - If the valve cell is in the **gas zone** (above `celInter`): computes `presEstag` from the gas-cell pressure, `presGarg` from the production-column pressure with recovery fraction `frec`, then calls `chokeVGL[i].massica()` for the compressible gas choke mass flow (in [`chokegas.cpp`](../../src/chokegas.cpp))
+   - If the valve cell is in the **gas zone** (above `celInter`): computes `presEstag` from the gas-cell pressure, `presGarg` from the production-column pressure with recovery fraction `frec`, then calls `chokeVGL[i].massica()` for the compressible gas choke mass flow (in [`chokegas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/chokegas.cpp))
    - For **IPO valves** (`tipo == 1`): the effective orifice area is modulated by `areaValvCali()`, which models the calibrated area vs. differential pressure characteristic
    - If the valve cell is in the **liquid zone** (below `celInter`): uses `massica(1, salinidade)` for liquid-phase flow with completion-fluid properties
    - A **master-2 choke** at `posicM2` handles bidirectional flow between production and service lines, with hydrostatic correction

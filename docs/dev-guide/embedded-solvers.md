@@ -8,11 +8,11 @@ Marlim3 embeds specialised multi-dimensional solvers **inside individual pipelin
 
 | Solver | Header | Implementation |
 |--------|--------|----------------|
-| Poisson 2D | [`solverPoisson.h`](../../src/solverPoisson.h) | [`solverPoisson.cpp`](../../src/solverPoisson.cpp) |
-| Poisson 3D | [`solver3DPoisson.h`](../../src/solver3DPoisson.h) | [`solver3DPoisson.cpp`](../../src/solver3DPoisson.cpp) |
-| Poroso 2D | [`solverPoroso.h`](../../src/solverPoroso.h) | [`solverPoroso.cpp`](../../src/solverPoroso.cpp) |
-| Radial porous (1D) | [`PorosoRad-Simples.h`](../../src/PorosoRad-Simples.h) | [`PorosoRad-Simples.cpp`](../../src/PorosoRad-Simples.cpp) |
-| Radial porous (full) | [`PorosoRad.h`](../../src/PorosoRad.h) | [`PorosoRad.cpp`](../../src/PorosoRad.cpp) |
+| Poisson 2D | [`solverPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solverPoisson.h) | [`solverPoisson.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/solverPoisson.cpp) |
+| Poisson 3D | [`solver3DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solver3DPoisson.h) | [`solver3DPoisson.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/solver3DPoisson.cpp) |
+| Poroso 2D | [`solverPoroso.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solverPoroso.h) | [`solverPoroso.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/solverPoroso.cpp) |
+| Radial porous (1D) | [`PorosoRad-Simples.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PorosoRad-Simples.h) | [`PorosoRad-Simples.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PorosoRad-Simples.cpp) |
+| Radial porous (full) | [`PorosoRad.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PorosoRad.h) | [`PorosoRad.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PorosoRad.cpp) |
 
 ---
 
@@ -60,7 +60,7 @@ Key points:
 
 ## 2. Poisson 2D — Transverse Heat Diffusion
 
-**Class:** `solverP` — [`solverPoisson.h`](../../src/solverPoisson.h)
+**Class:** `solverP` — [`solverPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solverPoisson.h)
 
 ### Governing Equation
 
@@ -74,7 +74,7 @@ where $\rho$, $c_p$ and $k$ are the local density, specific heat and thermal con
 
 - **Unstructured 2D triangular** — generated externally (Triangle `.ele`/`.node` format or UNV)
 - Represents a single pipe cross-section perpendicular to the flow axis
-- Classes: `malha2d` ([`Malha2DPoisson.h`](../../src/Malha2DPoisson.h)), `elementoPoisson` ([`Elem2DPoisson.h`](../../src/Elem2DPoisson.h))
+- Classes: `malha2d` ([`Malha2DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Malha2DPoisson.h)), `elementoPoisson` ([`Elem2DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem2DPoisson.h))
 - Each element stores: centroid, 3 face normals (`sFace`), face areas, neighbour indices, interpolation factor (`fatG`), non-orthogonality correction vectors (`vecE`, `vecT`, `angES`)
 
 ### Numerical Method
@@ -114,16 +114,16 @@ where $\rho$, $c_p$ and $k$ are the local density, specific heat and thermal con
 
 | Structure | File | Purpose |
 |-----------|------|---------|
-| `dadosP` | [`dados1Poisson.h`](../../src/dados1Poisson.h) | Input container: mesh file path, material properties, BCs, time control, coupling parameters |
-| `elementoPoisson` | [`Elem2DPoisson.h`](../../src/Elem2DPoisson.h) | FV element: vertices, faces, normals, `tempC`/`tempC0`, `rho`, `cp`, `cond`, gradient vectors, local matrix |
-| `malha2d` | [`Malha2DPoisson.h`](../../src/Malha2DPoisson.h) | Mesh container: element array `mlh2d[]`, vertex coordinates, face connectivity |
-| `detCCPoisson` | [`estruturasPoisson.h`](../../src/estruturasPoisson.h) | BC collection: Dirichlet/Neumann/Robin/Coupling arrays, face label maps |
+| `dadosP` | [`dados1Poisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/dados1Poisson.h) | Input container: mesh file path, material properties, BCs, time control, coupling parameters |
+| `elementoPoisson` | [`Elem2DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem2DPoisson.h) | FV element: vertices, faces, normals, `tempC`/`tempC0`, `rho`, `cp`, `cond`, gradient vectors, local matrix |
+| `malha2d` | [`Malha2DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Malha2DPoisson.h) | Mesh container: element array `mlh2d[]`, vertex coordinates, face connectivity |
+| `detCCPoisson` | [`estruturasPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturasPoisson.h) | BC collection: Dirichlet/Neumann/Robin/Coupling arrays, face label maps |
 
 ---
 
 ## 3. Poisson 3D — Axially-Extended Heat Diffusion
 
-**Class:** `solverP3D` — [`solver3DPoisson.h`](../../src/solver3DPoisson.h)
+**Class:** `solverP3D` — [`solver3DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solver3DPoisson.h)
 
 ### What 3D Adds
 
@@ -132,7 +132,7 @@ While the 2D Poisson solver works on a single cross-section for **one** pipeline
 ### Mesh
 
 - **Unstructured tetrahedral** — imported from UNV format with named regions
-- Classes: `malha3d` ([`Malha3DPoisson.h`](../../src/Malha3DPoisson.h)), `elementoPoisson3D` ([`Elem3DPoisson.h`](../../src/Elem3DPoisson.h))
+- Classes: `malha3d` ([`Malha3DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Malha3DPoisson.h)), `elementoPoisson3D` ([`Elem3DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem3DPoisson.h))
 - Volume computed via the scalar triple product of edge vectors
 - 4 triangular faces per element, normals via cross product
 - **Region-based material assignment**: element region strings matched against named material properties in the input
@@ -161,7 +161,7 @@ While the 2D Poisson solver works on a single cross-section for **one** pipeline
 
 ### Initialisation in Num4Main.cpp
 
-At lines 13604–13665 of [`Num4Main.cpp`](../../src/Num4Main.cpp):
+At lines 13604–13665 of [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp):
 
 1. The `solverP3D` object is constructed from the UNV mesh file (`modoDifus3DJson`)
 2. Each coupling surface label is matched to a pipeline cell index
@@ -172,7 +172,7 @@ At lines 13604–13665 of [`Num4Main.cpp`](../../src/Num4Main.cpp):
 
 ## 4. Radial Porous Flow — Accessory Type 15
 
-**Class:** `PorosRadSimp` — [`PorosoRad-Simples.h`](../../src/PorosoRad-Simples.h)
+**Class:** `PorosRadSimp` — [`PorosoRad-Simples.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PorosoRad-Simples.h)
 
 This is a **1D radial Darcy-flow** solver representing the near-wellbore reservoir. It is the simpler of the two porous-flow models and is attached to a pipeline cell as accessory type 15.
 
@@ -190,7 +190,7 @@ for each phase $\alpha \in \{o, w, g\}$ (oil, water, gas). Three-phase flow with
 
 ### Geometry
 
-The `DadosGeoPoro` class ([`GeometriaPoro.h`](../../src/GeometriaPoro.h)) defines a multi-layer radial geometry:
+The `DadosGeoPoro` class ([`GeometriaPoro.h`](https://github.com/petrobras/marlim3/blob/main/src/include/GeometriaPoro.h)) defines a multi-layer radial geometry:
 
 | Member | Purpose |
 |--------|---------|
@@ -206,7 +206,7 @@ The `DadosGeoPoro` class ([`GeometriaPoro.h`](../../src/GeometriaPoro.h)) define
 
 ### Radial Cells
 
-`celradSimp` ([`celRad-Simples.h`](../../src/celRad-Simples.h)) stores per-cell state for the 1D radial grid:
+`celradSimp` ([`celRad-Simples.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celRad-Simples.h)) stores per-cell state for the 1D radial grid:
 
 - Pressures: `Pcamada`, `PcamadaL`, `PcamadaR`, `Pini`, `Piter`
 - Phase flow rates: `QocamadaR/L`, `QwcamadaR/L`, `QgcamadaR/L`
@@ -234,7 +234,7 @@ The `DadosGeoPoro` class ([`GeometriaPoro.h`](../../src/GeometriaPoro.h)) define
 
 ### Coupling
 
-At [`SisProd.cpp`](../../src/SisProd.cpp) lines 4744–4759, during the 1D pressure march:
+At [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) lines 4744–4759, during the 1D pressure march:
 
 ```
 radialPoro.sWPoc  = in-situ water fraction (from pipeline cell)
@@ -248,7 +248,7 @@ celula[ind].fontemassGR = fluxIniG           (gas mass source → pipeline)
 
 ## 5. Poroso 2D — Accessory Type 16
 
-**Class:** `solverPoro` — [`solverPoroso.h`](../../src/solverPoroso.h)
+**Class:** `solverPoro` — [`solverPoroso.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solverPoroso.h)
 
 This is a full **2D unstructured finite-volume** solver for multiphase porous-medium flow, representing the near-wellbore reservoir in plan view (areal). It is attached to a pipeline cell as accessory type 16.
 
@@ -281,7 +281,7 @@ Saturations are updated explicitly through face-based transport operators (`evol
 ### Mesh
 
 - **Unstructured 2D triangular** — same FVM topology as Poisson 2D
-- Classes: `malha2dPoro` ([`Malha2DPoroso.h`](../../src/Malha2DPoroso.h)), `elementoPoroso` ([`Elem2DPoroso.h`](../../src/Elem2DPoroso.h))
+- Classes: `malha2dPoro` ([`Malha2DPoroso.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Malha2DPoroso.h)), `elementoPoroso` ([`Elem2DPoroso.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem2DPoroso.h))
 - Green-Gauss gradient reconstruction with non-orthogonality correction
 - **Anisotropic permeability** (`kX`, `kY`) per element
 - **Datum elevation** `zD` interpolated per cell (tilted reservoir)
@@ -346,7 +346,7 @@ Pipeline cell  ←→  1D radial annulus (PorosRad)  ←→  2D reservoir mesh (
 
 ### Coupling
 
-At [`SisProd.cpp`](../../src/SisProd.cpp) lines 4761–4800, during the 1D pressure march:
+At [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) lines 4761–4800, during the 1D pressure march:
 
 ```
 poroso2D.dados.pW.val[0]      = celula[ind].pres    (wellbore pressure → Dirichlet BC)
@@ -379,7 +379,7 @@ For Poisson 2D, the steady-state thermal coupling is handled through the coupled
 
 ### Transient Coupling
 
-During the transient time loop in [`SisProd.cpp`](../../src/SisProd.cpp):
+During the transient time loop in [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp):
 
 | Phase | What happens | Line refs |
 |-------|-------------|-----------|

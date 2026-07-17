@@ -6,9 +6,9 @@ This document describes the **parametric analysis** (Análise Paramétrica — A
 
 | File | Role |
 |------|------|
-| [`src/include/LerAP.h`](../../src/include/LerAP.h) | `APara` class definition, parameter structs, `variaveis` activation flags |
-| [`src/core/LerAP.cpp`](../../src/core/LerAP.cpp) | JSON parsing, sequence generation, parameter selection, output formatting |
-| [`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp) | `leituraAP()`, `leituraAPparalelo()`, `leituraAPparaleloReserva()` |
+| [`src/include/LerAP.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerAP.h) | `APara` class definition, parameter structs, `variaveis` activation flags |
+| [`src/core/LerAP.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LerAP.cpp) | JSON parsing, sequence generation, parameter selection, output formatting |
+| [`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) | `leituraAP()`, `leituraAPparalelo()`, `leituraAPparaleloReserva()` |
 
 ---
 
@@ -53,7 +53,7 @@ The `vfp` selector controls the output/table convention:
 
 ## Activation from Main
 
-Parametric analysis is triggered when the tramo JSON sets `AP == 1`. The dispatch in `main()` ([`Num4Main.cpp`](../../src/core/Num4Main.cpp)) is:
+Parametric analysis is triggered when the tramo JSON sets `AP == 1`. The dispatch in `main()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) is:
 
 ```
 main()
@@ -160,7 +160,7 @@ The following table lists parameter types that can be swept. Each type maps to a
 
 ## The APara Class
 
-The `APara` class ([`LerAP.h`](../../src/include/LerAP.h)) manages the entire parametric-analysis lifecycle.
+The `APara` class ([`LerAP.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerAP.h)) manages the entire parametric-analysis lifecycle.
 
 ### Construction
 
@@ -246,7 +246,7 @@ Geometry and material changes are handled through helper methods such as `atuali
 
 ## Serial Execution — leituraAP
 
-`leituraAP()` ([`Num4Main.cpp`](../../src/core/Num4Main.cpp)) runs cases sequentially:
+`leituraAP()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) runs cases sequentially:
 
 ```
 leituraAP(nomeArquivoAP, sistem1):
@@ -272,7 +272,7 @@ In serial mode, the previous converged solution is reused as the initial guess w
 
 ## Parallel Execution — leituraAPparalelo
 
-`leituraAPparalelo()` ([`Num4Main.cpp`](../../src/core/Num4Main.cpp)) uses **OpenMP** to solve cases concurrently.
+`leituraAPparalelo()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) uses **OpenMP** to solve cases concurrently.
 
 ### Pre-parallel phase
 

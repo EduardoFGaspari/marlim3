@@ -6,17 +6,17 @@ This document describes how the Marlim3 simulator reads a JSON input file, valid
 
 | File | Role |
 |------|------|
-| [`src/JSONDataModel.h`](../../src/JSONDataModel.h) / [`JSONDataModel.cpp`](../../src/JSONDataModel.cpp) | Generic JSON data model built on RapidJSON |
-| [`src/JSON_entrada.h`](../../src/JSON_entrada.h) / [`JSON_entrada.cpp`](../../src/JSON_entrada.cpp) | Typed JSON schema — macro-based class hierarchy mirroring JSON structure |
-| [`src/Leitura.h`](../../src/Leitura.h) / [`Leitura.cpp`](../../src/Leitura.cpp) | `Ler` class — reads JSON, populates C structs, builds geometry and cells (~21,400 lines) |
-| [`src/LeituraVapor.h`](../../src/LeituraVapor.h) / [`LeituraVapor.cpp`](../../src/LeituraVapor.cpp) | `LerVap` class — variant for steam injection simulations |
-| [`src/LerAP.h`](../../src/LerAP.h) / [`LerAP.cpp`](../../src/LerAP.cpp) | `APara` class — parametric analysis input reader |
-| [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` class — simulation engine; constructor invokes `Ler` and `montasistema()` |
-| [`src/estruturas.h`](../../src/estruturas.h) | Core data structs (`corteduto`, `detduto`, `detcelp`, etc.) |
-| [`src/celula3.h`](../../src/celula3.h) / [`celula3.cpp`](../../src/celula3.cpp) | `Cel` class — per-cell simulation state |
-| [`src/PropFlu.h`](../../src/PropFlu.h) / [`PropFlu.cpp`](../../src/PropFlu.cpp) | `ProFlu` — fluid property models |
-| [`src/Geometria.h`](../../src/Geometria.h) | `DadosGeo` — pipe geometry (diameter, roughness, layers) |
-| [`src/TrocaCalor.h`](../../src/TrocaCalor.h) / [`TrocaCalor.cpp`](../../src/TrocaCalor.cpp) | `TransCal` — radial heat-transfer model per cell |
+| [`src/JSONDataModel.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSONDataModel.h) / [`JSONDataModel.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSONDataModel.cpp) | Generic JSON data model built on RapidJSON |
+| [`src/JSON_entrada.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSON_entrada.h) / [`JSON_entrada.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSON_entrada.cpp) | Typed JSON schema — macro-based class hierarchy mirroring JSON structure |
+| [`src/Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) / [`Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) | `Ler` class — reads JSON, populates C structs, builds geometry and cells (~21,400 lines) |
+| [`src/LeituraVapor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LeituraVapor.h) / [`LeituraVapor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LeituraVapor.cpp) | `LerVap` class — variant for steam injection simulations |
+| [`src/LerAP.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerAP.h) / [`LerAP.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LerAP.cpp) | `APara` class — parametric analysis input reader |
+| [`src/SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) / [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | `SProd` class — simulation engine; constructor invokes `Ler` and `montasistema()` |
+| [`src/estruturas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturas.h) | Core data structs (`corteduto`, `detduto`, `detcelp`, etc.) |
+| [`src/celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) / [`celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp) | `Cel` class — per-cell simulation state |
+| [`src/PropFlu.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFlu.h) / [`PropFlu.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFlu.cpp) | `ProFlu` — fluid property models |
+| [`src/Geometria.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Geometria.h) | `DadosGeo` — pipe geometry (diameter, roughness, layers) |
+| [`src/TrocaCalor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/TrocaCalor.h) / [`TrocaCalor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/TrocaCalor.cpp) | `TransCal` — radial heat-transfer model per cell |
 
 ---
 
@@ -89,7 +89,7 @@ This separation means:
 
 ## Layer 1 — JSONDataModel: Generic JSON Parser
 
-Defined in [`JSONDataModel.h`](../../src/JSONDataModel.h) / [`JSONDataModel.cpp`](../../src/JSONDataModel.cpp), built on top of the **RapidJSON** library.
+Defined in [`JSONDataModel.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSONDataModel.h) / [`JSONDataModel.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSONDataModel.cpp), built on top of the **RapidJSON** library.
 
 ### Class hierarchy
 
@@ -128,7 +128,7 @@ Each `JSONInstance` subclass tracks whether its value was present in the JSON vi
 
 ## Layer 2 — JSON_entrada: Typed Schema Classes
 
-Defined in [`JSON_entrada.h`](../../src/JSON_entrada.h) / [`JSON_entrada.cpp`](../../src/JSON_entrada.cpp).
+Defined in [`JSON_entrada.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSON_entrada.h) / [`JSON_entrada.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSON_entrada.cpp).
 
 ### Macro-based type aliasing
 
@@ -194,7 +194,7 @@ The root `JSON_entrada` class registers these top-level keys:
 
 ## Layer 3 — Ler: The Data Reader
 
-Defined in [`Leitura.h`](../../src/Leitura.h) / [`Leitura.cpp`](../../src/Leitura.cpp) (~21,400 lines).
+Defined in [`Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) / [`Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) (~21,400 lines).
 
 The `Ler` class is the **central data reader** that bridges the typed JSON schema and the simulation engine. It reads, validates, unit-converts, and stores simulation data in C-style structs.
 
@@ -207,7 +207,7 @@ typedef enum { jusante, montante } origemGeometria_t;
 typedef enum { multifasico, injetor, oleoduto } sistemaSimulacao_t;
 ```
 
-### Major data structs (defined in [`Leitura.h`](../../src/Leitura.h) and [`estruturas.h`](../../src/estruturas.h))
+### Major data structs (defined in [`Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) and [`estruturas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturas.h))
 
 | Struct | Purpose | Key Fields |
 |--------|---------|------------|
@@ -517,7 +517,7 @@ Accessories are devices placed at specific cell positions. Each type is identifi
 | 16 | 2D porous inflow | (special IPR variant) | — |
 | 17 | Multi-stage BCS | `parse_multibcs()` | `detMultiBCS` |
 
-> **Note:** Type 13 is unused. Steam types (11, 12, 14) are implemented in [`SisProdVap.cpp`](../../src/SisProdVap.cpp).
+> **Note:** Type 13 is unused. Steam types (11, 12, 14) are implemented in [`SisProdVap.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProdVap.cpp).
 
 Each `parse_*` method follows the same pattern:
 1. Count active items in the JSON array
@@ -743,7 +743,7 @@ Writes a row per time step for a monitored cell:
 
 > Full documentation: [Parametric Analysis](parametric-analysis.md)
 
-The `APara` class ([`LerAP.h`](../../src/LerAP.h) / [`LerAP.cpp`](../../src/LerAP.cpp)) reads parametric analysis JSON files. It allows automated parameter sweeps:
+The `APara` class ([`LerAP.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerAP.h) / [`LerAP.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LerAP.cpp)) reads parametric analysis JSON files. It allows automated parameter sweeps:
 
 - Defines per-variable struct arrays (`detIPRAS`, `detBCSAS`, `detFONGASAS`, etc.) with `vector<>` storage for multiple values
 - A `casoVEC` struct holds indices for building the parametric case matrix (all combinations)
@@ -754,7 +754,7 @@ The `APara` class ([`LerAP.h`](../../src/LerAP.h) / [`LerAP.cpp`](../../src/LerA
 
 ## Steam Injection Variant (LerVap)
 
-The `LerVap` class ([`LeituraVapor.h`](../../src/LeituraVapor.h) / [`LeituraVapor.cpp`](../../src/LeituraVapor.cpp)) mirrors `Ler` but for **steam injection** simulations. It has:
+The `LerVap` class ([`LeituraVapor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LeituraVapor.h) / [`LeituraVapor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LeituraVapor.cpp)) mirrors `Ler` but for **steam injection** simulations. It has:
 
 - Analogous structs: `materialVap`, `cortedutoVap`, `detalhaPVap`, `detBCSVap`, etc.
 - A simplified subset — no gas-lift service line, no multiphase slip, no compositional model

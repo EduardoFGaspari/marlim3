@@ -6,16 +6,16 @@ This document describes the logic and algorithms used by the Marlim3 simulator t
 
 | File | Role |
 |------|------|
-| [`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp) | Top-level orchestration: `SolveTramoSolteiro()`, `permanenteSimples()` |
-| [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp) | Core solver methods on the `SProd` class |
-| [`src/include/SisProd.h`](../../src/include/SisProd.h) | `SProd` class declaration |
-| [`src/include/celula3.h`](../../src/include/celula3.h) / [`src/core/celula3.cpp`](../../src/core/celula3.cpp) | `Cel` class — per-cell state and low-level physics |
-| [`src/include/PropFlu.h`](../../src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](../../src/core/PropFlu.cpp) | `ProFlu` — fluid property correlations (black-oil & compositional) |
-| [`src/core/FonteMas.cpp`](../../src/core/FonteMas.cpp) | Mass source term evaluation |
-| [`src/core/GradientCorrelations.cpp`](../../src/core/GradientCorrelations.cpp) | Standalone friction-factor and pressure-gradient correlations |
-| [`src/core/Leitura.cpp`](../../src/core/Leitura.cpp) | JSON input parsing → `SProd` initialization |
-| [`src/include/celulaGas.h`](../../src/include/celulaGas.h) / [`src/core/celulaGas.cpp`](../../src/core/celulaGas.cpp) | `CelG` class — gas-lift service line cell state and physics |
-| [`src/include/chokegas.h`](../../src/include/chokegas.h) / [`src/core/chokegas.cpp`](../../src/core/chokegas.cpp) | `ChokeGas` — compressible gas choke model for VGL orifices |
+| [`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) | Top-level orchestration: `SolveTramoSolteiro()`, `permanenteSimples()` |
+| [`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | Core solver methods on the `SProd` class |
+| [`src/include/SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) | `SProd` class declaration |
+| [`src/include/celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) / [`src/core/celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp) | `Cel` class — per-cell state and low-level physics |
+| [`src/include/PropFlu.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFlu.cpp) | `ProFlu` — fluid property correlations (black-oil & compositional) |
+| [`src/core/FonteMas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/FonteMas.cpp) | Mass source term evaluation |
+| [`src/core/GradientCorrelations.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/GradientCorrelations.cpp) | Standalone friction-factor and pressure-gradient correlations |
+| [`src/core/Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) | JSON input parsing → `SProd` initialization |
+| [`src/include/celulaGas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaGas.h) / [`src/core/celulaGas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celulaGas.cpp) | `CelG` class — gas-lift service line cell state and physics |
+| [`src/include/chokegas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/chokegas.h) / [`src/core/chokegas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/chokegas.cpp) | `ChokeGas` — compressible gas choke model for VGL orifices |
 
 ---
 
@@ -102,7 +102,7 @@ When `main()` creates the `SProd` object:
 SProd sistem1(nomeArquivoEntrada, nomeArquivoLog, validacaoJson, tipoSimulacao, &vg1dTramo);
 ```
 
-The constructor ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) performs:
+The constructor ([`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) performs:
 
 1. **Constructs the `arq` member** (type `Leitura`) — reads the JSON input file, parses geometry, fluid properties, boundary conditions, accessories, and mesh parameters
 2. **Allocates the cell array** — `celula[0..ncel]`, each a `Cel` object containing geometry (`DadosGeo duto`), fluid properties (`ProFlu flui`, `ProFluCol fluicol`), and solver state (pressure, temperature, void fraction, mass flows)
@@ -110,7 +110,7 @@ The constructor ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) performs:
 4. **Allocates profile output tables** — `flut` for production line, `flutG` for gas-lift line
 5. **(If gas-lift)** allocates the gas-line cell array `celulaG[]` and sets up valve positions
 
-The `Cel` class ([`src/include/celula3.h`](../../src/include/celula3.h)) holds per-cell state organized into:
+The `Cel` class ([`src/include/celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h)) holds per-cell state organized into:
 
 | Category | Key Fields |
 |----------|------------|
@@ -131,7 +131,7 @@ Each cell stores both current and neighboring state information, plus previous-s
 
 ## Step 2 — SolveTramoSolteiro: Fluid Model Strategy
 
-`SolveTramoSolteiro()` ([`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp)) is a wrapper that handles the **two-pass strategy** for compositional simulations:
+`SolveTramoSolteiro()` ([`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) is a wrapper that handles the **two-pass strategy** for compositional simulations:
 
 ### Black-Oil or Flash Table Modes (`flashCompleto != 2`)
 
@@ -167,7 +167,7 @@ This avoids the expensive flash calculations during the initial bracket search, 
 
 ## Step 3 — permanenteSimples: Boundary Condition Dispatch
 
-`permanenteSimples()` ([`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp)) selects the solver variant based on the **upstream and downstream boundary conditions**.
+`permanenteSimples()` ([`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) selects the solver variant based on the **upstream and downstream boundary conditions**.
 
 ### Decision Tree
 
@@ -222,7 +222,7 @@ Important implementation notes:
 
 ## Step 4 — buscaProdPfundoPerm: Bracket Search & Root Finding
 
-`buscaProdPfundoPerm()` ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) searches for the inlet / bottom-hole pressure that makes the production-line residual vanish. Conceptually it is still a bracketed shooting solve, but the implementation contains several fallback paths and guardrails that are important to mention.
+`buscaProdPfundoPerm()` ([`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) searches for the inlet / bottom-hole pressure that makes the production-line residual vanish. Conceptually it is still a bracketed shooting solve, but the implementation contains several fallback paths and guardrails that are important to mention.
 
 ### Phase 1: Initial Pressure Estimate
 
@@ -294,7 +294,7 @@ Each evaluation inside `zriddr()` calls `multMarcha(..., prod=1, tipoCC=0)`, whi
 
 ## Step 5 — marchaProdPerm1: The Cell-by-Cell March
 
-`marchaProdPerm1()` ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) is the **core marching routine**. Given a pressure guess `pchute` at cell 0, it sweeps from cell 1 to cell `ncel`, computing all profiles.
+`marchaProdPerm1()` ([`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) is the **core marching routine**. Given a pressure guess `pchute` at cell 0, it sweeps from cell 1 to cell `ncel`, computing all profiles.
 
 ### Initialization (Cell 0)
 
@@ -365,7 +365,7 @@ The entire march (production + gas line) may repeat (`iterperm` loop) until the 
 
 ### Pressure March: `RenovaPresPermMon`
 
-**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)
 
 `RenovaPresPermMon()` advances pressure from the center of cell `i-1` to the left boundary of cell `i`. At a high level, the update is driven by:
 
@@ -384,7 +384,7 @@ In the common drift-model branch, the routine:
 
 So the clean hydrostatic-plus-friction equation shown in this document should be understood only as a **conceptual summary**; the actual implementation contains model branches, correction passes, and property-evaluation details.
 
-The friction factor is computed by `Cel::fric()` ([`src/core/celula3.cpp`](../../src/core/celula3.cpp)):
+The friction factor is computed by `Cel::fric()` ([`src/core/celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp)):
 - **Laminar** ($Re \leq 2400$): $f = 16 / Re$ (Fanning)
 - **Turbulent** ($Re > 2400$): Haaland-style initialization followed by two Colebrook-style updates
 
@@ -396,7 +396,7 @@ where viscosity $\mu$ is in centipoise (cP).
 
 ### Pressure March: `RenovaPresPermJus`
 
-**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)
 
 `RenovaPresPermJus()` advances pressure from the left boundary of cell `i` to the center of cell `i`. As in `RenovaPresPermMon()`, the implementation is more detailed than a single closed expression. The update may include:
 
@@ -411,7 +411,7 @@ For that reason, this section should be read as an **implementation summary of a
 
 ### Artificial Lift: `atualizaPeriPmonProd`
 
-**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)
 
 After computing `presaux` at the cell boundary, this method updates the boundary pressure state to reflect artificial-lift or imposed pressure-gain devices attached to the upstream control volume.
 
@@ -427,7 +427,7 @@ The exact applied increment is then carried forward through quantities such as `
 
 ### Mass Flow: `RenovaMassPerm`
 
-**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)
 
 `RenovaMassPerm()` is one of the densest routines in the steady-state solver. It does more than simply “add source terms to the incoming mass flow”. A more faithful description is:
 
@@ -469,7 +469,7 @@ The earlier simplified summary still captures the broad intent:
 
 ### Source Terms: `renovaFonte`
 
-**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)
 
 Evaluates mass source terms at a cell based on the accessory type:
 
@@ -487,7 +487,7 @@ Results are stored in the right-side source accumulators such as `fontemassGR`, 
 
 ### Temperature: `RenovaTempPerm`
 
-**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)
 
 `RenovaTempPerm()` advances the production-line temperature using a **full energy-balance update**, not a single compact textbook equation. In the implementation, the temperature change combines several effects evaluated with local phase properties and flow rates:
 
@@ -509,7 +509,7 @@ So, this method should be read as a **numerical energy-balance march with heat-t
 
 ### Interphase Mass Transfer: `RenovaTransMassPerm`
 
-**Source:** [`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)
+**Source:** [`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)
 
 `RenovaTransMassPerm()` computes the interphase mass-transfer term used by the energy model and by the steady-state bookkeeping of phase change. Conceptually, it represents gas liberation/absorption caused by changing thermodynamic state along the branch, but the implementation is more specific than a simple proportionality such as $\partial(R_s/B_o)/\partial x$.
 
@@ -529,7 +529,7 @@ The resulting quantity is stored in `transmassR`, propagated to the neighboring 
 
 ### multMarcha — March Dispatcher
 
-`multMarcha()` ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) is the dispatch function called by the root finder:
+`multMarcha()` ([`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) is the dispatch function called by the root finder:
 
 | `prod` | `tipoCC` | Function Called |
 |--------|----------|-----------------|
@@ -545,7 +545,7 @@ The resulting quantity is stored in `transmassR`, propagated to the neighboring 
 
 ### zriddr — Ridder's Method
 
-`zriddr()` ([`src/core/SisProd.cpp`](../../src/core/SisProd.cpp)) implements a practical **Ridder-style bracketed root finder**:
+`zriddr()` ([`src/core/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) implements a practical **Ridder-style bracketed root finder**:
 
 1. Starts from two guesses with opposite residual signs
 2. Re-evaluates / nudges the bracket ends if necessary
@@ -603,7 +603,7 @@ When a gas-lift service line is present (`arq.lingas > 0`), the steady-state sol
 
 ### The Gas-Lift Service Line Model
 
-The gas-lift service line is discretized into its own 1D cell array `celulaG[]` of type `CelG` (defined in [`src/include/celulaGas.h`](../../src/include/celulaGas.h) / [`src/core/celulaGas.cpp`](../../src/core/celulaGas.cpp)). Each `CelG` cell stores, among other things:
+The gas-lift service line is discretized into its own 1D cell array `celulaG[]` of type `CelG` (defined in [`src/include/celulaGas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaGas.h) / [`src/core/celulaGas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celulaGas.cpp)). Each `CelG` cell stores, among other things:
 
 | Category | Key Members |
 |----------|-------------|
@@ -653,7 +653,7 @@ So the gas-line helper breakdown can be stated explicitly for the current code.
 
 For compositional fluid models (`flashCompleto == 2`), `SolveTramoSolteiro` employs the two-pass approach described in [Step 2](#step-2--solvetramosolteirofluid-model-strategy).
 
-Additionally, the `preparaTabDin()` function ([`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp)) can build **dynamic PVT tables** from the black-oil result. These pre-tabulated flash results cover the pressure and temperature range discovered during the first pass, making the compositional pass much faster by avoiding repeated flash calculations.
+Additionally, the `preparaTabDin()` function ([`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) can build **dynamic PVT tables** from the black-oil result. These pre-tabulated flash results cover the pressure and temperature range discovered during the first pass, making the compositional pass much faster by avoiding repeated flash calculations.
 
 The approach within `preparaTabDin`:
 1. Identifies P,T range from the black-oil solution
@@ -721,7 +721,7 @@ After `permanenteSimples` returns successfully, `SolveTramoSolteiro` writes:
 The steady-state branch solver can evaluate multiphase pressure gradient and liquid holdup with two broad model families:
 
 1. the **default drift-flux formulation**, which is the native Marlim3 branch model and the same base model used by the transient solver, and
-2. the **standalone steady-state correlations/mechanistic models** dispatched from [`src/core/GradientCorrelations.cpp`](../../src/core/GradientCorrelations.cpp), including the Gomez model in [`src/core/GomezModel.cpp`](../../src/core/GomezModel.cpp).
+2. the **standalone steady-state correlations/mechanistic models** dispatched from [`src/core/GradientCorrelations.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/GradientCorrelations.cpp), including the Gomez model in [`src/core/GomezModel.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/GomezModel.cpp).
 
 ### Default model: drift-flux formulation
 
@@ -733,7 +733,7 @@ Use this model as the **reference / standard** steady-state branch formulation w
 
 ### Correlation-based steady-state models
 
-The function `executarCorrelacao(...)` in [`src/core/GradientCorrelations.cpp`](../../src/core/GradientCorrelations.cpp) exposes the following steady-state multiphase models through the integer selector `correlacao`.
+The function `executarCorrelacao(...)` in [`src/core/GradientCorrelations.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/GradientCorrelations.cpp) exposes the following steady-state multiphase models through the integer selector `correlacao`.
 
 | `correlacao` | Model | Summary |
 |---|---|---|
@@ -771,7 +771,7 @@ Important implementation notes:
 
 ### Gomez mechanistic model
 
-[`src/core/GomezModel.cpp`](../../src/core/GomezModel.cpp) implements a **unified mechanistic model for steady-state two-phase flow from horizontal to vertical upward flow**, based on Gomez, Shoham, Schmidt, Chokshi, and Northug (2000).
+[`src/core/GomezModel.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/GomezModel.cpp) implements a **unified mechanistic model for steady-state two-phase flow from horizontal to vertical upward flow**, based on Gomez, Shoham, Schmidt, Chokshi, and Northug (2000).
 
 This model is selected in `executarCorrelacao(...)` with `correlacao == 16`.
 
@@ -833,4 +833,4 @@ Inside `executarCorrelacao(...)`, these are converted into the field-unit output
 
 #### Practical interpretation
 
-Among the available steady-state alternatives, Gomez is the most explicitly **mechanistic** option in this codebase. Unlike the more empirical correlations in [`src/core/GradientCorrelations.cpp`](../../src/core/GradientCorrelations.cpp), it first identifies the flow pattern and then applies a pattern-specific closure for holdup and pressure gradient.
+Among the available steady-state alternatives, Gomez is the most explicitly **mechanistic** option in this codebase. Unlike the more empirical correlations in [`src/core/GradientCorrelations.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/GradientCorrelations.cpp), it first identifies the flow pattern and then applies a pattern-specific closure for holdup and pressure gradient.

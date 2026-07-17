@@ -6,19 +6,19 @@ This document describes the heat transfer subsystem in Marlim3 — from the radi
 
 | File | Role |
 |------|------|
-| [`src/TrocaCalor.h`](../../src/TrocaCalor.h) / [`TrocaCalor.cpp`](../../src/TrocaCalor.cpp) | `TransCal` class — radial heat transfer (1D and 2D), convection correlations |
-| [`src/Geometria.h`](../../src/Geometria.h) | `DadosGeo` — pipe geometry and wall layer definitions |
-| [`src/celula3.h`](../../src/celula3.h) | `Cel` — multiphase cell thermal members (temperature, advection, heat source) |
-| [`src/celulaGas.h`](../../src/celulaGas.h) | `CelG` — gas-lift cell thermal members |
-| [`src/celulaVapor.h`](../../src/celulaVapor.h) | `CelVap` — steam cell thermal members |
-| [`src/Elem2DPoisson.h`](../../src/Elem2DPoisson.h) / [`Elem2DPoisson.cpp`](../../src/Elem2DPoisson.cpp) | 2D FVM element for buried-pipe soil conduction |
-| [`src/Malha2DPoisson.h`](../../src/Malha2DPoisson.h) / [`Malha2DPoisson.cpp`](../../src/Malha2DPoisson.cpp) | 2D unstructured triangular mesh |
-| [`src/dados1Poisson.h`](../../src/dados1Poisson.h) / [`dados1Poisson.cpp`](../../src/dados1Poisson.cpp) | 2D Poisson solver data and I/O |
-| [`src/estruturasPoisson.h`](../../src/estruturasPoisson.h) | Structures for 2D Poisson elements |
-| [`src/estruturasPoisson3D.h`](../../src/estruturasPoisson3D.h) | Structures for 3D Poisson elements |
-| [`src/dados3DPoisson.h`](../../src/dados3DPoisson.h) / [`dados3DPoisson.cpp`](../../src/dados3DPoisson.cpp) | 3D Poisson solver data |
-| [`src/Elem3DPoisson.h`](../../src/Elem3DPoisson.h) / [`Elem3DPoisson.cpp`](../../src/Elem3DPoisson.cpp) | 3D FVM element |
-| [`src/SisProd.cpp`](../../src/SisProd.cpp) | Axial energy equation and coupling loop |
+| [`src/TrocaCalor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/TrocaCalor.h) / [`TrocaCalor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/TrocaCalor.cpp) | `TransCal` class — radial heat transfer (1D and 2D), convection correlations |
+| [`src/Geometria.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Geometria.h) | `DadosGeo` — pipe geometry and wall layer definitions |
+| [`src/celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) | `Cel` — multiphase cell thermal members (temperature, advection, heat source) |
+| [`src/celulaGas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaGas.h) | `CelG` — gas-lift cell thermal members |
+| [`src/celulaVapor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celulaVapor.h) | `CelVap` — steam cell thermal members |
+| [`src/Elem2DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem2DPoisson.h) / [`Elem2DPoisson.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Elem2DPoisson.cpp) | 2D FVM element for buried-pipe soil conduction |
+| [`src/Malha2DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Malha2DPoisson.h) / [`Malha2DPoisson.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Malha2DPoisson.cpp) | 2D unstructured triangular mesh |
+| [`src/dados1Poisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/dados1Poisson.h) / [`dados1Poisson.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/dados1Poisson.cpp) | 2D Poisson solver data and I/O |
+| [`src/estruturasPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturasPoisson.h) | Structures for 2D Poisson elements |
+| [`src/estruturasPoisson3D.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturasPoisson3D.h) | Structures for 3D Poisson elements |
+| [`src/dados3DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/dados3DPoisson.h) / [`dados3DPoisson.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/dados3DPoisson.cpp) | 3D Poisson solver data |
+| [`src/Elem3DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem3DPoisson.h) / [`Elem3DPoisson.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Elem3DPoisson.cpp) | 3D FVM element |
+| [`src/SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | Axial energy equation and coupling loop |
 
 ---
 
@@ -112,11 +112,11 @@ Three radial heat transfer modes:
 
 ## The TransCal Class
 
-`TransCal` (defined in [`TrocaCalor.h`](../../src/TrocaCalor.h) / [`TrocaCalor.cpp`](../../src/TrocaCalor.cpp)) is the central radial heat transfer engine.
+`TransCal` (defined in [`TrocaCalor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/TrocaCalor.h) / [`TrocaCalor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/TrocaCalor.cpp)) is the central radial heat transfer engine.
 
 ### Geometry — DadosGeo
 
-The `DadosGeo` structure ([`Geometria.h`](../../src/Geometria.h)) describes the pipe cross-section:
+The `DadosGeo` structure ([`Geometria.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Geometria.h)) describes the pipe cross-section:
 
 | Member | Type | Units | Description |
 |--------|------|-------|-------------|
@@ -600,14 +600,14 @@ The 2D solver uses a cell-centered finite-volume formulation on unstructured tri
 
 | Class | File | Role |
 |-------|------|------|
-| `elementoPoisson` | [`estruturasPoisson.h`](../../src/estruturasPoisson.h) | Element geometry, centroids, face data, temperature, conductivity, density, specific heat |
-| `elem2dPoisson` | [`Elem2DPoisson.h`](../../src/Elem2DPoisson.h) | Neighbor connectivity, local assembly, Green-Gauss gradients, thermal BC handling |
-| `malha2d` | [`Malha2DPoisson.h`](../../src/Malha2DPoisson.h) | Mesh container and geometric preprocessing |
+| `elementoPoisson` | [`estruturasPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturasPoisson.h) | Element geometry, centroids, face data, temperature, conductivity, density, specific heat |
+| `elem2dPoisson` | [`Elem2DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem2DPoisson.h) | Neighbor connectivity, local assembly, Green-Gauss gradients, thermal BC handling |
+| `malha2d` | [`Malha2DPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Malha2DPoisson.h) | Mesh container and geometric preprocessing |
 | `solverP` | `solverPoisson.h` | Global data, sparse assembly, steady/transient iterations |
 
 ### Boundary Conditions
 
-Defined in [`estruturasPoisson.h`](../../src/estruturasPoisson.h):
+Defined in [`estruturasPoisson.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturasPoisson.h):
 
 | BC Type | Structure | Description |
 |---------|-----------|-------------|

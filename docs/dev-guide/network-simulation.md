@@ -6,12 +6,12 @@ This document describes how the Marlim3 simulator solves **flow networks** — m
 
 | File | Role |
 |------|------|
-| [`src/LerRede.h`](../../src/LerRede.h) / [`LerRede.cpp`](../../src/LerRede.cpp) | `Rede` class — reads the network JSON, builds the connectivity graph |
-| [`src/Num4Main.cpp`](../../src/Num4Main.cpp) | All network solver functions: `preProcRede()`, `cicloRede()`, `SolveRedeTrans()`, `RedeProd()`, `RedeAnelGL()`, `RedeParalela()`, `RedeInj()` |
-| [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` class — per-branch solver: `buscaProdPfundoPerm()`, `hidroreverso()`, `permanenteSimples()`, `SolveTrans()`, etc. |
-| [`src/Leitura.h`](../../src/Leitura.h) / [`Leitura.cpp`](../../src/Leitura.cpp) | `Ler` class — reads individual branch JSON files |
-| [`src/celula3.h`](../../src/celula3.h) / [`celula3.cpp`](../../src/celula3.cpp) | `Cel` class — per-cell state |
-| [`src/PropFlu.h`](../../src/PropFlu.h) / [`PropFlu.cpp`](../../src/PropFlu.cpp) | `ProFlu` — fluid property models |
+| [`src/LerRede.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerRede.h) / [`LerRede.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LerRede.cpp) | `Rede` class — reads the network JSON, builds the connectivity graph |
+| [`src/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) | All network solver functions: `preProcRede()`, `cicloRede()`, `SolveRedeTrans()`, `RedeProd()`, `RedeAnelGL()`, `RedeParalela()`, `RedeInj()` |
+| [`src/SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) / [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | `SProd` class — per-branch solver: `buscaProdPfundoPerm()`, `hidroreverso()`, `permanenteSimples()`, `SolveTrans()`, etc. |
+| [`src/Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) / [`Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) | `Ler` class — reads individual branch JSON files |
+| [`src/celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) / [`celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp) | `Cel` class — per-cell state |
+| [`src/PropFlu.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFlu.h) / [`PropFlu.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFlu.cpp) | `ProFlu` — fluid property models |
 
 ---
 
@@ -91,7 +91,7 @@ Priority: if `AnelGL` is set, `Injecao` is forced off.
 
 ## Network JSON and the Rede Class
 
-The `Rede` class ([`LerRede.h`](../../src/LerRede.h) / [`LerRede.cpp`](../../src/LerRede.cpp)) reads the network JSON file. Its constructor calls `lerArq()`, which parses the file via RapidJSON and dispatches four methods:
+The `Rede` class ([`LerRede.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerRede.h) / [`LerRede.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LerRede.cpp)) reads the network JSON file. Its constructor calls `lerArq()`, which parses the file via RapidJSON and dispatches four methods:
 
 ```
 Rede::lerArq()
@@ -170,7 +170,7 @@ Reads `"fonteRedeParalela"` — pairs of coupled cell positions between the prim
 
 ## Data Structures
 
-### `conexao` — Per-branch connectivity (in [`LerRede.h`](../../src/LerRede.h))
+### `conexao` — Per-branch connectivity (in [`LerRede.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerRede.h))
 
 | Field | Type | Meaning |
 |-------|------|---------|
@@ -189,7 +189,7 @@ Reads `"fonteRedeParalela"` — pairs of coupled cell positions between the prim
 | `tipoanel` | `int` | Ring sub-type (gas-lift loop only) |
 | `compfonte` | `double` | Ring segment length (gas-lift loop only) |
 
-### `tramoAtivo` — Working copy during pre-processing (in [`Num4Main.cpp`](../../src/Num4Main.cpp))
+### `tramoAtivo` — Working copy during pre-processing (in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp))
 
 ```cpp
 struct tramoAtivo {
@@ -202,7 +202,7 @@ struct tramoAtivo {
 };
 ```
 
-### `noRede` — Node convergence tracking (in [`Num4Main.cpp`](../../src/Num4Main.cpp))
+### `noRede` — Node convergence tracking (in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp))
 
 ```cpp
 struct noRede {
@@ -214,7 +214,7 @@ struct noRede {
 };
 ```
 
-### `convergeNoPerm` — Mixed fluid at a node (in [`Num4Main.cpp`](../../src/Num4Main.cpp))
+### `convergeNoPerm` — Mixed fluid at a node (in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp))
 
 Accumulates flow-weighted averages from all branches feeding into a junction:
 
@@ -230,7 +230,7 @@ Accumulates flow-weighted averages from all branches feeding into a junction:
 | `cpmist` | Mixed heat capacity |
 | `flu` | `ProFlu` object with the resulting mixed properties |
 
-### `fonteposic` — Mass source position in network (in [`Num4Main.cpp`](../../src/Num4Main.cpp))
+### `fonteposic` — Mass source position in network (in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp))
 
 ```cpp
 struct fonteposic {
@@ -320,7 +320,7 @@ $$Q_i = Q_{\text{total}} \cdot \frac{A_i}{\sum_j A_j}$$
 
 ## Zero-Flow Branch Removal — avaliaPerm
 
-`avaliaPerm()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)) performs a multi-pass scan to identify and deactivate branches that carry no flow. It is called after `preparaRedeProd()` but before the steady-state solve.
+`avaliaPerm()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) performs a multi-pass scan to identify and deactivate branches that carry no flow. It is called after `preparaRedeProd()` but before the steady-state solve.
 
 ### Algorithm
 
@@ -529,7 +529,7 @@ After the steady-state solution converges, the transient solver advances the net
 
 ### `SolveRedeTrans()` — Driver
 
-([`Num4Main.cpp`](../../src/Num4Main.cpp))
+([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp))
 
 ```
 SolveRedeTrans(malha[], arqRede, ...)
@@ -588,7 +588,7 @@ SolveRedeTrans(malha[], arqRede, ...)
 
 ### `CicloRedeTrans()` — One Transient Iteration
 
-([`Num4Main.cpp`](../../src/Num4Main.cpp))
+([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp))
 
 Propagates boundary conditions between branches for one time step. Uses the same topological traversal as the steady-state `cicloRede()`:
 
@@ -619,7 +619,7 @@ Propagates boundary conditions between branches for one time step. Uses the same
 
 ## Transient Helper Functions
 
-These helper functions support boundary condition propagation and mass balance corrections during transient network simulation. All are in [`Num4Main.cpp`](../../src/Num4Main.cpp).
+These helper functions support boundary condition propagation and mass balance corrections during transient network simulation. All are in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp).
 
 ### `celAfluFinal()`
 
@@ -675,7 +675,7 @@ Used during master collector selection to prefer the branch with the deepest dow
 
 ## Production Network — solveRedeProd / RedeProd
 
-Production networks (`tipoRede == 0`) use two entry-point functions in [`Num4Main.cpp`](../../src/Num4Main.cpp):
+Production networks (`tipoRede == 0`) use two entry-point functions in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp):
 
 - **`solveRedeProd()`** — called from `main()` inside the OpenMP parallel loop over sub-networks. Assumes SProd objects are already constructed by `preparaRedeProd()`. Orchestrates steady-state convergence, profile output, and initial-condition storage.
 - **`RedeProd()`** — legacy self-contained driver that constructs SProd objects internally and then solves. Used when branch construction and solving are not separated.
@@ -758,7 +758,7 @@ where $Q_{gas,i}$ sums over all injection points and drenos. Convergence: $|\tex
 
 ### Transient — TransAnel
 
-`TransAnel()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)) performs gas-lift transient time-stepping:
+`TransAnel()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) performs gas-lift transient time-stepping:
 
 ```
 TransAnel(narq, nfontes, indfonte, indtramo, posicfonte, indAnel, dreno, malha, arqRede)
@@ -826,7 +826,7 @@ $$\frac{|p_P^{n+1} - p_P^n|}{|p_P^n|} + \frac{|p_S^{n+1} - p_S^n|}{|p_S^n|} < 10
 
 ### Transient — SolveRedeParalelaTrans
 
-`SolveRedeParalelaTrans()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)) performs time-stepping for parallel pipes:
+`SolveRedeParalelaTrans()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) performs time-stepping for parallel pipes:
 
 ```
 SolveRedeParalelaTrans(malha[], arqRede, nrede)
@@ -858,7 +858,7 @@ SolveRedeParalelaTrans(malha[], arqRede, nrede)
 
 ## Injection Network — RedeInj
 
-`RedeInj()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)) solves injection networks (`tipoRede == 1`) — typically water or gas injection from surface to wells. Steady-state only.
+`RedeInj()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) solves injection networks (`tipoRede == 1`) — typically water or gas injection from surface to wells. Steady-state only.
 
 ### Algorithm
 
@@ -880,7 +880,7 @@ RedeInj(malha[], arqRede, ...)
 
 ### `chutePresRedeInj()` — Initial Pressure Guess
 
-([`Num4Main.cpp`](../../src/Num4Main.cpp))
+([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp))
 
 Recursive hydrostatic pressure estimate for injection networks. Same principle as `chutePresRede()` but calls `hidroreversoInj()` (injection-direction march):
 
@@ -890,7 +890,7 @@ Recursive hydrostatic pressure estimate for injection networks. Same principle a
 
 ### `cicloRedeInj()` — Injection Network Iteration Cycle
 
-([`Num4Main.cpp`](../../src/Num4Main.cpp))
+([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp))
 
 One full iteration of the injection network solver. Returns the RMS pressure norm. Uses the same topological traversal as `cicloRede()` but with injection-specific solvers:
 
@@ -926,7 +926,7 @@ When any branch in the network uses a compositional fluid model (`flashCompleto 
 
 ### Two-Pass Strategy
 
-The two-pass approach is implemented in `solveRedeProd()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)):
+The two-pass approach is implemented in `solveRedeProd()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)):
 
 ```
 if flashCompleto == 2:
@@ -988,7 +988,7 @@ Reverses the switch after the black-oil pre-solve:
 
 ## Compositional Network Cycle — cicloRedeComp
 
-`cicloRedeComp()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)) replaces `cicloRede()` when `flashCompleto == 2`. It follows the same topological traversal pattern (leaves first, then dependents) but adds **molar composition tracking** at network nodes.
+`cicloRedeComp()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) replaces `cicloRede()` when `flashCompleto == 2`. It follows the same topological traversal pattern (leaves first, then dependents) but adds **molar composition tracking** at network nodes.
 
 ### How `convergeRede` selects the cycle
 
@@ -1074,7 +1074,7 @@ This ensures convergence accounts for composition-driven flow redistribution.
 
 ## Blind Compositional Cycle — cicloRedeCompCego
 
-`cicloRedeCompCego()` ([`Num4Main.cpp`](../../src/Num4Main.cpp)) is a simplified, **decoupled** compositional pass used as a **transition step** between the black-oil pre-solve and the full compositional iteration. "Cego" (Portuguese for "blind") means it solves without inter-branch pressure coupling.
+`cicloRedeCompCego()` ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) is a simplified, **decoupled** compositional pass used as a **transition step** between the black-oil pre-solve and the full compositional iteration. "Cego" (Portuguese for "blind") means it solves without inter-branch pressure coupling.
 
 ### When it is called
 

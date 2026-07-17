@@ -6,22 +6,22 @@ This document describes the fluid property modeling framework in Marlim3 — fro
 
 | File | Role |
 |------|------|
-| [`src/include/PropFlu.h`](../../src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](../../src/core/PropFlu.cpp) | `ProFlu` class — main hydrocarbon fluid: black-oil, PVTSim tables, and compositional hooks |
-| [`src/include/PropFluCol.h`](../../src/include/PropFluCol.h) / [`src/core/PropFluCol.cpp`](../../src/core/PropFluCol.cpp) | `ProFluCol` class — complementary fluid property model |
-| [`src/include/PropFluColVF.h`](../../src/include/PropFluColVF.h) / [`src/core/PropFluColVF.cpp`](../../src/core/PropFluColVF.cpp) | `ProFluColVF` class — complementary-fluid model used by the VF formulation, with gas-viscosity and non-Newtonian viscosity support |
-| [`src/include/PropVapor.h`](../../src/include/PropVapor.h) / [`src/core/PropVapor.cpp`](../../src/core/PropVapor.cpp) | `ProVap` class — pure water/steam table-based property package |
-| [`src/fortran/MarlimComposicional.f90`](../../src/fortran/MarlimComposicional.f90) | Fortran compositional module — flash + all EOS property calculations |
-| [`src/include/MarlimComposicional.h`](../../src/include/MarlimComposicional.h) | C/Fortran interface (bind(C) declarations) |
-| [`src/fortran/VLECalculations.f90`](../../src/fortran/VLECalculations.f90) | VLE flash algorithms, cubic EOS, fugacity coefficients |
-| [`src/fortran/PhaseProperties.f90`](../../src/fortran/PhaseProperties.f90) | Density, enthalpy, Cp, surface tension from cubic EOS |
-| [`src/fortran/FlashExtras.f90`](../../src/fortran/FlashExtras.f90) | Rigorous flash: SS + DEM + TPD stability + Newton |
-| [`src/fortran/Newton.f90`](../../src/fortran/Newton.f90) | Newton 2nd-order minimiser for flash and stability |
-| [`src/fortran/BlackOilModels.f90`](../../src/fortran/BlackOilModels.f90) | Black-oil Rs correlations in Fortran |
-| [`src/fortran/BlackOilFromCompositional.f90`](../../src/fortran/BlackOilFromCompositional.f90) | Derive Rs, Bo, GOR from compositional flash results |
-| [`src/fortran/ViscosityCalculationModule.f90`](../../src/fortran/ViscosityCalculationModule.f90) | Pedersen CSP viscosity model |
-| [`src/fortran/Constants.f90`](../../src/fortran/Constants.f90) | Physical constants and enumerations |
-| [`src/fortran/PvtSimCTMFileImport.f90`](../../src/fortran/PvtSimCTMFileImport.f90) | PVTSIM CTM fluid file parser |
-| [`src/fortran/PvtSimWAXFileImport.f90`](../../src/fortran/PvtSimWAXFileImport.f90) | PVTSIM WAX file parser |
+| [`src/include/PropFlu.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFlu.cpp) | `ProFlu` class — main hydrocarbon fluid: black-oil, PVTSim tables, and compositional hooks |
+| [`src/include/PropFluCol.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFluCol.h) / [`src/core/PropFluCol.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFluCol.cpp) | `ProFluCol` class — complementary fluid property model |
+| [`src/include/PropFluColVF.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFluColVF.h) / [`src/core/PropFluColVF.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFluColVF.cpp) | `ProFluColVF` class — complementary-fluid model used by the VF formulation, with gas-viscosity and non-Newtonian viscosity support |
+| [`src/include/PropVapor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropVapor.h) / [`src/core/PropVapor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropVapor.cpp) | `ProVap` class — pure water/steam table-based property package |
+| [`src/fortran/MarlimComposicional.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/MarlimComposicional.f90) | Fortran compositional module — flash + all EOS property calculations |
+| [`src/include/MarlimComposicional.h`](https://github.com/petrobras/marlim3/blob/main/src/include/MarlimComposicional.h) | C/Fortran interface (bind(C) declarations) |
+| [`src/fortran/VLECalculations.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/VLECalculations.f90) | VLE flash algorithms, cubic EOS, fugacity coefficients |
+| [`src/fortran/PhaseProperties.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/PhaseProperties.f90) | Density, enthalpy, Cp, surface tension from cubic EOS |
+| [`src/fortran/FlashExtras.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/FlashExtras.f90) | Rigorous flash: SS + DEM + TPD stability + Newton |
+| [`src/fortran/Newton.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/Newton.f90) | Newton 2nd-order minimiser for flash and stability |
+| [`src/fortran/BlackOilModels.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/BlackOilModels.f90) | Black-oil Rs correlations in Fortran |
+| [`src/fortran/BlackOilFromCompositional.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/BlackOilFromCompositional.f90) | Derive Rs, Bo, GOR from compositional flash results |
+| [`src/fortran/ViscosityCalculationModule.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/ViscosityCalculationModule.f90) | Pedersen CSP viscosity model |
+| [`src/fortran/Constants.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/Constants.f90) | Physical constants and enumerations |
+| [`src/fortran/PvtSimCTMFileImport.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/PvtSimCTMFileImport.f90) | PVTSIM CTM fluid file parser |
+| [`src/fortran/PvtSimWAXFileImport.f90`](https://github.com/petrobras/marlim3/blob/main/src/fortran/PvtSimWAXFileImport.f90) | PVTSIM WAX file parser |
 
 ---
 
@@ -82,7 +82,7 @@ This flag is the main dispatcher, but actual property evaluation is more nuanced
 
 ## The ProFlu Class
 
-`ProFlu` (defined in [`src/include/PropFlu.h`](../../src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](../../src/core/PropFlu.cpp)) is the central fluid-property engine. Each simulation cell holds one `ProFlu` object (`flui`).
+`ProFlu` (defined in [`src/include/PropFlu.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFlu.h) / [`src/core/PropFlu.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFlu.cpp)) is the central fluid-property engine. Each simulation cell holds one `ProFlu` object (`flui`).
 
 ### Key member variables
 
@@ -553,7 +553,7 @@ $$\text{GOR} = \frac{w_v}{1 - w_v} \cdot \frac{\rho_L}{\rho_V}$$
 
 ## C/Fortran Interface
 
-All compositional routines use `bind(C, name="...")` in Fortran and are declared as `extern "C"` in [`src/include/MarlimComposicional.h`](../../src/include/MarlimComposicional.h). Two C-interop structs are defined:
+All compositional routines use `bind(C, name="...")` in Fortran and are declared as `extern "C"` in [`src/include/MarlimComposicional.h`](https://github.com/petrobras/marlim3/blob/main/src/include/MarlimComposicional.h). Two C-interop structs are defined:
 
 - **`ZRhoAndDerivs`** — 15 doubles: Z, Z_Peneloux, dZ/dT, dρ/dT, dZ/dP, dρ/dP for liquid and vapor, plus Peneloux-corrected derivatives
 - **`InputForViscosity`** — 4-element array of PVTSIM CSP viscosity tuning parameters
@@ -596,7 +596,7 @@ When `modoParafina == 1`, `ProFlu::atualizaPropParafina(P, T)` calls the Fortran
 
 ## Complementary Fluid — ProFluCol
 
-`ProFluCol` ([`src/include/PropFluCol.h`](../../src/include/PropFluCol.h) / [`src/core/PropFluCol.cpp`](../../src/core/PropFluCol.cpp)) models the **complementary fluid** used by the simplified flow model. In practice it is a property model/holder for an additional liquid or injected fluid, not a full thermodynamic package with phase equilibrium or dissolution into the hydrocarbon system.
+`ProFluCol` ([`src/include/PropFluCol.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFluCol.h) / [`src/core/PropFluCol.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFluCol.cpp)) models the **complementary fluid** used by the simplified flow model. In practice it is a property model/holder for an additional liquid or injected fluid, not a full thermodynamic package with phase equilibrium or dissolution into the hydrocarbon system.
 
 Examples of use in the code include completion/injection fluids, water-like fluids, and fluids represented by imported property tables.
 
@@ -647,7 +647,7 @@ It is best understood as a VF-oriented extension of the complementary-fluid prop
 
 ## Steam Properties — ProVap
 
-`ProVap` ([`src/include/PropVapor.h`](../../src/include/PropVapor.h) / [`src/core/PropVapor.cpp`](../../src/core/PropVapor.cpp)) is a thermodynamic package for **pure water/steam**, independent of `ProFlu`. It supports compressed liquid, two-phase, and superheated-vapour regions through interpolation on JSON-format steam tables.
+`ProVap` ([`src/include/PropVapor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropVapor.h) / [`src/core/PropVapor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropVapor.cpp)) is a thermodynamic package for **pure water/steam**, independent of `ProFlu`. It supports compressed liquid, two-phase, and superheated-vapour regions through interpolation on JSON-format steam tables.
 
 ### Data tables (loaded by `LerArqVap()`)
 

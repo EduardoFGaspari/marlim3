@@ -6,11 +6,11 @@ This document describes the **2D natural convection** simulation mode in Marlim3
 
 | File | Role |
 |------|------|
-| [`src/include/solver.h`](../../src/include/solver.h) / [`src/core/solver.cpp`](../../src/core/solver.cpp) | `solv2D` class — main solver: mesh, equations, time-stepping |
-| [`src/include/Malha2D.h`](../../src/include/Malha2D.h) / [`src/core/Malha2D.cpp`](../../src/core/Malha2D.cpp) | Unstructured mesh data structure (Triangle `.node/.ele` format) |
-| [`src/include/Elem2D.h`](../../src/include/Elem2D.h) / [`src/core/Elem2D.cpp`](../../src/core/Elem2D.cpp) | Element-level FVM operations (gradients, fluxes, assembly) |
-| [`src/core/Num4Main.cpp`](../../src/core/Num4Main.cpp) | Entry point: `resolucao(...)` function construction and `resolucao.resolve()` call |
-| [`src/include/estruturas.h`](../../src/include/estruturas.h) | `flucVF` (VOF data), `interface` struct, `cel2D` element data |
+| [`src/include/solver.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solver.h) / [`src/core/solver.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/solver.cpp) | `solv2D` class — main solver: mesh, equations, time-stepping |
+| [`src/include/Malha2D.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Malha2D.h) / [`src/core/Malha2D.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Malha2D.cpp) | Unstructured mesh data structure (Triangle `.node/.ele` format) |
+| [`src/include/Elem2D.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem2D.h) / [`src/core/Elem2D.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Elem2D.cpp) | Element-level FVM operations (gradients, fluxes, assembly) |
+| [`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) | Entry point: `resolucao(...)` function construction and `resolucao.resolve()` call |
+| [`src/include/estruturas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturas.h) | `flucVF` (VOF data), `interface` struct, `cel2D` element data |
 
 ---
 
@@ -50,7 +50,7 @@ Typical applications include natural convection in annular spaces, subsea equipm
 
 ## Entry Point and Initialization
 
-When `tipoSimulacao == convecNatural`, `main()` in [`Num4Main.cpp`](../../src/core/Num4Main.cpp) constructs a `solv2D` object named `resolucao` and calls `resolucao.resolve()`.
+When `tipoSimulacao == convecNatural`, `main()` in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) constructs a `solv2D` object named `resolucao` and calls `resolucao.resolve()`.
 
 ### Construction
 
