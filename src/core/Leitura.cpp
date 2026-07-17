@@ -162,9 +162,9 @@ void Ler::iniciarVariaveis() {
 
 	compLinServ=0;
 
-	miniTabAtraso=0;
-	miniTabDp=0;
-	miniTabDt=0;
+	miniTabAtraso=5;
+	miniTabDp=10;
+	miniTabDt=10;
 	tabVisc=0;
 
 	valTempChokeJus=0;
@@ -2195,7 +2195,7 @@ void Ler::parse_configuracao_inicial(
 		ConContEntrada = 0;
 		mudaArea=0;
 
-		miniTabAtraso=0;
+		miniTabAtraso=5;
 		miniTabDp=10.;
 		miniTabDt=10.;
 
@@ -2689,6 +2689,7 @@ void Ler::parse_configuracao_inicial(
 			    	corrigeContSep=configuracao_inicial_json.Avancado().corrigeContSep();
 			    if (configuracao_inicial_json.Avancado().miniTabDinAtraso().exists())
 			    	miniTabAtraso=configuracao_inicial_json.Avancado().miniTabDinAtraso();
+			    if(miniTabAtraso==0)miniTabAtraso=1;
 			    if (configuracao_inicial_json.Avancado().miniTabDinDp().exists())
 			    	miniTabDp=configuracao_inicial_json.Avancado().miniTabDinDp();
 			    if (configuracao_inicial_json.Avancado().miniTabDinDt().exists())
@@ -3994,7 +3995,7 @@ void Ler::parse_fluidos_producao(
 							denag, templ, lvisl, temph, lvish, tipoemul, aemul,
 							bemul,PHI100, bswCorte, tabp, yco2, corrC, corrSat,
 							vcorrOM, vcorrOV, vcorrOS, flashCompleto, identificadores[i]);
-					flup[i].indiceFlash = i;
+					flup[i].indiceFlash = miniTabAtraso;
 					flup[i].viscBlackOil = flash[i].visc;
 					flup[i].modelaAgua=modelagua;
 					flup[i].JTLiquidoSimple=JTLiquidoSimple;
@@ -4472,6 +4473,7 @@ void Ler::parse_fluidos_producao(
 					flup[i].modelaAgua=1;
 					flup[i].JTLiquidoSimple=JTLiquidoSimple;
 					flup[i].tabelaDinamica=tabelaDinamica;
+					flup[i].indiceFlash=miniTabAtraso;
 					if(tabelaDinamica==1)flup[i].flashCompleto=0;
 
 					flup[i].TIndepPeneloux=compDet[i].TIndepPeneloux;
@@ -4523,11 +4525,20 @@ void Ler::parse_fluidos_producao(
 									GivenInitialLiqComposition, GivenInitialVapComposition,
 									oGORAdjustedGlobalComp, &dAdjustedGlobalCompGOR,
 							        &iier);
+
+	    					double fracTot=0.;
+	    					for(int j=0;j<npseudo;j++){
+	    							//if(oGORAdjustedGlobalComp[j]<1e-7)oGORAdjustedGlobalComp[j]=0;
+	    							fracTot+=oGORAdjustedGlobalComp[j];
+	    					}
+	    					for(int j=0;j<npseudo;j++)oGORAdjustedGlobalComp[j]/=fracTot;
+
 							 for(int k=0;k<npseudo;k++)flup[i].fracMol[k]=oGORAdjustedGlobalComp[k];
 							 flup[i].atualizaPropCompStandard();
 					         delete[] GivenInitialLiqComposition;
 					         delete[] GivenInitialVapComposition;
 					         delete[] oGORAdjustedGlobalComp;
+
 						}
 					}
 
@@ -4744,12 +4755,12 @@ void Ler::parse_fluido_gas(JSON_entrada_fluidoGas& fluido_gas_json) {
 			}
 		}
 		else{
-			tabg=0;
+			//tabg=0;
 			flug.tab=tabg;
 			flug = flup[0];
 			if(lingas==1){
-				tabg=1;
-				flug.tab=tabg;
+				//tabg=0;
+				//flug.tab=tabg;
 				flug.Deng = fluido_gas_json.densidadeGas();
 				flug.yco2 = fluido_gas_json.fracCO2();
 				flug.corrC = fluido_gas_json.correlacaoCritica();
@@ -10414,6 +10425,7 @@ void Ler::parse_perfil_producao(
 				profp.subResfria=0;
 
 				profp.correlacaoBB=0;
+				profp.titulo=0;
 
 
 
@@ -10835,6 +10847,12 @@ void Ler::parse_perfil_producao(
 				if (perfil_producao_json.correlacaoBB().exists() && tipoModeloDrift==0) {
 					profp.correlacaoBB = perfil_producao_json.correlacaoBB();
 					if (profp.correlacaoBB == 1)
+						nvarprofp++;
+				}
+
+				if (perfil_producao_json.titulo().exists()) {
+					profp.titulo = perfil_producao_json.titulo();
+					if (profp.titulo == 1)
 						nvarprofp++;
 				}
 			}
@@ -17484,6 +17502,10 @@ void Ler::imprimeProfile(Cel* const celula,
 				flut[i][k] = 1. - alfi;
 				k++;
 			}
+			if (profp.titulo == 1) {
+				flut[i][k] = celula[i].flui.FracMass(pi, ti);
+				k++;
+			}
 
 			if (profp.FVH == 1) { //Modelagem Hidrato chris
 				flut[i][k] = FVHi; //celula[i].FVH;
@@ -17846,6 +17868,8 @@ void Ler::imprimeProfile(Cel* const celula,
 			escreveIni << t(" Temperatura (C) C;", " Temperature (C) C;");
 		if (profp.hol == 1)
 			escreveIni << t(" Holdup de liquido (-) C;", " Liquid holdup (-) C;");
+		if (profp.titulo == 1)
+			escreveIni << t(" Titulo de Gas (-) C;", " Gas Mass Fraction (-) C;");
 
 		if (profp.FVH == 1) //solver de Hidratos - chris
 			escreveIni << t(" FVH (-) C;", " FVH (-) C;");
@@ -20016,7 +20040,8 @@ void Ler::copia_fluidos_producao(Ler& arqAntigo) {
 						arqAntigo.flup[i].yco2,arqAntigo.flup[i].corrC,arqAntigo.flup[i].corrSat,
 						arqAntigo.flup[i].corrOM,arqAntigo.flup[i].corrOV,arqAntigo.flup[i].corrOS, flashCompleto,
 						arqAntigo.flup[i].id);
-				flup[i].indiceFlash = i;
+				flup[i].indiceFlash = arqAntigo.flup[i].indiceFlash;
+				flup[i].multbcs = arqAntigo.flup[i].multbcs;
 				flup[i].viscBlackOil = flash[i].visc;
 				flup[i].modelaAgua=arqAntigo.flup[i].modelaAgua;
 
@@ -20121,8 +20146,12 @@ void Ler::copia_fluidos_producao(Ler& arqAntigo) {
 
 				flup[i].viscBlackOil = arqAntigo.flup[i].viscBlackOil;
 				flup[i].modelaAgua=arqAntigo.flup[i].modelaAgua;
-
+				flup[i].JTLiquidoSimple=arqAntigo.flup[i].JTLiquidoSimple;
 				flup[i].tabelaDinamica=arqAntigo.flup[i].tabelaDinamica;
+				flup[i].indiceFlash=arqAntigo.flup[i].indiceFlash;
+				flup[i].multbcs=arqAntigo.flup[i].multbcs;
+				flup[i].flashCompleto=arqAntigo.flup[i].flashCompleto;
+
 
 				flup[i].TIndepPeneloux=compDet[i].TIndepPeneloux;
 				flup[i].fatAcent=compDet[i].fatAcent;
@@ -21125,6 +21154,7 @@ void Ler::copia_perfil_producao(Ler& arqAntigo) {
 		profp.pres = arqAntigo.profp.pres;
 		profp.temp = arqAntigo.profp.temp;
 		profp.hol = arqAntigo.profp.hol;
+		profp.titulo = arqAntigo.profp.titulo;
 		profp.FVH = arqAntigo.profp.FVH;
 		profp.bet = arqAntigo.profp.bet;
 		profp.ugs = arqAntigo.profp.ugs;
