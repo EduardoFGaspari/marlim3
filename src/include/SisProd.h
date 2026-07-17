@@ -46,6 +46,8 @@
 #include <string.h>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <utility>
 
 using namespace std;
 

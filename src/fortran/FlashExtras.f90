@@ -135,6 +135,8 @@ module FlashExtras
         real(c_double) :: dMixtureMW
         integer :: i
         logical :: bUseSuperheatedVapEstimate
+        logical :: bInitialEstimateIsValid
+        logical :: bAllowedUseOfInitialEstimate
 
         character(len=120) :: sDebugFileLine    ! Linha para escrever no arquivo de "debug".
 
@@ -181,6 +183,27 @@ module FlashExtras
         ! Inicializando...
         iIER = ERROR_EverythingOK
 
+        ! 0 == > SE FOR O CASO, VALIDAR AS ESTIMATIVAS INICIAIS:
+        bAllowedUseOfInitialEstimate = .true.
+        checkInitialGuesses: if(bHasInitialFlashEstimates) then
+
+            ! Verificar:
+            call ValidateInitialFlashEstimates(iNComp, oZ, oGivenInitialLiqComposition, &
+                    oGivenInitialVapComposition, bInitialEstimateIsValid) 
+
+            ! Encaminhar o resultado da verificação:
+            bAllowedUseOfInitialEstimate = bInitialEstimateIsValid
+
+            ! -------> Escrita no arquivo de debug:
+            if(.not.bInitialEstimateIsValid) then
+                call WriteDebugFileLine(" ", bConfirmWriteLine = bWriteToDebugFile)
+                write(sDebugFileLine, '("Estimativas iniciais invalidadas!")')
+                call WriteDebugFileLine(sDebugFileLine, bConfirmWriteLine = bWriteToDebugFile)
+            end if
+            ! -------> Fim da escrita no arquivo de debug
+
+        end if checkInitialGuesses
+
         ! 1 === > TENTAR CALCULAR O "FLASH":
         iIER_Flash = ERROR_EverythingOK
 
@@ -189,7 +212,7 @@ module FlashExtras
         ! --------- FIM DO TESTE PROVISÓRIO 26-JUN-2026 || APAGAR LOGO!
 
         call CalculateIsothermalPTVLEFlash(dTemperature, dPressure, iNComp, oZ, oTc, oPc, oW, oKij, oLij, oPeneloux, &
-                 iLiqPhaseModel, iVapPhaseModel, bHasInitialFlashEstimates, oGivenInitialLiqComposition, oGivenInitialVapComposition, &
+                 iLiqPhaseModel, iVapPhaseModel, (bHasInitialFlashEstimates.AND.bAllowedUseOfInitialEstimate), oGivenInitialLiqComposition, oGivenInitialVapComposition, &
                  iIER_Flash, dBetaVap, oLiqComposition, oVapComposition)
 
         ! ----------------> Escrever no arquivo de Debug
@@ -289,6 +312,59 @@ module FlashExtras
     !           ROTINAS DE CÁLCULO DE FLASH
     ! =============================================================
 
+    subroutine ValidateInitialFlashEstimates(iNComp, oZ, oGivenInitialLiqComposition, oGivenInitialVapComposition, bInitialEstimateIsValid)
+
+        ! OBJETIVO: Verificar a validade de determinadas estimativas iniciais para o bom cálculo do "flash".
+
+        ! REFERÊNCIA BIBLIOGRÁFICA 1: "Thermodynamic Models: Fundamentals and Computational Aspects",
+        !       Michael L. Michelsen e Jorgen M. Mollerup, Segunda Edição
+        implicit none
+
+        ! ------------------ DECLARAÇÃO E DESCRIÇÃO DOS ARGUMENTOS:
+        integer(c_int), value, intent(in) :: iNComp                   ! Número de componentes.
+        real(c_double), dimension(iNComp), intent(in) :: oZ                  ! Vetor composição global (indexado por componente).
+        real(c_double), dimension(iNComp), intent(in) :: oGivenInitialLiqComposition    ! Estimativa inicial de composição da fase líquida para o "flash".
+        real(c_double), dimension(iNComp), intent(in) :: oGivenInitialVapComposition    ! Estimativa inicial de composição da fase vapor para o "flash".
+
+        logical, intent(out):: bInitialEstimateIsValid                 ! Retorna "true" se a estimativa inicial for considerada válida, e "false" caso contrário
+                                                                       !  (em caso de "false", a estimativa inicial NÃO deve ser usada no cálculo do "flash").
+
+        ! ------------------ DECLARAÇÃO E DESCRIÇÃO DE VARIÁVEIS LOCAIS:
+        integer :: i
+        logical :: bIdenticalXAndYAndZ
+        real(c_double) :: dDiffXY, dDiffXZ
+
+        ! ------------------ CONSTANTES:
+        real(c_double), parameter :: dTolForIdenticalFractions = 0.25d0 / 100.0d0
+
+        ! ------------------ CÁLCULOS:
+
+        ! Inicializando:
+        bInitialEstimateIsValid = .true.
+
+        ! REFERÊNCIA 1, PÁG 223, SEÇÃO "2 - The trivial solution":
+        ! "An important problem associated with the use of equations of state is the potential existence of the so-called
+        ! trivial solution, i.e., a solution with liquid and vapor phases of identical composition [...]. The problem with the
+        ! trivial solution is particularly pronounced in the critical region [...]. Calculations in this region are particularly
+        ! likely to converge to the trivial solution unless initial estimates of high quality are used."
+        bIdenticalXAndYAndZ = .true.
+
+        trivialSol_Loop1: do i = 1, iNComp
+
+            dDiffXY = abs(oGivenInitialLiqComposition(i) - oGivenInitialVapComposition(i))
+            dDiffXZ = abs(oGivenInitialLiqComposition(i) - oZ(i))
+
+            bIdenticalXAndYAndZ = bIdenticalXAndYAndZ.AND.(dDiffXY.lt.dTolForIdenticalFractions).AND.(dDiffXZ.lt.dTolForIdenticalFractions)
+
+        end do trivialSol_Loop1
+
+        ! Invalidar a estimativa inicial caso ela corresponda à solução trivial:
+        bInitialEstimateIsValid = bInitialEstimateIsValid.AND.(.not.bIdenticalXAndYAndZ)
+
+    end subroutine ValidateInitialFlashEstimates
+
+    ! =============================================================
+    ! =============================================================
     subroutine CalculateIsothermalPTVLEFlash(dTemperature, dPressure, iNComp, oZ, oTc, oPc, oW, oKij, oLij, oPeneloux, &
                  iLiqPhaseModel, iVapPhaseModel, bHasInitialFlashEstimates, oGivenInitialLiqComposition, oGivenInitialVapComposition, &
                  iIER, dBetaVap, oX, oY)
@@ -1693,6 +1769,9 @@ module FlashExtras
         integer :: i
         real(c_double) :: dEstimatedTc
 
+        integer(c_int) :: iNComp_Heur_VeryHeavy
+        real(c_double) :: dZTotal_Heur_VeryHeavy
+
         character(len=120) :: sDebugFileLine    ! Linha para escrever no arquivo de "debug".
 
         ! ------------------ CONSTANTES:
@@ -1749,13 +1828,39 @@ module FlashExtras
         ! Passo adicional quando encontrar ambas as fases com a mesma energia de Gibbs?
         checkForLiqWhenEqualGibbs: if(bBothPhasesWithSameGEnergy.and.bCheckForLiquidWhenEqualGibbs) then
 
-            ! Verificar pela temperatura pseudo-crítica se é melhor "forçar" líquido:
-            dEstimatedTc = 0.0d0
+            ! --------------- Heurística original para forçar líquido
+            !   (para voltar a usar, basta descomentar UMA VEZ TODAS as linhas do bloco abaixo)
+            !
+            !! Verificar pela temperatura pseudo-crítica se é melhor "forçar" líquido:
+            !dEstimatedTc = 0.0d0
+            !do i = 1, iNComp
+            !    dEstimatedTc = dEstimatedTc + (oZ(i) * oTc(i))
+            !end do
+            !
+            !bForceLiquidBecauseOfEqualG = (dEstimatedTc.gt.(50.0d0 + 273.15d0))
+            !
+            ! -------------- Fim da heurística original para forçar líquido
+
+            ! ---------------- Nova heurística para forçar líquido
+            iNComp_Heur_VeryHeavy = 0
+            dZTotal_Heur_VeryHeavy = 0.0d0
             do i = 1, iNComp
-                dEstimatedTc = dEstimatedTc + (oZ(i) * oTc(i))
+                if(oTc(i).GE.(400.0d0 + 273.15d0)) then
+                    iNComp_Heur_VeryHeavy = iNComp_Heur_VeryHeavy + 1
+                    dZTotal_Heur_VeryHeavy = dZTotal_Heur_VeryHeavy + oZ(i)
+                end if
             end do
 
-            bForceLiquidBecauseOfEqualG = (dEstimatedTc.gt.(50.0d0 + 273.15d0))
+            bForceLiquidBecauseOfEqualG = (iNComp_Heur_VeryHeavy.ge.1).AND.(dZTotal_Heur_VeryHeavy.ge.(0.05d0))
+
+                ! -------> Escrita no arquivo de debug
+            if(bForceLiquidBecauseOfEqualG) then
+                write(sDebugFileLine, '("        Líquido por default: ", I3, " componente(s) pesados com fração total = ", E12.5)') iNComp_Heur_VeryHeavy, dZTotal_Heur_VeryHeavy
+                call WriteDebugFileLine(sDebugFileLine, bConfirmWriteLine = bWriteToDebugFile)
+            end if
+                ! -------> Fim da escrita no arquivo de debug
+
+            ! ---------------- Fim da nova heurística para forçar líquido
 
         end if checkForLiqWhenEqualGibbs
 

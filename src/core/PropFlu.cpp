@@ -305,6 +305,7 @@ ProFlu::ProFlu(varGlob1D* Vvg1dSP ,double vapi,double vrgo,double vdeng,double v
   dInterpolatedLiqMWOutput=0;
   coefViscWax=1.;
 
+  multbcs=0;
   int simulaTransienteTemp=0;
   if(vg1dSP!=0)simulaTransienteTemp=(*vg1dSP).simulaTransiente;
   if(flashCompleto==2 && npseudo>0 && simulaTransienteTemp==1){
@@ -550,7 +551,7 @@ ProFlu::ProFlu(varGlob1D* Vvg1dSP, const double* const fluido, int vtipoemul,
   aemul=vaemul;
   bemul=vbemul;
   PHI100=vPHI100;
-  if(corrSat==1)corrSat=4;
+ // if(corrSat==1)corrSat=4;
   PBPVTSim=0;
   TBPVTSim=0;
   TabRSLivia=0;
@@ -689,6 +690,7 @@ ProFlu::ProFlu(varGlob1D* Vvg1dSP, const double* const fluido, int vtipoemul,
 
  JTLiquidoSimple=0.;
 
+ multbcs=0;
  int simulaTransienteTemp=0;
  if(vg1dSP!=0)simulaTransienteTemp=(*vg1dSP).simulaTransiente;
  if(flashCompleto==2 && npseudo>0 && simulaTransienteTemp==1){
@@ -1071,7 +1073,7 @@ ProFlu::ProFlu(varGlob1D* Vvg1dSP, const double* const fluido, const double* con
   tempTab=0;
 
 
-
+  multbcs=0;
   int simulaTransienteTemp=0;
   if(vg1dSP!=0)simulaTransienteTemp=(*vg1dSP).simulaTransiente;
   if(flashCompleto==2 && npseudo>0 && simulaTransienteTemp==1){
@@ -1424,6 +1426,7 @@ ProFlu::ProFlu(const ProFlu& fluido):
   viscTab=fluido.viscTab;
   tempTab=fluido.tempTab;
 
+  multbcs=fluido.multbcs;
   int simulaTransienteTemp=0;
   if(vg1dSP!=0)simulaTransienteTemp=(*vg1dSP).simulaTransiente;
   if(flashCompleto==2 && npseudo>0 && simulaTransienteTemp==1){
@@ -1701,6 +1704,7 @@ ProFlu& ProFlu::operator =(const ProFlu& fluido){
  viscTab=fluido.viscTab;
  tempTab=fluido.tempTab;
 
+ multbcs=fluido.multbcs;
  int simulaTransienteTemp=0;
  if(vg1dSP!=0)simulaTransienteTemp=(*vg1dSP).simulaTransiente;
  if(flashCompleto==2 && npseudo>0 && simulaTransienteTemp==1){
@@ -2575,7 +2579,7 @@ double ProFlu::RS(double pres, double temp, double varPb) const{
  }
  else{
     double rstemptemp;
-     if((*vg1dSP).modoTransiente==0){
+     if((*vg1dSP).modoTransiente==0 || multbcs==1){
     	 if(tabelaDinamica==0){
     		 Marlim_CalculateSolutionGasOilRatio(dVaporMassFraction,dStockTankVaporMassFraction,
     				 dStockTankLiquidDensity,dStockTankVaporDensity, &rstemptemp);
@@ -2614,27 +2618,36 @@ double ProFlu::RS(double pres, double temp, double varPb) const{
     	 }
      }
      else{
-		 double raztemp;
-		 double razpres;
-		 double valT0;
-		 double valT1;
-		 if(temp<miniTabDin.tmin){
-			 temp=miniTabDin.tmin;
-		 }
-		 if(temp>miniTabDin.tmax){
-			 temp=miniTabDin.tmax;
-		 }
-		 if(pres<miniTabDin.pmin){
-			 pres=miniTabDin.pmin;
-		 }
-		 if(pres>miniTabDin.pmax){
-			 pres=miniTabDin.pmax;
-		 }
-		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-		 valT0=raztemp*miniTabDin.rs[0][1]+(1.-raztemp)*miniTabDin.rs[0][0];
-		 valT1=raztemp*miniTabDin.rs[1][1]+(1.-raztemp)*miniTabDin.rs[1][0];
-		 rstemptemp=razpres*valT1+(1.-razpres)*valT0;
+    	 if(indiceFlash>0){
+    		 double raztemp;
+    		 double razpres;
+    		 double valT0;
+    		 double valT1;
+    		 if(temp<miniTabDin.tmin){
+    			 temp=miniTabDin.tmin;
+    		 }
+    		 if(temp>miniTabDin.tmax){
+    			 temp=miniTabDin.tmax;
+    		 }
+    		 if(pres<miniTabDin.pmin){
+    			 pres=miniTabDin.pmin;
+    		 }
+    		 if(pres>miniTabDin.pmax){
+    			 pres=miniTabDin.pmax;
+    		 }
+    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+    		 valT0=raztemp*miniTabDin.rs[0][1]+(1.-raztemp)*miniTabDin.rs[0][0];
+    		 valT1=raztemp*miniTabDin.rs[1][1]+(1.-raztemp)*miniTabDin.rs[1][0];
+    		 rstemptemp=razpres*valT1+(1.-razpres)*valT0;
+    	 }
+    	 else{
+      		 Marlim_CalculateSolutionGasOilRatio(dVaporMassFraction,dStockTankVaporMassFraction,
+        				 dStockTankLiquidDensity,dStockTankVaporDensity, &rstemptemp);
+      		 if(iCalculatedThermodynamicCondition==3 || iCalculatedThermodynamicCondition==4)rstemptemp=0.;
+      		 if(IRGO<rstemptemp)rstemptemp=IRGO;
+      		 if(isnan(rstemptemp))rstemptemp=0.;
+    	 }
      }
 	 return rstemptemp;
  }
@@ -2748,7 +2761,7 @@ double ProFlu::PB(double pres, double temp) const{
 	 pbtemp = interpolaPB(temp);
  }
  else{
-	 if((*vg1dSP).modoTransiente==0){
+	 if((*vg1dSP).modoTransiente==0 || multbcs==1){
 		 if(tabelaDinamica==0){
 
 			 itemp=Faren(temp)+460;
@@ -2773,6 +2786,7 @@ double ProFlu::PB(double pres, double temp) const{
 		 }
 	 }
      else{
+    	 if(indiceFlash>0){
 		 double raztemp;
 		 if(temp<miniTabDin.tmin){
 			 temp=miniTabDin.tmin;
@@ -2788,6 +2802,11 @@ double ProFlu::PB(double pres, double temp) const{
 		 }
 		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
 		 pbtemp=raztemp*miniTabDin.PBF[1]+(1.-raztemp)*miniTabDin.PBF[0];
+    	 }
+    	 else{
+			 itemp=Faren(temp)+460;
+			 pbtemp=pow(Bvb*IRGO/(SG100vb*pow(10,Cvb*API/itemp)),1/Avb);
+    	 }
      }
  }
 
@@ -3315,7 +3334,7 @@ double ProFlu::Zdran(double pres, double temp, int cordg, double masespG)const{
 		  if(iCalculatedThermodynamicCondition==0 || iCalculatedThermodynamicCondition==1)ztC=1.;
 		  return ztC;
 	  };
-	  if((*vg1dSP).modoTransiente==0){
+	  if((*vg1dSP).modoTransiente==0 || multbcs==1){
 		  if(tabelaDinamica==0){
 			  zt=calculaZComposicional();
 		  }
@@ -3357,27 +3376,32 @@ double ProFlu::Zdran(double pres, double temp, int cordg, double masespG)const{
 		  }
 	  }
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.valZ[0][1]+(1.-raztemp)*miniTabDin.valZ[0][0];
-			 valT1=raztemp*miniTabDin.valZ[1][1]+(1.-raztemp)*miniTabDin.valZ[1][0];
-			 zt=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.valZ[0][1]+(1.-raztemp)*miniTabDin.valZ[0][0];
+	    		 valT1=raztemp*miniTabDin.valZ[1][1]+(1.-raztemp)*miniTabDin.valZ[1][0];
+	    		 zt=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+	    		 zt=calculaZComposicional();
+	    	 }
 	     }
   }
   return zt;
@@ -3478,7 +3502,7 @@ double ProFlu::DZDT(double pres, double temp,double masespG)const{
 	  zt=-(drhodt+constante*pres/(zt*tK*tK))*(zt*zt*tK/(constante*pres));
   }
   else{
-	  if((*vg1dSP).modoTransiente==0){
+	  if((*vg1dSP).modoTransiente==0 || multbcs==1){
 		  if(tabelaDinamica==0){
 			  int iIER;
 			  double tempZ;
@@ -3559,27 +3583,46 @@ double ProFlu::DZDT(double pres, double temp,double masespG)const{
 		  }
 	  }
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.valdZdT[0][1]+(1.-raztemp)*miniTabDin.valdZdT[0][0];
-			 valT1=raztemp*miniTabDin.valdZdT[1][1]+(1.-raztemp)*miniTabDin.valdZdT[1][0];
-			 zt=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.valdZdT[0][1]+(1.-raztemp)*miniTabDin.valdZdT[0][0];
+	    		 valT1=raztemp*miniTabDin.valdZdT[1][1]+(1.-raztemp)*miniTabDin.valdZdT[1][0];
+	    		 zt=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+				  int iIER;
+				  double tempZ;
+				  double dZdT;
+				  double drhogdT=0.;
+				  double dZdp;
+				  double drhogdp=0.;
+
+				  Marlim_CalculateTAndPDerivativesOfPhasicRhoAndZ(pres, temp,
+						  liqModel, 1,  npseudo,oCalculatedVapComposition, tempCrit,
+						  presCrit, fatAcent, kij, lij, TIndepPeneloux, dVaporPhaseMW,
+						  &tempZ, &dZdT, &drhogdT, &dZdp, &drhogdp, &iIER);
+				  if(dVaporMassFraction<1e-15)dZdT=0.;
+
+				  zt=dZdT;
+	    	 }
 	     }
   }
   return zt;
@@ -3678,7 +3721,7 @@ double ProFlu::DZDP(double pres, double temp,double masespG)const{
 	  zt=-(drhodp-constante/(zt*tK))*(zt*zt*tK/(constante*pres*98066.5));
   }
   else{
-	  if((*vg1dSP).modoTransiente==0){
+	  if((*vg1dSP).modoTransiente==0 || multbcs==1){
 		  if(tabelaDinamica==0){
 			  int iIER;
 			  double tempZ;
@@ -3756,27 +3799,44 @@ double ProFlu::DZDP(double pres, double temp,double masespG)const{
 		  }
 	  }
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.valdZdP[0][1]+(1.-raztemp)*miniTabDin.valdZdP[0][0];
-			 valT1=raztemp*miniTabDin.valdZdP[1][1]+(1.-raztemp)*miniTabDin.valdZdP[1][0];
-			 zt=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.valdZdP[0][1]+(1.-raztemp)*miniTabDin.valdZdP[0][0];
+	    		 valT1=raztemp*miniTabDin.valdZdP[1][1]+(1.-raztemp)*miniTabDin.valdZdP[1][0];
+	    		 zt=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+				  int iIER;
+				  double tempZ;
+				  double dZdT;
+				  double drhogdT=0.;
+				  double dZdp;
+				  double drhogdp=0.;
+
+				  Marlim_CalculateTAndPDerivativesOfPhasicRhoAndZ(pres, temp,
+						  liqModel, 1,  npseudo,oCalculatedVapComposition, tempCrit,
+						  presCrit, fatAcent, kij, lij, TIndepPeneloux, dVaporPhaseMW,
+						  &tempZ, &dZdT, &drhogdT, &dZdp, &drhogdp, &iIER);
+				  if(dVaporMassFraction<1e-15)dZdp=0.;
+				  zt=dZdp/98066.5;
+	    	 }
 	     }
   }
   return zt;
@@ -3820,15 +3880,15 @@ void ProFlu::tabela(double pmax, double tmax,
   	  for(int i=0; i<npontos+2; i++){
   		for(int j = 0; j< npontos+2; j++) zdran[i][j]=zdranP[i][j];
   	  }
-      ostringstream saidaZDran;
+      /*ostringstream saidaZDran;
 	  saidaZDran << pathPrefixoArqSaida << "perfilZDranP.dat";
 	  string tmp = saidaZDran.str();
 	  ofstream escreveZ(tmp.c_str(), ios_base::out);
 	  escreveZ<<zdran;
 	  escreveZ.close();
 	  arqRelatorioPerfis << tmp.c_str() << endl;
-	  arqRelatorioPerfis.flush();
-      }
+	  arqRelatorioPerfis.flush();*/
+   }
 }
 void ProFlu::tabelaDZDP(double pmax, double tmax,
 		                                 double pmin, double tmin) const{
@@ -3853,14 +3913,14 @@ void ProFlu::tabelaDZDP(double pmax, double tmax,
   	  for(int i=0; i<npontos+2; i++){
   	     for(int j = 0; j< npontos+2; j++) saida[i][j]=dzdpP[i][j];
   	  }
-      ostringstream saidaDZDP;
+      /*ostringstream saidaDZDP;
 	  saidaDZDP << pathPrefixoArqSaida << "perfilDZDPProd.dat";
 	  string tmp = saidaDZDP.str();
 	  ofstream escreveDZDP(tmp.c_str(), ios_base::out);
 	  escreveDZDP<<saida;
 	  escreveDZDP.close();
-  	arqRelatorioPerfis << tmp.c_str() << endl;
-  	arqRelatorioPerfis.flush();
+	  arqRelatorioPerfis << tmp.c_str() << endl;
+	  arqRelatorioPerfis.flush();*/
     }
 }
 void ProFlu::tabelaDZDT(double pmax, double tmax,
@@ -3886,14 +3946,14 @@ void ProFlu::tabelaDZDT(double pmax, double tmax,
   	  for(int i=0; i<npontos+2; i++){
   	     for(int j = 0; j< npontos+2; j++) saida[i][j]=dzdtP[i][j];
   	  }
-      ostringstream saidaDZDT;
+      /*ostringstream saidaDZDT;
 	  saidaDZDT << pathPrefixoArqSaida << "perfilDZDTProd.dat";
 	  string tmp = saidaDZDT.str();
 	  ofstream escreveDZDT(tmp.c_str(), ios_base::out);
 	  escreveDZDT<<saida;
 	  escreveDZDT.close();
 	  arqRelatorioPerfis << tmp.c_str() << endl;
-	  arqRelatorioPerfis.flush();
+	  arqRelatorioPerfis.flush();*/
     }
 }
 
@@ -3953,7 +4013,7 @@ if(flashCompleto==0 || flashCompleto==3){
 	 BO=(rhostd+Deng*1.225*rs*6.29/35.31467)/rhol;
  }
  else{
-	 if((*vg1dSP).modoTransiente==0){
+	 if((*vg1dSP).modoTransiente==0 || multbcs==1){
 		 if(tabelaDinamica==0){
 			 double tempBO=1.;
 			 int iIER;
@@ -4024,27 +4084,43 @@ if(flashCompleto==0 || flashCompleto==3){
 		 }
 	 }
      else{
-		 double raztemp;
-		 double razpres;
-		 double valT0;
-		 double valT1;
-		 if(temp<miniTabDin.tmin){
-			 temp=miniTabDin.tmin;
-		 }
-		 if(temp>miniTabDin.tmax){
-			 temp=miniTabDin.tmax;
-		 }
-		 if(pres<miniTabDin.pmin){
-			 pres=miniTabDin.pmin;
-		 }
-		 if(pres>miniTabDin.pmax){
-			 pres=miniTabDin.pmax;
-		 }
-		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-		 valT0=raztemp*miniTabDin.valBO[0][1]+(1.-raztemp)*miniTabDin.valBO[0][0];
-		 valT1=raztemp*miniTabDin.valBO[1][1]+(1.-raztemp)*miniTabDin.valBO[1][0];
-		 BO=razpres*valT1+(1.-razpres)*valT0;
+    	 if(indiceFlash>0){
+    		 double raztemp;
+    		 double razpres;
+    		 double valT0;
+    		 double valT1;
+    		 if(temp<miniTabDin.tmin){
+    			 temp=miniTabDin.tmin;
+    		 }
+    		 if(temp>miniTabDin.tmax){
+    			 temp=miniTabDin.tmax;
+    		 }
+    		 if(pres<miniTabDin.pmin){
+    			 pres=miniTabDin.pmin;
+    		 }
+    		 if(pres>miniTabDin.pmax){
+    			 pres=miniTabDin.pmax;
+    		 }
+    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+    		 valT0=raztemp*miniTabDin.valBO[0][1]+(1.-raztemp)*miniTabDin.valBO[0][0];
+    		 valT1=raztemp*miniTabDin.valBO[1][1]+(1.-raztemp)*miniTabDin.valBO[1][0];
+    		 BO=razpres*valT1+(1.-razpres)*valT0;
+    	 }
+    	 else{
+			 double tempBO=1.;
+			 int iIER;
+			 Marlim_CalculateOilFormationVolumeFactor(pres, temp,
+					 npseudo,  tempCrit, presCrit, fatAcent,  kij,
+					 lij,TIndepPeneloux,liqModel,
+					 oCalculatedLiqComposition, dLiquidPhaseMW, dVaporMassFraction,
+					 dStockTankLiquidDensity, dStockTankVaporMassFraction,
+					 &tempBO, &iIER);
+			 if(iCalculatedThermodynamicCondition==3 || iCalculatedThermodynamicCondition==4)tempBO=1.;
+			 if(isnan(tempBO) || tempBO<1e-15)tempBO=1.;
+			 if(tempBO>100 || tempBO<-100)tempBO=1.;
+			 BO=tempBO;
+    	 }
      }
  }
 
@@ -4145,7 +4221,7 @@ double ProFlu::CalorLiq(double pres, double temp) const{
 		}
 	}
 	else{
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double entalp;
@@ -4192,27 +4268,40 @@ double ProFlu::CalorLiq(double pres, double temp) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.cplF[0][1]+(1.-raztemp)*miniTabDin.cplF[0][0];
-			 valT1=raztemp*miniTabDin.cplF[1][1]+(1.-raztemp)*miniTabDin.cplF[1][0];
-			 vcp=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.cplF[0][1]+(1.-raztemp)*miniTabDin.cplF[0][0];
+	    		 valT1=raztemp*miniTabDin.cplF[1][1]+(1.-raztemp)*miniTabDin.cplF[1][0];
+			 	 vcp=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+					int iIER;
+					double entalp;
+					double cp;
+					Marlim_CalculatePhaseCpAndEnthalpy(pres, temp, 0,oCalculatedLiqComposition,
+						 npseudo,tempCrit,presCrit, fatAcent,TIndepPeneloux,
+						 kij,  lij, liqModel, 0, CpIGCoefs, CpIGCoefs, dLiquidPhaseMW,
+						&entalp, &cp, &iIER);
+					if(iCalculatedThermodynamicCondition==3 || iCalculatedThermodynamicCondition==4)cp=2000.;
+					vcp=cp;
+	    	 }
 	     }
 		double CPWI;
 		double tempK=temp+273.16;
@@ -4367,7 +4456,7 @@ double ProFlu::CalorGas(double pres, double temp) const{
 		}
 	}
 	else{
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double entalp;
@@ -4414,27 +4503,40 @@ double ProFlu::CalorGas(double pres, double temp) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.cpgF[0][1]+(1.-raztemp)*miniTabDin.cpgF[0][0];
-			 valT1=raztemp*miniTabDin.cpgF[1][1]+(1.-raztemp)*miniTabDin.cpgF[1][0];
-			 vcp=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.cpgF[0][1]+(1.-raztemp)*miniTabDin.cpgF[0][0];
+	    		 valT1=raztemp*miniTabDin.cpgF[1][1]+(1.-raztemp)*miniTabDin.cpgF[1][0];
+	    		 vcp=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+					int iIER;
+					double entalp;
+					double cp;
+					Marlim_CalculatePhaseCpAndEnthalpy(pres, temp, 1,oCalculatedVapComposition,
+						 npseudo,tempCrit,presCrit, fatAcent,TIndepPeneloux,
+						 kij,  lij, liqModel, 0, CpIGCoefs, CpIGCoefs, dVaporPhaseMW,
+						&entalp, &cp, &iIER);
+					if(iCalculatedThermodynamicCondition==0 || iCalculatedThermodynamicCondition==1)cp=4000.;
+					vcp=cp;
+	    	 }
 	     }
 	}
 	return vcp;
@@ -4548,7 +4650,7 @@ double ProFlu::DrholDT(double pres, double temp) const{
 		}
 	}
 	else{
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double tempZ;
@@ -4626,27 +4728,44 @@ double ProFlu::DrholDT(double pres, double temp) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.DrholDtF[0][1]+(1.-raztemp)*miniTabDin.DrholDtF[0][0];
-			 valT1=raztemp*miniTabDin.DrholDtF[1][1]+(1.-raztemp)*miniTabDin.DrholDtF[1][0];
-			 vdrholdt=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.DrholDtF[0][1]+(1.-raztemp)*miniTabDin.DrholDtF[0][0];
+	    		 valT1=raztemp*miniTabDin.DrholDtF[1][1]+(1.-raztemp)*miniTabDin.DrholDtF[1][0];
+	    		 vdrholdt=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+					int iIER;
+					double tempZ;
+					double dZdT;
+					double drholdT;
+					double dZdp;
+					double drholdp;
+
+					Marlim_CalculateTAndPDerivativesOfPhasicRhoAndZ(pres, temp,
+							 liqModel, 0,  npseudo,oCalculatedLiqComposition, tempCrit,
+							 presCrit, fatAcent, kij, lij, TIndepPeneloux, dLiquidPhaseMW,
+							 &tempZ, &dZdT, &drholdT, &dZdp, &drholdp, &iIER);
+					if(iCalculatedThermodynamicCondition==3 || iCalculatedThermodynamicCondition==4)drholdT=1.;
+					vdrholdt=drholdT;
+	    	 }
 	     }
 	}
 	return vdrholdt;
@@ -4692,7 +4811,7 @@ double ProFlu::EntalpLiq(double pres,double temp) const{
 	}
 	else{
 		double entalp;
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double cp;
@@ -4752,27 +4871,38 @@ double ProFlu::EntalpLiq(double pres,double temp) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.HlF[0][1]+(1.-raztemp)*miniTabDin.HlF[0][0];
-			 valT1=raztemp*miniTabDin.HlF[1][1]+(1.-raztemp)*miniTabDin.HlF[1][0];
-			 entalp=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.HlF[0][1]+(1.-raztemp)*miniTabDin.HlF[0][0];
+	    		 valT1=raztemp*miniTabDin.HlF[1][1]+(1.-raztemp)*miniTabDin.HlF[1][0];
+	    		 entalp=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+					int iIER;
+					double cp;
+					Marlim_CalculatePhaseCpAndEnthalpy(pres, temp, 0,oCalculatedLiqComposition,
+							npseudo,tempCrit,presCrit, fatAcent,TIndepPeneloux,
+							kij,  lij, liqModel, 0, CpIGCoefs, CpIGCoefs, dLiquidPhaseMW,
+							&entalp, &cp, &iIER);
+					if(iCalculatedThermodynamicCondition==3 || iCalculatedThermodynamicCondition==4)entalp=1000.;
+	    	 }
 	     }
 		return entalp;
 	}
@@ -4796,7 +4926,7 @@ double ProFlu::EntalpGas(double pres,double temp) const{
 	}
 	else{
 		double entalp;
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double cp;
@@ -4856,27 +4986,38 @@ double ProFlu::EntalpGas(double pres,double temp) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.HgF[0][1]+(1.-raztemp)*miniTabDin.HgF[0][0];
-			 valT1=raztemp*miniTabDin.HgF[1][1]+(1.-raztemp)*miniTabDin.HgF[1][0];
-			 entalp=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.HgF[0][1]+(1.-raztemp)*miniTabDin.HgF[0][0];
+	    		 valT1=raztemp*miniTabDin.HgF[1][1]+(1.-raztemp)*miniTabDin.HgF[1][0];
+	    		 entalp=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+					int iIER;
+					double cp;
+					Marlim_CalculatePhaseCpAndEnthalpy(pres, temp, 1,oCalculatedVapComposition,
+							npseudo,tempCrit,presCrit, fatAcent,TIndepPeneloux,
+							kij,  lij, liqModel, 0, CpIGCoefs, CpIGCoefs, dVaporPhaseMW,
+							&entalp, &cp, &iIER);
+					if(iCalculatedThermodynamicCondition==0 || iCalculatedThermodynamicCondition==1)entalp=1000.;
+	    	 }
 	     }
 		return entalp;
 	}
@@ -4964,7 +5105,7 @@ double ProFlu::MasEspoleo(double pres, double temp,double varRS) const{
 	}
 	else{
 		double rhol;
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double presC=pres;
@@ -5027,27 +5168,41 @@ double ProFlu::MasEspoleo(double pres, double temp,double varRS) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.rholF[0][1]+(1.-raztemp)*miniTabDin.rholF[0][0];
-			 valT1=raztemp*miniTabDin.rholF[1][1]+(1.-raztemp)*miniTabDin.rholF[1][0];
-			 rhol=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.rholF[0][1]+(1.-raztemp)*miniTabDin.rholF[0][0];
+	    		 valT1=raztemp*miniTabDin.rholF[1][1]+(1.-raztemp)*miniTabDin.rholF[1][0];
+	    		 rhol=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+					int iIER;
+					double presC=pres;
+					double tempC=temp;
+					double zfac;
+
+					Marlim_CalculatePhaseDensity(presC,  tempC, 0, oCalculatedLiqComposition, npseudo,
+							tempCrit, presCrit,fatAcent,TIndepPeneloux, kij, lij,liqModel, dLiquidPhaseMW, &rhol,
+							&zfac,&iIER);
+					if(iCalculatedThermodynamicCondition==3 || iCalculatedThermodynamicCondition==4)rhol=900.;
+					if(rhol<1e-15) rhol=900;
+	    	 }
 	     }
 
 		if(rhol<1e-15) rhol=900;
@@ -5084,7 +5239,7 @@ double ProFlu::drhodt(double pres, double temp) const{
 		return -masesp*(1./(temp+272.15)+dzdt/z);
 	}
 	else{
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double tempZ;
@@ -5163,29 +5318,46 @@ double ProFlu::drhodt(double pres, double temp) const{
 			}
 		}
 	     else{
-	    	 double drhogdT=0.;
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.DrhogDtF[0][1]+(1.-raztemp)*miniTabDin.DrhogDtF[0][0];
-			 valT1=raztemp*miniTabDin.DrhogDtF[1][1]+(1.-raztemp)*miniTabDin.DrhogDtF[1][0];
-			 drhogdT=razpres*valT1+(1.-razpres)*valT0;
-			 return drhogdT;
+	    	 if(indiceFlash>0){
+	    		 double drhogdT=0.;
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.DrhogDtF[0][1]+(1.-raztemp)*miniTabDin.DrhogDtF[0][0];
+	    		 valT1=raztemp*miniTabDin.DrhogDtF[1][1]+(1.-raztemp)*miniTabDin.DrhogDtF[1][0];
+	    		 drhogdT=razpres*valT1+(1.-razpres)*valT0;
+	    		 return drhogdT;
+	    	 }
+	    	 else{
+					int iIER;
+					double tempZ;
+					double dZdT;
+					double drhogdT=0.;
+					double dZdp;
+					double drhogdp=0.;
+
+					Marlim_CalculateTAndPDerivativesOfPhasicRhoAndZ(pres, temp,
+							liqModel, 1,  npseudo,oCalculatedVapComposition, tempCrit,
+							presCrit, fatAcent, kij, lij, TIndepPeneloux, dVaporPhaseMW,
+							&tempZ, &dZdT, &drhogdT, &dZdp, &drhogdp, &iIER);
+					if(iCalculatedThermodynamicCondition==0 || iCalculatedThermodynamicCondition==1)drhogdT=1.;
+					return drhogdT;
+	    	 }
 	     }
 	}
 }
@@ -5198,7 +5370,7 @@ double ProFlu::drhodp(double pres, double temp) const{
 		return masesp*(1./(pres*98066.52)-dzdp/z);
 	}
 	else{
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double tempZ;
@@ -5277,6 +5449,7 @@ double ProFlu::drhodp(double pres, double temp) const{
 			}
 		}
 	     else{
+	    	 if(indiceFlash>0){
 			 double raztemp;
 			 double razpres;
 			 double valT0;
@@ -5298,6 +5471,22 @@ double ProFlu::drhodp(double pres, double temp) const{
 			 valT0=raztemp*miniTabDin.DrhogDpF[0][1]+(1.-raztemp)*miniTabDin.DrhogDpF[0][0];
 			 valT1=raztemp*miniTabDin.DrhogDpF[1][1]+(1.-raztemp)*miniTabDin.DrhogDpF[1][0];
 			 return razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+					int iIER;
+					double tempZ;
+					double dZdT;
+					double drhogdT=0.;
+					double dZdp;
+					double drhogdp=0.;
+
+					Marlim_CalculateTAndPDerivativesOfPhasicRhoAndZ(pres, temp,
+							liqModel, 1,  npseudo,oCalculatedVapComposition, tempCrit,
+							presCrit, fatAcent, kij, lij, TIndepPeneloux, dVaporPhaseMW,
+							&tempZ, &dZdT, &drhogdT, &dZdp, &drhogdp, &iIER);
+					if(iCalculatedThermodynamicCondition==0 || iCalculatedThermodynamicCondition==1)drhogdp=1.;
+					return drhogdp;
+	    	 }
 	     }
 	}
 }
@@ -5345,7 +5534,7 @@ double ProFlu::MasEspGas(double pres, double temp) const{
 		return interpolaVarProd(pres, temp, rhogF);
 	else{
 		double rhog;
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 
 				rhog=MasEspGasComp(pres, temp);
@@ -5388,27 +5577,32 @@ double ProFlu::MasEspGas(double pres, double temp) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.rhogF[0][1]+(1.-raztemp)*miniTabDin.rhogF[0][0];
-			 valT1=raztemp*miniTabDin.rhogF[1][1]+(1.-raztemp)*miniTabDin.rhogF[1][0];
-			 rhog=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.rhogF[0][1]+(1.-raztemp)*miniTabDin.rhogF[0][0];
+	    		 valT1=raztemp*miniTabDin.rhogF[1][1]+(1.-raztemp)*miniTabDin.rhogF[1][0];
+	    		 rhog=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+	    		 rhog=MasEspGasComp(pres, temp);
+	    	 }
 	     }
 		return rhog;
 	}
@@ -5490,7 +5684,7 @@ double ProFlu::MasEspLiq(double pres, double temp,double varRS) const{
 	else{
 		double rhol;
 		double bo;
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 
 				rhol=MasEspLiqComp(pres, temp);
@@ -5538,28 +5732,34 @@ double ProFlu::MasEspLiq(double pres, double temp,double varRS) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.rholF[0][1]+(1.-raztemp)*miniTabDin.rholF[0][0];
-			 valT1=raztemp*miniTabDin.rholF[1][1]+(1.-raztemp)*miniTabDin.rholF[1][0];
-			 rhol=razpres*valT1+(1.-razpres)*valT0;
-			 bo=BOFunc(pres, temp);
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.rholF[0][1]+(1.-raztemp)*miniTabDin.rholF[0][0];
+	    		 valT1=raztemp*miniTabDin.rholF[1][1]+(1.-raztemp)*miniTabDin.rholF[1][0];
+	    		 rhol=razpres*valT1+(1.-razpres)*valT0;
+	    		 bo=BOFunc(pres, temp);
+	    	 }
+	    	 else{
+					rhol=MasEspLiqComp(pres, temp);
+					bo=-1.;
+	    	 }
 	     }
 		if(bo>0){
 		  if(rhol<1e-15) rhol=900;
@@ -5661,7 +5861,7 @@ double ProFlu::FracAguaInSitu(double pres, double temp,double varRS) const{
 	}
 	else{
 		double bo;
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0){
 				int iIER;
 				double rhol;
@@ -5683,27 +5883,45 @@ double ProFlu::FracAguaInSitu(double pres, double temp,double varRS) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.valBO[0][1]+(1.-raztemp)*miniTabDin.valBO[0][0];
-			 valT1=raztemp*miniTabDin.valBO[1][1]+(1.-raztemp)*miniTabDin.valBO[1][0];
-			 bo=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.valBO[0][1]+(1.-raztemp)*miniTabDin.valBO[0][0];
+	    		 valT1=raztemp*miniTabDin.valBO[1][1]+(1.-raztemp)*miniTabDin.valBO[1][0];
+	    		 bo=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+					int iIER;
+					double rhol;
+					double presC=pres;
+					double tempC=temp;
+					double zfac;
+
+					Marlim_CalculatePhaseDensity(presC,  tempC, 0, oCalculatedLiqComposition, npseudo,
+							tempCrit, presCrit,fatAcent,TIndepPeneloux, kij, lij,liqModel, dLiquidPhaseMW, &rhol,
+							&zfac,&iIER);
+					if(iCalculatedThermodynamicCondition==3 || iCalculatedThermodynamicCondition==4){
+						bo=1.;
+						rhol=900.;
+					}
+					else bo=BOFunc(pres, temp);
+	    	 }
 	     }
 		double rhoa=MasEspAgua(pres, temp);
 		double ba=(1000.*Denag/rhoa);
@@ -5726,7 +5944,7 @@ double ProFlu::FracMass(double pres, double temp) const{
 		return MasGasLivre(pres, temp,rs)/(MasGasLivre(pres, temp,rs)+MasOleo(pres, temp,rs));
 	}
 	else{
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0)return dVaporMassFraction;
 			else{
 				double valx;
@@ -5757,27 +5975,32 @@ double ProFlu::FracMass(double pres, double temp) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.tit[0][1]+(1.-raztemp)*miniTabDin.tit[0][0];
-			 valT1=raztemp*miniTabDin.tit[1][1]+(1.-raztemp)*miniTabDin.tit[1][0];
-			 return razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.tit[0][1]+(1.-raztemp)*miniTabDin.tit[0][0];
+	    		 valT1=raztemp*miniTabDin.tit[1][1]+(1.-raztemp)*miniTabDin.tit[1][0];
+	    		 return razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+	    		 return dVaporMassFraction;
+	    	 }
 	     }
 	}
 }
@@ -5797,7 +6020,7 @@ double ProFlu::FracMassHidra(double pres, double temp) const{
 		double rhoWF=MasEspAgua(pres, temp);
 		double titF=(1-fwF)*rhoOF/((1-fwF)*rhoOF+fwF*rhoWF);
 		double titG;
-		if((*vg1dSP).modoTransiente==0){
+		if((*vg1dSP).modoTransiente==0 || multbcs==1){
 			if(tabelaDinamica==0)titG=dVaporMassFraction;
 			else{
 				if(temp<tabDin.tmin)temp=tabDin.tmin;
@@ -5826,27 +6049,32 @@ double ProFlu::FracMassHidra(double pres, double temp) const{
 			}
 		}
 	     else{
-			 double raztemp;
-			 double razpres;
-			 double valT0;
-			 double valT1;
-			 if(temp<miniTabDin.tmin){
-				 temp=miniTabDin.tmin;
-			 }
-			 if(temp>miniTabDin.tmax){
-				 temp=miniTabDin.tmax;
-			 }
-			 if(pres<miniTabDin.pmin){
-				 pres=miniTabDin.pmin;
-			 }
-			 if(pres>miniTabDin.pmax){
-				 pres=miniTabDin.pmax;
-			 }
-			 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
-			 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
-			 valT0=raztemp*miniTabDin.tit[0][1]+(1.-raztemp)*miniTabDin.tit[0][0];
-			 valT1=raztemp*miniTabDin.tit[1][1]+(1.-raztemp)*miniTabDin.tit[1][0];
-			 titG=razpres*valT1+(1.-razpres)*valT0;
+	    	 if(indiceFlash>0){
+	    		 double raztemp;
+	    		 double razpres;
+	    		 double valT0;
+	    		 double valT1;
+	    		 if(temp<miniTabDin.tmin){
+	    			 temp=miniTabDin.tmin;
+	    		 }
+	    		 if(temp>miniTabDin.tmax){
+	    			 temp=miniTabDin.tmax;
+	    		 }
+	    		 if(pres<miniTabDin.pmin){
+	    			 pres=miniTabDin.pmin;
+	    		 }
+	    		 if(pres>miniTabDin.pmax){
+	    			 pres=miniTabDin.pmax;
+	    		 }
+	    		 raztemp=(temp-miniTabDin.tmin)/(miniTabDin.tmax-miniTabDin.tmin);
+	    		 razpres=(pres-miniTabDin.pmin)/(miniTabDin.pmax-miniTabDin.pmin);
+	    		 valT0=raztemp*miniTabDin.tit[0][1]+(1.-raztemp)*miniTabDin.tit[0][0];
+	    		 valT1=raztemp*miniTabDin.tit[1][1]+(1.-raztemp)*miniTabDin.tit[1][0];
+	    		 titG=razpres*valT1+(1.-razpres)*valT0;
+	    	 }
+	    	 else{
+	    		 titG=dVaporMassFraction;
+	    	 }
 	     }
 		return titG*titF/(1.+titG*(titF-1.));
 	}

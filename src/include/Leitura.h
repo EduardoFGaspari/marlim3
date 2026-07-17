@@ -718,6 +718,7 @@ struct detPROFP {
     int dadosParafina;
     int subResfria;
     int correlacaoBB;
+    int titulo;
     double *tempo; // Times at which the profiles must be recorded
 };
 
