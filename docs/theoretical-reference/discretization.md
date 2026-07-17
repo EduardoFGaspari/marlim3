@@ -726,6 +726,328 @@ $$
 \end{equation}
 $$
 
+Once the temperature has been evolved, obtaining all other variables becomes simple and straightforward through an explicit approach.
+
+## Interphase mass-transfer
+
+$$
+\begin{equation}
+\begin{aligned}
+\psi_i^{k+1} &= -A(1-F_w)\frac{R_s\gamma_g\rho_{\mathrm{air}}^{\mathrm{std}}}{B_o}
+(1-\beta)\bigg|_i^{k+1}
+\frac{(1-\alpha_i^{k+1})-(1-\alpha_i^k)}{\Delta t} \\[8pt]
+&- (1-F_w)\frac{R_s\gamma_g\rho_{\mathrm{air}}^{\mathrm{std}}}{B_o}
+\frac{1}{\rho_{\mathrm{lc}}}\bigg|_i^{k+1}
+\frac{\dot{M}_c\big|_{i+\frac{1}{2}}^{k+1}-\dot{M}_c\big|_{i-\frac{1}{2}}^{k+1}}{\Delta x_i} \\[8pt]
+&- \frac{
+    \left.(1-\beta)(1-F_w)\dfrac{R_s\gamma_g\rho_{\mathrm{air}}^{\mathrm{std}}}{B_o}Q_l\right|_{i+\frac{1}{2}}^{k+1}
+    -\left.(1-\beta)(1-F_w)\dfrac{R_s\gamma_g\rho_{\mathrm{air}}^{\mathrm{std}}}{B_o}Q_l\right|_{i-\frac{1}{2}}^{k+1}
+  }{\Delta x_i} \\[8pt]
+&+ (1-F_w)\frac{R_s\gamma_g\rho_{\mathrm{air}}^{\mathrm{std}}}{B_o}
+\frac{\Gamma_{\mathrm{cp}}}{\rho_{\mathrm{lc}}\,\Delta x_i}\bigg|_i^{k}
+\end{aligned}
+\end{equation}
+$$
+
+## Property tracking
+
+$$
+\begin{equation}
+\begin{aligned}
+Vol_{leve}\big|_i^{k+1} &= Vol_{leve}\big|_i^k
++ \Delta t
+\left\{
+-\frac{
+  \left.(1-\beta)(1-F_w)\dfrac{R_s}{B_o}Q_l\right|_{i+\frac{1}{2}}^{k+1}
+  - \left.(1-\beta)(1-F_w)\dfrac{R_s}{B_o}Q_l\right|_{i-\frac{1}{2}}^{k+1}
+}{\Delta x_i}
+\right.
+\\[8pt]
+&\left.
+- \frac{
+  \dot{M}_g\rho_g^{\mathrm{std}}\big|_{i+\frac{1}{2}}^{k+1}
+  - \dot{M}_g\rho_g^{\mathrm{std}}\big|_{i-\frac{1}{2}}^{k+1}
+}{\Delta x_i}
++
+\left[
+  \frac{\Gamma_{\mathrm{lp}}}{\Delta L}
+  \frac{R_s}{\rho_{\mathrm{lp}}^{\mathrm{std}}}(1-F_w)
+  +\frac{\Gamma_g}{\Delta L}
+  \frac{1}{\rho_{\mathrm{gf}}^{\mathrm{std}}}
+\right]_i^k
+\right\}
+\end{aligned}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+\gamma_{gl_i}^{k+1} =
+\frac{\gamma_{gl}\,\mathit{Vol}_{leve_i}^{k}}{\mathit{Vol}_{leve_i}^{k+1}}
++ \frac{\Delta t}{\mathit{Vol}_{leve_i}^{k+1}}
+\left\{
+\begin{array}{l}
+\displaystyle
+-\frac{
+  \gamma_g(1-\beta)(1-F_w)\dfrac{R_s}{B_o}Q_l\bigg|_{i+\frac{1}{2}}^{k+1}
+  -\gamma_g(1-\beta)(1-F_w)\dfrac{R_s}{B_o}Q_l\bigg|_{i-\frac{1}{2}}^{k+1}
+}{\Delta x_i} - \\[16pt]
+\displaystyle
+\frac{
+  \gamma_{gl}\dot{M}_g\rho_g^{\mathrm{std}}\big|_{i+\frac{1}{2}}^{k+\frac{1}{2}}
+  -\gamma_{gl}\dot{M}_g\rho_g^{\mathrm{std}}\big|_{i-\frac{1}{2}}^{k+\frac{1}{2}}
+}{\Delta x_i}
++\left[
+  \gamma_g\frac{\Gamma_{\mathrm{lp}}}{\Delta L}
+  \frac{R_s}{\rho_{\mathrm{lp}}^{\mathrm{std}}}(1-F_w)
+  +\gamma_{\mathrm{gf}}\frac{\Gamma_g}{\Delta L}
+  \frac{1}{\rho_{\mathrm{gf}}^{\mathrm{std}}}
+\right]_i^k
+\end{array}
+\right\}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+\begin{aligned}
+y_{\mathrm{CO}_{2_i}}^{k+1} &=
+\frac{y_{\mathrm{CO}_2}\,\mathit{Vol}_{leve_i}^{k}}{\mathit{Vol}_{leve_i}^{k+1}}
++ \frac{\Delta t}{\mathit{Vol}_{leve_i}^{k+1}}
+\left\{
+\begin{array}{l}
+\displaystyle
+-\frac{
+  y_{\mathrm{CO}_2}(1-\beta)(1-F_w)\dfrac{R_s}{B_o}Q_l\bigg|_{i+\frac{1}{2}}^{k+1}
+  -y_{\mathrm{CO}_2}(1-\beta)(1-F_w)\dfrac{R_s}{B_o}Q_l\bigg|_{i-\frac{1}{2}}^{k+1}
+}{\Delta x_i}
+- \\[16pt]
+\displaystyle
+\frac{
+  y_{\mathrm{CO}_2}\dot{M}_g\rho_g^{\mathrm{std}}\big|_{i+\frac{1}{2}}^{k+\frac{1}{2}}
+  -y_{\mathrm{CO}_2}\dot{M}_g\rho_g^{\mathrm{std}}\big|_{i-\frac{1}{2}}^{k+\frac{1}{2}}
+}{\Delta x_i}
++\left[
+  y_{\mathrm{CO}_2}\frac{\Gamma_{\mathrm{lp}}}{\Delta L}
+  \frac{R_s}{\rho_{\mathrm{lp}}^{\mathrm{std}}}(1-F_w)
+  +y_{\mathrm{CO}_2}\frac{\Gamma_g}{\Delta L}
+  \frac{1}{\rho_{\mathrm{gf}}^{\mathrm{std}}}
+\right]_i^k
+\end{array}
+\right\}
+\end{aligned}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+\begin{aligned}
+\mathrm{API}_i^{k+1} &=
+\frac{\mathrm{API}\,\mathit{Vol}_{\text{dead oil}}|_i^{k}}{\mathit{Vol}_{\text{dead oil}}|_i^{k+1}}
++ \frac{\Delta t}{\mathit{Vol}_{\text{dead oil}}|_i^{k+1}}
+\left\{
+\begin{array}{l}
+\displaystyle
+-\frac{
+  \mathrm{API}\,(1-\beta)(1-F_w)\dfrac{Q_l}{B_o}\bigg|_{i+\frac{1}{2}}^{k+\frac{1}{2}}
+  -\mathrm{API}\,(1-\beta)(1-F_w)\dfrac{Q_l}{B_o}\bigg|_{i-\frac{1}{2}}^{k+\frac{1}{2}}
+}{\Delta x_i}
++ \\[16pt]
+\displaystyle
+\mathrm{API}\,\frac{\Gamma_{\text{dead oil}}}{\Delta x_i}\bigg|_i^k
+\end{array}
+\right\}
+\end{aligned}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+\begin{aligned}
+\mathrm{BSW}_i^{k+1} &=
+\frac{
+  \mathrm{BSW}\!\left(\mathit{Vol}_{\text{dead oil}}+\mathit{Vol}_{\text{water}}\right)\big|_i^k
+}{
+  \left(\mathit{Vol}_{\text{dead oil}}+\mathit{Vol}_{\text{water}}\right)_i^{k+1}
+}
++ \frac{\Delta t}{\left(\mathit{Vol}_{\text{dead oil}}+\mathit{Vol}_{\text{water}}\right)_i^{k+1}}
+\left\{
+\begin{array}{l}
+\displaystyle
+-\frac{
+  \mathrm{BSW}\!\left[(1-\beta)\dfrac{Q_l}{B_o}+\right]\bigg|_{i+\frac{1}{2}}^{k+\frac{1}{2}}
+  -\mathrm{BSW}\!\left[(1-\beta)\dfrac{Q_l}{B_o}+\right]\bigg|_{i-\frac{1}{2}}^{k+\frac{1}{2}}
+}{\Delta x_i} \\[16pt]
+\displaystyle
++\,\mathrm{BSW}\!\left(
+  \frac{\Gamma_{\text{dead oil}}}{\Delta L}
+  +\frac{\Gamma_{\text{water}}}{\Delta L}
+\right)\bigg|_i^k
+\end{array}
+\right\}
+\end{aligned}
+\end{equation}
+$$
+
+## Boundary conditions
+
+Having completed the discretization of the equations employed by the simulator, the treatment of boundary conditions must now be detailed. In this model, it was preferred not to work with inflow or outflow boundary conditions directly; since a wide variety of mass source terms is available in the model, it is more practical to employ these sources as mass injection mechanisms, even when a flow rate condition is prescribed at the inlet or outlet of the pipeline. When a flow rate boundary condition is desired at either end of a modeled pipeline, the approach adopted is to treat the pipeline as closed at that end and to introduce a source term representative of the desired boundary condition in the corresponding control volume. The local matrix for volume zero, under a closed-pipe boundary condition, takes the following form:
+
+$$
+\begin{equation}
+\begin{bmatrix}
+0 & 0 & 0 & 1 & 0       & 0       & 0       \\
+0 & 0 & 0 & 0 & m_{1,4} & m_{1,5} & m_{1,6}
+\end{bmatrix}_0
+\begin{bmatrix}
+0 \\[4pt]
+0 \\[4pt]
+0 \\[4pt]
+\dot{M}_m\big|_{-\frac{1}{2}}^{k+1} \\[4pt]
+p_0^{k+1} \\[4pt]
+\dot{M}_m\big|_{\frac{1}{2}}^{k+1} \\[4pt]
+p_1^{k+1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+0 \\[4pt]
+tl_1
+\end{bmatrix}_0
+\end{equation}
+$$
+
+At the outlet end of the pipeline, a closed boundary condition is employed when operating with a choke model — the multiphase choke model currently implemented in the simulator is that of Sachdeva et al. (1986). In the choke configuration, a mass source term is introduced whose flow rate is determined by the choke model, acting as a sink in the last control volume. In this case, rather than including a momentum equation in the pressure–velocity coupling for the last volume, it is replaced by a mixture mass conservation equation for that volume, accounting for the negative flow rate resulting from the choke balance at the pipeline outlet. The local matrix takes the following form (note that, in the last cell, the interphase mass transfer term is not treated implicitly, which simplifies the local matrix):
+
+\begin{equation}
+\begin{bmatrix}
+0 & m_{0,1} & m_{0,2} & m_{0,3} & 0       & 0 & 0 \\
+0 & 0       & 0       & m_{1,3} & m_{1,4} & 0 & 0
+\end{bmatrix}_{ncel}
+\begin{bmatrix}
+p_{ncel-2}^{k+1} \\[4pt]
+\dot{M}_m\big|_{ncel-\frac{3}{2}}^{k+1} \\[4pt]
+p_{ncel-1}^{k+1} \\[4pt]
+\dot{M}_m\big|_{ncel-\frac{1}{2}}^{k+1} \\[4pt]
+p_{ncel}^{k+1} \\[4pt]
+0 \\[4pt]
+0
+\end{bmatrix}
+=
+\begin{bmatrix}
+tl_0 \\[4pt]
+tl_1
+\end{bmatrix}_{ncel}
+\end{equation}
+
+The other boundary condition employed is a prescribed pressure at the inlet or outlet of the pipeline (note that, in the case of a choke at the pipeline outlet, the effective boundary condition is a prescribed pressure downstream of the choke).
+
+For a prescribed pressure condition at the pipeline outlet, the local matrix takes the following form:
+
+$$
+\begin{equation}
+\begin{bmatrix}
+0 & m_{0,1} & m_{0,2} & m_{0,3} & 0 & 0 & 0 \\
+0 & 0       & 0       & 0       & 1 & 0 & 0
+\end{bmatrix}_{ncel}
+\begin{bmatrix}
+p_{ncel-2}^{k+1} \\[4pt]
+\dot{M}_m\big|_{ncel-\frac{3}{2}}^{k+1} \\[4pt]
+p_{ncel-1}^{k+1} \\[4pt]
+\dot{M}_m\big|_{ncel-\frac{1}{2}}^{k+1} \\[4pt]
+p_{ncel}^{k+1} \\[4pt]
+0 \\[4pt]
+0
+\end{bmatrix}
+=
+\begin{bmatrix}
+tl_0 \\[4pt]
+p_{separator}
+\end{bmatrix}_{ncel}
+\end{equation}
+$$
+
+For the case of a prescribed pressure at the pipeline inlet, the treatment is somewhat more involved. In the local matrix, the first equation — which is ordinarily derived from mass conservation — is replaced by a momentum equation; furthermore, to apply this momentum equation, a ghost cell is introduced:
+
+![ghost-cell](../img/ghost-cell.png)
+
+Furthermore, since the pressure–velocity coupling only determines the mixture mass flow rate at the upstream boundary of volume zero, the quality at this inlet must be prescribed, along with the inlet temperature.
+
+The local matrix for volume zero takes the following form:
+
+$$
+\begin{equation}
+\begin{bmatrix}
+0 & 0 & 0 & m_{0,3} & m_{0,4} & 0       & 0       \\
+0 & 0 & 0 & 0       & m_{1,4} & m_{1,5} & m_{1,6}
+\end{bmatrix}_0
+\begin{bmatrix}
+0 \\[4pt]
+0 \\[4pt]
+0 \\[4pt]
+\dot{M}_m\big|_{-\frac{1}{2}}^{k+1} \\[4pt]
+p_0^{k+1} \\[4pt]
+\dot{M}_m\big|_{\frac{1}{2}}^{k+1} \\[4pt]
+p_1^{k+1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+tl_0 - m_{0,2}\,p_{inlet} \\[4pt]
+tl_1
+\end{bmatrix}_0
+\end{equation}
+$$
+
+What has been presented thus far constitutes the basic numerical approach for solving the transient multiphase flow problem represented by a drift-flux model. This approach has proven to be stable and computationally efficient. As may be inferred from the foregoing discussion, a significant portion of the original mathematical model was discarded in order to make this approach viable; remarkably, it nevertheless remains highly effective. There is, however, a residual concern associated with working at a coarser level of modeling fidelity. Despite the associated performance cost, the numerical framework should in principle also support a finer modeling granularity, should one wish to recover the physical phenomena discarded in the simplified formulation presented earlier. At present, two complementary modeling options are available, specifically for holdup evolution and mixture mass flow rate. In the approach presented in the derivation of governing equations shown in previous sections, the bracketed terms on the right-hand side of the equations were neglected; these terms may be recovered by taking the simpler numerical approach as a starting point and introducing an additional iterative step that accounts for the terms $\frac{\partial p}{\partial t}$ and $\frac{\partial T}{\partial t}$. More precisely, the previously described approach — or a close variant thereof — is used for a first iterative pass; from this first pass, the time derivatives $\frac{\partial p}{\partial t}$ and $\frac{\partial T}{\partial t}$ are estimated, and the bracketed terms of the two aforementioned equations that were discarded in the first iteration are then reintroduced as source terms. It has been observed that a single additional iteration is sufficient to incorporate these previously neglected terms in a stable manner. In summary, the simulator offers two numerical formulations: a simpler, higher-performance option, and a finer-grained alternative that is more complete but computationally more expensive.
+
+## Heat exchange
+
+To conclude this discussion on the discretization of the mathematical model, a brief account of how heat exchange in the pipeline is handled — and in particular the heat conduction mechanism — is warranted. A steady-state heat transfer treatment is available, which is better suited to the steady-state module of the simulator; its solution is straightforward, based on the calculation of thermal resistances in series. For the transient case, a radial transient heat diffusion model is employed. The governing radial diffusion relation is:
+
+$$
+\begin{equation}
+\dot{Q} = -2\pi r k \frac{\partial T}{\partial r}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+\frac{\partial T}{\partial t} = \frac{1}{c_p \rho\, 2\pi r} \frac{\partial \dot{Q}}{\partial r}
+\end{equation}
+$$
+
+The heat diffusion problem is treated by splitting it into two equations — one for the heat flux and one for the time evolution of the solid temperature — as a matter of numerical convenience; this formulation makes it straightforward to handle conductivity changes across insulation layers. The discretized domain takes the following form:
+
+![radial_heat_disc](../img/radial_heat_disc.png)
+
+The two discretized relations take the following form:
+
+$$
+\begin{equation}
+2\pi r_{i-\frac{1}{2}}\, k_{i-\frac{1}{2}}
+\frac{\dot{T}_i^{k+1}}{r_i - r_{i-1}}
++ Q_{i-\frac{1}{2}}^{k+1}
+- 2\pi r_{i-\frac{1}{2}}\, k_{i-\frac{1}{2}}
+\frac{T_{i-1}^{k+1}}{r_i - r_{i-1}}
+= 0
+\end{equation}
+$$
+
+$$
+\begin{equation}
+-\frac{1}{c_{p_i}\rho_i\, 2\pi r_i}
+\frac{\dot{Q}_{i+\frac{1}{2}}^{k+1}}{r_{i+\frac{1}{2}}-r_{i-\frac{1}{2}}}
++\frac{T_i^{k+1}}{\Delta t}
++\frac{1}{c_{p_i}\rho_i\, 2\pi r_i}
+\frac{\dot{Q}_{i-\frac{1}{2}}^{k+1}}{r_{i+\frac{1}{2}}-r_{i-\frac{1}{2}}}
+= \frac{T_i^k}{\Delta t}
+\end{equation}
+$$
+
+This pair of equations is straightforward and easily resolved. The result is a simple banded matrix, with boundary conditions defined by the heat fluxes associated with internal and external convection or, in the case of contact with the surrounding formation, by the thermal resistance of that formation.
+
+
 ## References
 
-Liles, D. & Reed, Wg. (1978), A semi-implicit method for two-phase fluid dynamics, Journal of Computational Physics, Volume 26, Issue 3, March 1978, pp 390-407.
+Liles, D. & Reed, Wg. (1978), A semi-implicit method for two-phase fluid dynamics, Journal of Computational Physics, Volume 26, Issue 3, March 1978, pp 390-407;
+
+Sachdeva, R. at al, (1986), Two-PhaseFlow Through Chokes. Paper SPE 15657 presented at the SPE Annual Technical Conference and Exhibition, New Orleans, 5–8 October.
