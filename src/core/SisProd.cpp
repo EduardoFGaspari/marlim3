@@ -12642,7 +12642,7 @@ void SProd::SolveTrans(double titRev, double alfRev, double betRev, int nrede, P
         if ((*vg1dSP).lixo5 >= 0) {
             int para;
             para = 0;
-            //arq.imprimeProfile(celula, flut, (*vg1dSP).lixo5, indTramo, nrede);
+           // arq.imprimeProfile(celula, flut, (*vg1dSP).lixo5, indTramo, nrede);
         }
 
         if ((*vg1dSP).lixo5 < 1e-15) {
