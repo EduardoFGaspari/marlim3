@@ -12,3 +12,4 @@ Mathematical foundations of the `Marlim3` transient drift-flux model.
 | [Mass & Momentum Balances](mass-momentum-balances.md) | Drift-flux mass conservation equations, momentum balance, and flow-pattern closure relations |
 | [Energy Balance](energy-balance.md) | One-dimensional energy conservation equations for gas and liquid phases, heat-flux terms, and coupling to the thermal model |
 | [Discretization](discretization.md) | Staggered finite-volume grid, semi-implicit time-stepping scheme, and treatment of multiphase flow-regime transitions |
+| [Service Line Model](service-line.md) | Single-phase gas service-line equations, staggered-grid discretization, boundary conditions, and coupling with the production line |
