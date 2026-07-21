@@ -1,4 +1,4 @@
-Tempo (s),,Comprimento (m) Fronteira F,Comprimento (m) Centro Volume C,comprimento_fundoPoco (m) F,Pressao (kgf/cm2) C,Temperatura (C) C,Velocidade superficial do gas (m/s) F,Vazao volumetrica standard de gas (Sm3/(d)) F,id do duto,Profundidade (m) F,Profundidade (m) C
+Tempo (s),,Length (m) Boundary F,Length (m) Cell center C,bottomhole_length (m) F,Pressure (kgf/cm2) C,Temperature (C) C,Gas superficial velocity (m/s) F,Standard gas volumetric flow rate (Sm3/(d)) F,duct id,Depth (m) F,Depth (m) C
 0,0,0,10,7000,150.80020677943315,40.0,0.8704341311067417,100010.325012015,0,0.0,-9.999999999999464
 0,1,20,30,6980,151.01993111776096,39.31688037618538,0.8658051627678974,100010.325012015,0,-19.999999999998927,-29.999999999998398
 0,2,40,50,6960,151.24084849955003,38.64864009901964,0.8612611466401601,100010.325012015,0,-39.999999999997854,-49.99999999999733

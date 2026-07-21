@@ -6,11 +6,11 @@ This document describes the **2D natural convection** simulation mode in Marlim3
 
 | File | Role |
 |------|------|
-| [`src/solv2D.h`](../../src/solv2D.h) / [`solv2D.cpp`](../../src/solv2D.cpp) | `solv2D` class — main solver: mesh, equations, time-stepping |
-| [`src/Malha2D.h`](../../src/Malha2D.h) / [`Malha2D.cpp`](../../src/Malha2D.cpp) | Unstructured mesh data structure (Triangle `.node/.ele` format) |
-| [`src/Elem2D.h`](../../src/Elem2D.h) / [`Elem2D.cpp`](../../src/Elem2D.cpp) | Element-level FVM operations (gradients, fluxes, assembly) |
-| [`src/Num4Main.cpp`](../../src/Num4Main.cpp) | Entry point: `resolucao(...)` function construction and `resolucao.resolve()` call |
-| [`src/estruturas.h`](../../src/estruturas.h) | `flucVF` (VOF data), `interface` struct |
+| [`src/include/solver.h`](https://github.com/petrobras/marlim3/blob/main/src/include/solver.h) / [`src/core/solver.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/solver.cpp) | `solv2D` class — main solver: mesh, equations, time-stepping |
+| [`src/include/Malha2D.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Malha2D.h) / [`src/core/Malha2D.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Malha2D.cpp) | Unstructured mesh data structure (Triangle `.node/.ele` format) |
+| [`src/include/Elem2D.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Elem2D.h) / [`src/core/Elem2D.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Elem2D.cpp) | Element-level FVM operations (gradients, fluxes, assembly) |
+| [`src/core/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) | Entry point: `resolucao(...)` function construction and `resolucao.resolve()` call |
+| [`src/include/estruturas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturas.h) | `flucVF` (VOF data), `interface` struct, `cel2D` element data |
 
 ---
 
@@ -36,11 +36,11 @@ This document describes the **2D natural convection** simulation mode in Marlim3
 
 ## Overview
 
-The `CONVECNAT` simulation mode solves the 2D incompressible Navier–Stokes equations coupled with an energy equation on unstructured triangular meshes. The solver supports:
+The `CONVECNAT` simulation mode solves a 2D incompressible pressure-correction algorithm with variable mixture properties and Boussinesq-like buoyancy on unstructured triangular meshes. The solver supports:
 
-- **Buoyancy-driven flows** via the Boussinesq approximation
-- **Two-phase flows** via Volume of Fluid (VOF) interface tracking
-- **Non-Newtonian fluids** via viscosity look-up tables
+- **Buoyancy-driven flows** via temperature-dependent density (Boussinesq-like)
+- **Two-phase flows** via Volume of Fluid (VOF) interface tracking with holdup-dependent mixture properties
+- **Non-Newtonian fluids** via viscosity look-up tables (temperature and deformation-rate dependent)
 - **Coupled 1D wall heat transfer** via the `TransCal` module
 - **Laminar flow only** — no turbulence models are implemented
 
@@ -50,41 +50,60 @@ Typical applications include natural convection in annular spaces, subsea equipm
 
 ## Entry Point and Initialization
 
-When `tipoSimulacao == convecNatural`, `main()` in [`Num4Main.cpp`](../../src/Num4Main.cpp) constructs a `solv2D` object named `resolucao` and calls `resolucao.resolve()`.
+When `tipoSimulacao == convecNatural`, `main()` in [`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) constructs a `solv2D` object named `resolucao` and calls `resolucao.resolve()`.
 
 ### Construction
 
 ```cpp
-solv2D resolucao(jsonPath, outputDir);
+varGlob1D vg1dConvec2D = varGlob1D();
+solv2D resolucao(nomeArquivoEntrada, nomeArquivoLog, &vg1dConvec2D);
 ```
 
 The constructor:
 
-1. Parses the `parametros.json` file
-2. Loads the mesh (Triangle or UNV format)
-3. Allocates field arrays ($u$, $v$, $P$, $T$, $\alpha$)
-4. Sets initial and boundary conditions
-5. Initializes material properties
+1. Parses the input JSON file specified by `nomeArquivoEntrada`
+2. Opens a log file at `nomeArquivoLog`
+3. Loads the mesh (Triangle or UNV format)
+4. Allocates field arrays per element (`uC`, `vC`, `presC`, `tempC`, `holC`)
+5. Sets initial and boundary conditions
+6. Initializes material properties
 
 ### Key `solv2D` class members
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `malhaH` | `Malha2D` | Unstructured triangular mesh |
-| `nElem` | `int` | Number of triangular elements |
-| `nNo` | `int` | Number of mesh nodes |
-| `nFace` | `int` | Number of internal + boundary faces |
-| `u[]`, `v[]` | `double*` | Velocity components per element |
-| `P[]` | `double*` | Pressure per element |
-| `T[]` | `double*` | Temperature per element |
-| `flucVF` | struct | VOF phase fraction $\alpha$ per element |
-| `interface` | struct | Interface tracking data |
-| `nPrime[]` | `double*` | Pressure correction per element |
-| `solverMat` | solver | Linear system solver (GMRES/BiCGStab) |
-| `dt` | `double` | Current time step |
-| `tempo` | `double` | Current simulation time |
-| `nSIMPLE` | `int` | SIMPLE variant selector (0–4) |
-| `nPISO` | `int` | Number of PISO corrector steps |
+| `malhaH` | `detMalhaHom**` | Array of mesh data structures |
+| `nomeArquivoEntrada` | `string` | Path to input JSON file |
+| `nomeArquivoLog` | `string` | Path to log output file |
+| `flucVF` | `ProFluColVF` | VOF/holdup fluid properties struct |
+| `corteVF` | `cortedutoVF` | Cross-section and layer definitions |
+| `matVF` | `materialVF*` | Array of material properties |
+| `vg1dSP` | `varGlob1D*` | Pointer to global variables (CFL, relaxation factors, gravity, angles) |
+| `interface` | `detInterFace` | Interface tracking configuration |
+| `nPrime` | `int` | Number of PISO corrector steps |
+| `solverMat` | `int` | Linear solver selector (see Linear Solvers section) |
+| `rankLU` | `int` | ILU preconditioner fill level (-1 = disabled) |
+| `unv` | `int` | Mesh format flag (0 = Triangle, 1 = UNV) |
+
+### Element-level data structure (`cel2D`)
+
+Field variables are stored **per-element** via the `cel2D` struct inside each `elem2d`:
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `uC`, `vC` | `double` | Velocity components at element centroid |
+| `presC` | `double` | Pressure at element centroid |
+| `tempC` | `double` | Temperature at element centroid |
+| `holC` | `double` | VOF holdup (volume fraction, 0–1) |
+| `gradGreenU`, `gradGreenV` | `double[2]` | Green-Gauss gradients of velocity |
+| `gradGreenPres` | `double[2]` | Green-Gauss gradient of pressure |
+| `gradGreenTemp` | `double[2]` | Green-Gauss gradient of temperature |
+| `vElem` | `double` | Element volume (area for 2D) |
+| `nvert` | `int` | Number of vertices (typically 3 for triangles) |
+| `dim` | `int` | Spatial dimension (2 for 2D) |
+| `indFace[3]` | `int` | Neighbor element indices (-1 for boundary faces) |
+| `sFace[3][2]` | `double` | Face area vectors (outward normal × length) |
+| `centroideElem[2]` | `double` | Element centroid coordinates |
 
 ---
 
@@ -97,7 +116,7 @@ The primary mesh format. Generated by the [Triangle](https://www.cs.cmu.edu/~qua
 - **`.node` file**: node coordinates and boundary markers
 - **`.ele` file**: element connectivity (3 nodes per triangle)
 
-Loaded by `Malha2D::leMalha()`.
+Loaded by the `malha2dVF` constructor and mesh parsing functions in `solver.cpp`.
 
 ### UNV / Salome format (`.unv`)
 
@@ -106,81 +125,105 @@ Alternative mesh format from the [Salome](https://www.salome-platform.org/) plat
 - Universal file format with numbered datasets
 - Supports named groups for boundary regions
 
-Loaded by `Malha2D::leMalhaUNV()`.
+Enabled by setting `unv = 1` in the solver.
 
-### Mesh data structure
+### Per-element mesh data structure
 
-`Malha2D` stores:
+Unlike traditional CFD codes with a global face list, this solver stores **face information at the element level** via the `cel2D` struct:
 
 | Field | Description |
 |-------|-------------|
-| `elem[i].no[0..2]` | Three nodes of triangle $i$ |
-| `elem[i].viz[0..2]` | Neighbor element across each edge (−1 for boundary) |
-| `elem[i].area` | Triangle area |
-| `elem[i].xc`, `yc` | Centroid coordinates |
-| `face[j].esq`, `dir` | Left/right elements sharing face $j$ |
-| `face[j].xm`, `ym` | Face midpoint |
-| `face[j].nx`, `ny` | Outward unit normal |
-| `face[j].len` | Face length |
+| `noElem[0..2]` | Three node indices of the triangle element |
+| `indFace[0..2]` | Neighbor element across each face (-1 for boundary) |
+| `ccFace[0..2]` | Boundary condition label for each face |
+| `sFace[k][0..1]` | Face area vector (pointing outward from element) |
+| `sFaceMod[k]` | Face length (modulus of `sFace`) |
+| `centroideFace[k][0..1]` | Midpoint of face $k$ |
+| `centroideElem[0..1]` | Element centroid coordinates |
+| `vElem` | Element volume (area for 2D) |
+| `vecE[k][0..1]` | Unit vector from centroid to neighbor centroid |
+| `modE[k]` | Distance between cell centroids |
+| `fatG[k]` | Geometric interpolation factor (0–1) |
+| `angES[k]` | Cosine of angle between face normal and cell-to-cell vector |
+
+Neighbor connectivity is resolved via pointers (`vizinho[k]`) in the `elem2d` class, not indices.
 
 ---
 
 ## JSON Configuration
 
-The `parametros.json` file contains all 2D solver settings, organized into sections:
+The input JSON file (typically `parametros.json`) contains all 2D solver settings. The main entry point (`solv2D::resolve()`) parses JSON sections in this order:
 
 ```json
 {
   "malha": {
     "arquivo": "mesh.node",
-    "formato": "triangle"
+    "unv": 0
   },
   "configuracaoInicial": {
-    "u": 0.0, "v": 0.0, "T": 20.0, "P": 101325.0
+    "acopPV": 0,
+    "razDtMinimo": 0.01,
+    "cicloSeguranca": 100,
+    "rankLU": -1,
+    "solverMat": 0,
+    "CFL": 0.5,
+    "acop": 0
   },
-  "CC": {
-    "inlet":  { "tipo": "inlet", "u": 1.0, "v": 0.0, "T": 80.0 },
-    "outlet": { "tipo": "outlet", "P": 101325.0 },
-    "wall":   { "tipo": "wall" },
-    "sym":    { "tipo": "symmetry" }
+  "CC": { },
+  "prop": { },
+  "CI": { },
+  "fluido": {
+    "rhogStd": 0.7,
+    "temp1": 20.0,
+    "visc1": 0.001,
+    "temp2": 100.0,
+    "visc2": 0.0005
   },
-  "prop": {
-    "rho": 998.0, "mu": 0.001, "Cp": 4182.0, "k": 0.6,
-    "beta": 0.000207, "Tref": 20.0
-  },
-  "CI": { "tFinal": 100.0, "dtInicial": 0.01, "CFL": 0.5 },
-  "interface": { "ativo": false },
-  "fluido": { "naoNewtoniano": false },
-  "secaoTransversal": { "acoplamento1D": false }
+  "material": [
+    {
+      "tipo": 1,
+      "condutividade": 0.6,
+      "calorEspecifico": 4182.0,
+      "rho": 998.0,
+      "visc": 0.001,
+      "beta": 0.000207
+    }
+  ]
 }
 ```
 
 | Section | Description |
 |---------|-------------|
-| `malha` | Mesh file path and format |
-| `configuracaoInicial` | Initial field values |
-| `CC` | Boundary conditions by named region |
-| `prop` | Fluid/material properties |
-| `CI` | Time integration parameters |
-| `interface` | VOF two-phase settings |
-| `fluido` | Non-Newtonian viscosity table |
-| `secaoTransversal` | 1D wall coupling via TransCal |
+| `malha` | Mesh file path and format flag (`unv`: 0=Triangle, 1=UNV) |
+| `configuracaoInicial` | Time integration settings: `acopPV` (pressure-velocity coupling method), `CFL`, `razDtMinimo`, `cicloSeguranca`, `rankLU`, `solverMat` |
+| `CC` | Boundary condition definitions |
+| `prop` | Global flow properties (density, viscosity, thermal properties) |
+| `CI` | Initial conditions |
+| `material` | Array of materials with `tipo` (0=solid, 1=fluid), `condutividade`, `calorEspecifico`, `rho`, `visc`, and optionally `beta` (thermal expansion) |
+| `fluido` | VOF fluid properties and temperature-dependent viscosity table |
+
+**Implementation note:** The JSON parsing sequence in `solv2D::resolve()` is: `malha` → `configuracaoInicial` → `CC` → `prop` → `CI` → `interface` (if present) → `mapProp` (if present) → `fluido` (if present) → `material` (if coupled 1D wall).
 
 ---
 
+<a id="physical-models"></a>
 ## Governing Equations
 
-### Momentum (incompressible Navier–Stokes)
+### Momentum (incompressible Navier–Stokes with variable density)
 
-$$\frac{\partial (\rho u_i)}{\partial t} + \nabla \cdot (\rho \mathbf{u} u_i) = -\frac{\partial P}{\partial x_i} + \nabla \cdot (\mu \nabla u_i) + \rho g_i \beta (T - T_{\text{ref}})$$
+$$\frac{\partial (\rho u_i)}{\partial t} + \nabla \cdot (\rho \mathbf{u} u_i) = -\frac{\partial P}{\partial x_i} + \nabla \cdot (\mu \nabla u_i) + S_i$$
 
-where $\beta$ is the volumetric thermal expansion coefficient and $T_{\text{ref}}$ is the reference temperature. The last term is the **Boussinesq buoyancy force**.
+where $S_i$ is the body-force term (gravity + buoyancy variation, depending on temperature and/or holdup):
+
+$$S_y = -\rho \cdot \text{mulFC} \cdot g \cdot \sin(\theta_y) + \rho \cdot \beta \cdot (T - T_{\text{ref}}) \cdot g \cdot \sin(\theta_y)$$
+
+Here `mulFC` is a multiplier for body force (typically 1.0), $g$ is gravitational acceleration (`gravVF`), and $\theta_y$ is the gravity angle (`angY`). The code implements this via the `B2Med[1]` and `BMedF[k][1]` fields.
 
 ### Continuity (pressure equation)
 
 $$\nabla \cdot \mathbf{u} = 0$$
 
-Enforced through the pressure-correction equation derived from the SIMPLE algorithm.
+Enforced through the pressure-correction equation derived from the SIMPLE-based algorithm.
 
 ### Energy
 
@@ -192,11 +235,17 @@ $$\Phi = \mu \left[ 2\left(\frac{\partial u}{\partial x}\right)^2 + 2\left(\frac
 
 ### VOF phase transport (optional)
 
-$$\frac{\partial \alpha}{\partial t} + \nabla \cdot (\mathbf{u} \alpha) = 0$$
+$$\frac{\partial h}{\partial t} + \nabla \cdot (\mathbf{u} h) = 0$$
 
-where $\alpha \in [0, 1]$ is the volume fraction. Mixture properties:
+where $h \in [0, 1]$ is the **holdup** (volume fraction), stored as `holC` in the code. Unlike the previous $\alpha$ notation, the code uses `holC`/`holF` naming throughout.
 
-$$\rho = \alpha \rho_1 + (1 - \alpha) \rho_2, \quad \mu = \alpha \mu_1 + (1 - \alpha) \mu_2$$
+Mixture properties are interpolated at faces; however, the actual implementation is more nuanced:
+- Cell-level mixture properties are updated from `holC` (volume fraction) and can also depend on temperature and deformation rate
+- Face-level viscosity may be recomputed from `holF`, pressure, temperature, and strain-rate for non-Newtonian cases
+- Simple linear blending is used for density and conductivity, but viscosity follows tabulated properties when available
+
+Basic blend (when table is not used):
+$$\rho_f = h \cdot \rho_1 + (1 - h) \cdot \rho_2, \quad \mu_f = h \cdot \mu_1 + (1 - h) \cdot \mu_2$$
 
 ---
 
@@ -206,96 +255,120 @@ All equations are discretized using the cell-centered finite-volume method on tr
 
 ### Diffusion flux
 
-For a face $f$ shared by elements $P$ and $N$:
+For a face $f$ between elements $P$ (current) and $N$ (neighbor), the diffusion flux uses **linear interpolation** with geometric weighting:
 
 $$F_{\text{diff}} = \Gamma_f \cdot \frac{\phi_N - \phi_P}{|\mathbf{d}_{PN}|} \cdot |S_f|$$
 
-where $\Gamma_f$ is the **harmonic average** of diffusion coefficients:
+where $\Gamma_f$ is obtained by linear interpolation using the geometric factor `fatG`:
 
-$$\Gamma_f = \frac{\Gamma_P \cdot \Gamma_N}{\lambda \Gamma_N + (1 - \lambda) \Gamma_P}$$
+$$\Gamma_f = \text{fatG}_f \cdot \Gamma_P + (1 - \text{fatG}_f) \cdot \Gamma_N$$
 
-and $\lambda$ is the interpolation weight based on distance ratios.
+**Cross-diffusion correction**: On non-orthogonal meshes, a correction term accounts for the misalignment between the face normal $\hat{n}$ and the cell-to-cell vector $\vec{E}$:
 
-**Cross-diffusion correction**: On non-orthogonal meshes, a correction term accounts for the misalignment between the face normal $\hat{n}$ and the cell-to-cell vector $\hat{d}_{PN}$:
+$$F_{\text{cross}} = \Gamma_f \left( \nabla \phi_f \cdot \vec{T} \right)$$
 
-$$F_{\text{cross}} = \Gamma_f \left( \nabla \phi_f \cdot \hat{n} - \frac{\phi_N - \phi_P}{|\mathbf{d}_{PN}|} \right) |S_f|$$
+where $\vec{T}$ is the vector from the interpolated face point to the actual face centroid (stored in code as `fInter` to `centroideFace`).
 
-### Convection flux
+### Convection flux - NVD High-Resolution scheme
 
-Convective terms use the **High-Resolution TVD** scheme:
+Convective terms use a **Normalized Variable Diagram (NVD)** scheme controlled by `nvfHR`:
 
-$$\phi_f = \phi_U + \frac{1}{2} \psi(r) (\phi_D - \phi_U)$$
+| `nvfHR` | Scheme | Description |
+|---------|--------|-------------|
+| 0 | Upwind | First-order |
+| 1 | SMART | Sharp and Monotonic Algorithm for Realistic Transport |
+| 2 | Minmod | Minimum modulus limiter |
+| 3 | Osher | Osher limiter |
+| 4 | MUSCL | Monotone Upstream-Centered Scheme |
 
-where $\psi(r)$ is a limiter function (e.g., van Leer, SMART, Superbee) and $r$ is the upwind ratio:
+The normalized variable $\tilde{\phi}$ is computed as:
 
-$$r = \frac{\phi_C - \phi_U}{\phi_D - \phi_U}$$
+$$\tilde{\phi} = \frac{\phi_{C} - \phi_{U}}{\phi_{D} - \phi_{U}}$$
 
-This provides second-order accuracy in smooth regions while maintaining boundedness near discontinuities.
+where:
+- $\phi_{C}$ = value at upwind cell centroid
+- $\phi_{U}$ = extrapolated upwind value (2 cells upstream)
+- $\phi_{D}$ = value at downwind cell centroid
 
-### Rhie–Chow interpolation
+**Note**: This is **not** the classical TVD ratio $r = (\phi_C - \phi_U)/(\phi_D - \phi_U)$ as the documentation previously implied.
 
-To avoid pressure–velocity decoupling on co-located grids, face velocities are computed using Rhie–Chow interpolation:
+### Rhie–Chow-like momentum interpolation
 
-$$u_f = \overline{u}_f - \overline{d}_f \left( \frac{\partial P}{\partial x}\bigg|_f - \overline{\frac{\partial P}{\partial x}} \right)$$
+The solver computes face velocities using a momentum interpolation that includes:
+1. Linear interpolation of cell velocities
+2. Correction for pressure gradient difference (similar to Rhie-Chow)
+3. Correction for body force difference (buoyancy-driven flow)
 
-where $\overline{(\cdot)}$ denotes linear interpolation and $d = V / a_P$ is the momentum equation coefficient ratio.
+The implementation in `vazMass()` computes:
+
+$$\mathbf{u}_f^{\text{RC}} = \overline{\mathbf{u}} - d_f \left( \nabla P - \overline{\nabla P} \right) + \text{(buoyancy corrections)}$$
+
+where $d_f = \overline{a_P^{-1}}$ is the average inverse momentum coefficient (`difuPresRC`).
 
 ---
 
+<a id="linear-solvers"></a>
 ## Pressure-Velocity Coupling
 
-### SIMPLE algorithm
+### SIMPLE-based algorithm variants
 
-The solver implements five SIMPLE variants selected by `nSIMPLE`:
+The solver implements a pressure-velocity coupling controlled by `metodoAcopPV` (stored in `varGlob1D`). Supported values are:
 
-| `nSIMPLE` | Variant | Description |
-|-----------|---------|-------------|
-| 0 | Classic SIMPLE | Standard Semi-Implicit Method for Pressure-Linked Equations |
-| 1 | SIMPLE-C | Consistent SIMPLE with full $H'$ treatment |
-| 2 | SIMPLE with under-relaxation | Reduced pressure correction step |
-| 3 | SIMPLEC | SIMPLE-Consistent (Van Doormaal & Raithby) |
-| 4 | SIMPLER | SIMPLE-Revised (Patankar) |
+| `metodoAcopPV` | Variant | Description |
+|----------------|---------|----------|
+| -1 | Legacy | Deprecated; skips certain convergence checks |
+| 0 | Basic | Standard SIMPLE approach |
+| 1 | Modified | With modified coefficients for certain terms |
+| 2 | Enhanced | Relaxation factor set to 1.0; direct explicit velocity update |
+| 3 | With PISO | SIMPLE followed by PISO corrector steps (if `nPrime > 0` and convergence criteria met) |
+| 4 | Alternate PISO | Alternative PISO corrector sequence (if `nPrime > 0` and convergence criteria met) |
 
 ### SIMPLE iteration cycle
 
 1. Solve **momentum equations** for $u^*$, $v^*$ with current pressure field
-2. Compute face mass fluxes using Rhie–Chow interpolation
-3. Assemble and solve the **pressure correction equation**:
+2. Compute face mass fluxes using momentum interpolation (Rhie-Chow-like)
+3. Assemble and solve the **pressure correction equation** derived from continuity constraint
+4. Correct velocities: $\mathbf{u} = \mathbf{u}^* - d_P \nabla P'$ (applied as `uC -= difuPres * gradGreenPresCor`)
+5. Correct pressure: $P = P^* + \alpha_P \cdot P'$ (applied with `relaxVFPcor`)
+6. Check convergence (mass imbalance residual)
 
-$$\sum_{\text{faces}} \frac{\overline{d}_f |S_f|}{|\mathbf{d}_{PN}|} (P'_N - P'_P) = \sum_{\text{faces}} \dot{m}_f^*$$
+### PISO corrector steps
 
-4. Correct velocities: $u = u^* - d_P \nabla P'$
-5. Correct pressure: $P = P^* + \alpha_P P'$
-6. Check convergence (mass imbalance)
+When `nPrime > 0`, additional corrector iterations are applied **only if** certain conditions are met:
+- `metodoAcopPV` must be 3 or 4
+- Velocity residual norm must be improving (`norma1Antiga > norma1`)
+- Pressure or velocity errors must exceed thresholds (`norma0 > erroPres` or `norma1 > erroV`)
 
-### PISO correctors
+When these conditions are satisfied, the loop executes `kontaPiso <= nPrime` corrector steps, recomputing face fluxes and applying additional pressure corrections without re-solving the momentum equations.
 
-When `nPISO > 0`, additional corrector steps are applied after the SIMPLE iteration:
-
-1. Re-compute face fluxes from corrected velocities
-2. Solve an additional pressure correction equation
-3. Apply correction to velocities
-
-Typically 1–2 PISO correctors are used for transient simulations.
+Note: The member variable is named **`nPrime`** (not `nPISO`), representing the number of PISO-style corrector steps.
 
 ---
 
 ## Gradient Reconstruction
 
-Cell gradients are computed using the **Green–Gauss cell-based** method:
+Cell gradients are computed using the **Green–Gauss cell-based** method with upwind extrapolation:
 
-$$\nabla \phi_P = \frac{1}{V_P} \sum_{\text{faces}} \phi_f \, \hat{n}_f \, |S_f|$$
+$$ \nabla \phi_P^{n+1} = \frac{1}{V_P} \sum_{\text{faces}} \phi_f \, \vec{S}_f $$
 
-where $\phi_f$ is the face value obtained by linear interpolation between adjacent cells:
+where:
+- $\vec{S}_f$ is the face area vector (`sFace`)
+- $\phi_f$ includes both interpolated cell values and deferred correction terms
 
-$$\phi_f = \lambda \phi_P + (1 - \lambda) \phi_N$$
+For the NVD scheme, gradients are also used to compute upwind extrapolation:
 
-Gradients are needed for:
-- Cross-diffusion correction in the diffusion flux
-- TVD convection scheme (upwind ratio computation)
-- Rhie–Chow interpolation
-- Viscous dissipation in the energy equation
-- Boussinesq body force interpolation to faces
+$$\phi_U = \phi_D \mp 2 (\nabla \phi \cdot \vec{E}) \cdot |\vec{E}|$$
+
+The sign depends on flow direction (via `massF >= 0` check).
+
+Gradient arrays in the code:
+- `gradGreenU`, `gradGreenV` — velocity gradients
+- `gradGreenPres` — pressure gradient (for Rhie-Chow)
+- `gradGreenPresCor` — pressure correction gradient (for velocity update)
+- `gradGreenTemp` — temperature gradient
+- `gradGreenHol` — holdup (VOF) gradient
+
+Suffix `I` (e.g., `gradGreenUI`) indicates "initial" or previous-iteration values used for deferred corrections.
 
 ---
 
@@ -303,185 +376,85 @@ Gradients are needed for:
 
 ### Momentum BCs
 
-| Type | Treatment |
-|------|-----------|
-| **Inlet** | Fixed velocity: $u = u_{\text{in}}$, $v = v_{\text{in}}$ (Dirichlet). Flux computed from specified values. |
-| **Outlet** | Zero-gradient velocity: $\nabla u \cdot \hat{n} = 0$. Pressure set to specified value. |
-| **Wall** | No-slip: $u = v = 0$. Viscous shear stress computed from wall-adjacent cell gradient. |
-| **Symmetry** | Zero normal velocity: $\mathbf{u} \cdot \hat{n} = 0$. Zero shear: $\partial u_t / \partial n = 0$. |
+| Type | Code Label | Treatment |
+|------|------------|-----------|
+| **Inlet** | `ccInl` | Fixed velocity: $u = u_{\text{in}}$, $v = v_{\text{in}}$. Values interpolated from time series. |
+| **Outlet** | `ccPres` (pressure BC on outlet) | Zero-gradient velocity. Pressure set to specified value from series. |
+| **Wall** | `ccWall` | Wall velocity magnitude (scalar). Face velocity is projected via: $u_f = \text{ccWall} \cdot |{-s_y}/{\|s\|}|$, $v_f = \text{ccWall} \cdot |{s_x}/{\|s\|}|$. Typically `ccWall=0` for no-slip. |
+| **Symmetry** | `ccSim` | Zero normal velocity: $\mathbf{u} \cdot \hat{n} = 0$. Implemented via velocity component elimination. |
+
+In the code, boundary condition values are stored per-face in arrays like `ccInU[k]`, `ccInV[k]`, `ccWall[k]`, etc., updated via `atualizaCC()`.
 
 ### Thermal BCs
 
-| Type | Treatment |
-|------|-----------|
-| **Dirichlet** | Fixed temperature: $T = T_{\text{wall}}$ |
-| **Von Neumann** | Fixed heat flux: $q = q_{\text{specified}}$ |
-| **Richardson** | Convective: $q = h (T_{\text{ext}} - T)$ where $h$ is the external heat transfer coefficient |
-| **Coupled** | Temperature linked to 1D wall conduction model (see [1D Wall Coupling](#1d-wall-coupling)) |
+| Type | Code Label | Treatment |
+|------|------------|-----------|
+| **Dirichlet** | `ccTD` | Fixed temperature: $T = T_{\text{wall}}$ (stored in `ccTD[k]`) |
+| **Von Neumann** | `ccTVN` | Fixed heat flux: $q = q_{\text{specified}}$ (stored in `ccTVN[k]`) |
+| **Robin/Convective** | `ccTambR`, `ccHR` | Convective: $q = h (T_{\text{amb}} - T)$ using ambient temperature and heat transfer coefficient arrays |
+| **Coupled 1D Wall** | `rotuloAcop` | Temperature linked to 1D wall conduction model. Treated alongside Von Neumann in assembly (when `acop == 1`) |
+
+Updated via `atualizaCCTemp()` with time-series interpolation using `indraz()`.
 
 ### VOF BCs
 
-At inlets: $\alpha = \alpha_{\text{in}}$ (specified phase fraction). At outlets: zero gradient. At walls: contact angle specification or zero gradient.
+At inlets: `holC` inlet specification is currently a **TODO** — the implementation sets `holF[i] = 1.0` with a note to modify to use input value. At outlets: zero gradient (face value equals cell value). At walls: zero gradient or contact angle handled via CICSAM scheme (when `nvfHRHol == 1`).
 
 ---
 
-## Physical Models
-
-### Boussinesq Approximation
-
-Density is treated as constant everywhere except in the buoyancy term:
-
-$$\rho \approx \rho_0 [1 - \beta (T - T_{\text{ref}})]$$
-
-This avoids compressibility effects while capturing buoyancy-driven flow. The body force per unit volume:
-
-$$\mathbf{F}_b = -\rho_0 \beta (T - T_{\text{ref}}) \mathbf{g}$$
-
-### VOF Two-Phase
-
-When `interface.ativo == true`, the VOF equation is solved alongside momentum and energy. Mixture properties (density, viscosity, thermal conductivity, heat capacity) are volume-averaged. The interface is captured implicitly by the $\alpha$ field.
-
-### Non-Newtonian Viscosity
-
-When `fluido.naoNewtoniano == true`, viscosity is obtained from a look-up table $\mu(\dot{\gamma}, T)$ where $\dot{\gamma}$ is the local shear rate:
-
-$$\dot{\gamma} = \sqrt{2 \left(\frac{\partial u}{\partial x}\right)^2 + 2\left(\frac{\partial v}{\partial y}\right)^2 + \left(\frac{\partial u}{\partial y} + \frac{\partial v}{\partial x}\right)^2}$$
-
-The table is bilinearly interpolated at each element centroid.
-
----
-
-## Linear Solvers
-
-The pressure correction equation and momentum/energy equations are solved using iterative Krylov methods:
-
-| Solver | Use case |
-|--------|----------|
-| **GMRES** | General-purpose, used for pressure correction |
-| **FGMRES** | Flexible GMRES with variable preconditioning |
-| **BiCGStab** | Bi-conjugate gradient stabilized, alternative for non-symmetric systems |
-
-All solvers use **ILU(k)** preconditioning (Incomplete LU factorization with level-$k$ fill-in). The fill level $k$ is configurable — higher values improve convergence but increase memory and setup cost.
-
----
-
-## Time Stepping and Convergence
-
-### Time step control
-
-The time step is determined by three mechanisms:
-
-1. **Schedule**: user-specified `dt` values at given times
-2. **CFL limit**: $\Delta t \leq \text{CFL} \cdot \frac{\Delta x_{\min}}{|\mathbf{u}|_{\max}}$
-3. **Safety factor**: reduces `dt` if convergence is slow or if iteration count exceeds threshold
-
-### Convergence criteria
-
-Within each time step, SIMPLE iterations continue until:
-
-1. **Momentum residual**: $\| R_u \|_2 / \| R_{u,0} \|_2 < \epsilon_{\text{mom}}$
-2. **Pressure correction norm**: $\| P' \|_\infty < \epsilon_P$
-3. **Velocity change**: $\| \mathbf{u}^{n+1} - \mathbf{u}^n \|_\infty < \epsilon_u$
-
-Typical tolerances: $\epsilon_{\text{mom}} = 10^{-4}$, $\epsilon_P = 10^{-3}$, $\epsilon_u = 10^{-5}$.
-
-Maximum SIMPLE iterations per time step is configurable (default: 100–500).
-
----
-
+<a id="time-stepping-and-convergence"></a>
 ## 1D Wall Coupling
 
-When `secaoTransversal.acoplamento1D == true`, the 2D fluid domain is thermally coupled to a 1D radial wall conduction model via the `TransCal` module (documented in [heat-transfer.md](heat-transfer.md)).
+When one-dimensional wall heat transfer is enabled, the 2D fluid domain is thermally coupled to a 1D radial wall conduction model via the `TransCal` module. See the full documentation in [`heat-transfer.md`](heat-transfer.md).
+
+### Activation
+
+Wall coupling is triggered when:
+- `vg1dSP->acop == 1` (activation flag in global parameters)
+- Boundary faces are labeled with the coupled thermal BC (matched against `CC.rotuloAcop`)
 
 ### Coupling mechanism
 
-1. At coupled boundary faces, the 2D solver computes the **convective heat flux** $q_{\text{conv}} = h_{\text{local}} (T_{\text{wall}} - T_{\text{fluid}})$
-2. This flux is passed to `TransCal` as a boundary condition for the 1D radial conduction
-3. `TransCal` solves the radial temperature profile through pipe wall layers
-4. The updated wall temperature $T_{\text{wall}}$ is returned to the 2D solver
-5. Iterations repeat within each time step until the wall temperature converges
+1. **Initialize wall data structures**: `paredeContorno()` identifies coupled boundary elements and maps wall segments via `unordered_map<int,int>` indices (`indPar`, `indPar2`)
+2. **Create TransCal instances**: Array of `TransCal` objects (`vecTransfer`) instantiated with:
+   - Multi-layer wall properties (`vncamada`, `vdrcamada` — number of layers and radii)
+   - Wall temperature profiles (`vTcamada`)
+   - Material properties from `matVF` array
+3. **Compute heat flux**: At each coupled face, the 2D solver computes convective heat flux based on fluid temperature and wall temperature boundary condition
+4. **Solve wall conduction**: `TransCal` solves the radial 1D heat equation (steady `transperm()` or transient `transtrans()`) through pipe/annulus wall layers
+5. **Update wall temperature**: The new wall temperature is returned and applied as thermal boundary condition for coupled faces
+6. **Iterate to convergence**: Within each time step, the coupling iterates until temperature residuals fall below tolerance
 
-This coupling allows simulation of heat transfer through multi-layer pipe walls (steel, insulation, concrete coating) with the 2D fluid domain resolving the internal convection patterns.
+This allows simulation of heat transfer through multi-layer pipe walls (steel, insulation, concrete coating) and buried pipe soil conduction (via 2D/3D Poisson extensions in `TransCal`), with the 2D fluid domain resolving internal convection patterns.
 
+### Related implementation notes
+
+| Function | Source file | Purpose |
+|----------|-------------|---------|
+| `TransCal::transperm()` | `TrocaCalor.cpp` | Steady-state radial resistance network |
+| `TransCal::transtrans()` | `TrocaCalor.cpp` | Transient radial thermal solver |
+| `solv2D::paredeContorno()` | `solver.cpp` | Identify coupled boundary faces |
+| `elem2d::tipoCCTemp()` | `Elem2D.cpp` | BC classification including `acoplado` flag |
+| `solv2D::parse_materiais()` | `solver.cpp` | Material property parsing (note: possible bug where `beta` is assigned to `visc`) |
+| `elem2d::calcGradGreenTemp()` | `Elem2D.cpp` | Temperature gradient with coupled BC handling |
 ---
 
-## Output Formats
-
-### Per-element `.dat` files
-
-Primary output format. One file per saved time step containing element-wise fields:
-
-```
-# elem   xc        yc        u         v         P         T         alpha
-  1      0.0012    0.0034    0.0023   -0.0001    101325    22.34     1.0
-  2      0.0018    0.0041    0.0031    0.0005    101322    22.41     1.0
-  ...
-```
-
-### Structured regular grid interpolation
-
-For visualization in tools that require structured data, element-centered values can be interpolated onto a regular Cartesian grid using inverse-distance weighting or element-containment search.
-
----
-
+<a id="output-formats"></a>
 ## Overall Algorithm Flow
 
-The `resolve()` method implements the following time-marching loop:
+The simulation proceeds in the following steps:
 
-```
-resolve()
-│
-├─ 1. Load mesh (Triangle or UNV)
-├─ 2. Initialize fields (u, v, P, T, α)
-├─ 3. Apply initial conditions
-├─ 4. Set boundary conditions
-│
-└─ TIME LOOP: while tempo < tFinal
-    │
-    ├─ 5. Compute time step (CFL + schedule + safety)
-    │
-    ├─ SIMPLE/PISO LOOP: while not converged
-    │   │
-    │   ├─ 6. Compute cell gradients (Green-Gauss)
-    │   │
-    │   ├─ 7. Assemble & solve U-momentum equation
-    │   │      - Convection (HR-TVD) + Diffusion + Buoyancy source
-    │   │      - Under-relax: u* = αu·u_new + (1-αu)·u_old
-    │   │
-    │   ├─ 8. Assemble & solve V-momentum equation
-    │   │      - Same structure as U-momentum
-    │   │
-    │   ├─ 9. Compute face fluxes (Rhie-Chow interpolation)
-    │   │
-    │   ├─ 10. Assemble & solve pressure correction P'
-    │   │       - Laplacian equation from continuity constraint
-    │   │
-    │   ├─ 11. Correct velocities and pressure
-    │   │       - u = u* - d·∇P'
-    │   │       - P = P* + αP·P'
-    │   │
-    │   ├─ 12. (Optional) PISO corrector steps
-    │   │
-    │   └─ 13. Check convergence criteria
-    │
-    ├─ 14. Solve energy equation
-    │       - Convection + Diffusion + Viscous dissipation source
-    │       - Coupled wall BC update (if active)
-    │
-    ├─ 15. (Optional) Solve VOF transport equation
-    │       - Advect α field, clip to [0,1]
-    │       - Update mixture properties
-    │
-    ├─ 16. Update non-Newtonian viscosity (if active)
-    │
-    ├─ 17. Write output (if save interval reached)
-    │
-    └─ 18. Advance time: tempo += dt
-```
+1. **Initialization**: Load mesh, set initial conditions, initialize material properties
+2. **Time-stepping loop**:
+   - **Momentum equations**: Solve for $u^*$, $v^*$ with current pressure field
+   - **Face fluxes**: Compute mass fluxes using momentum interpolation
+   - **Pressure correction**: Assemble and solve the pressure correction equation
+   - **Velocity correction**: Correct velocities using pressure gradient
+   - **Pressure correction**: Correct pressure using relaxation
+   - **Convergence check**: Check for mass imbalance residual
+3. **PISO corrector steps**: Apply additional corrector iterations after pressure-velocity coupling
+4. **Output**: Save results to file
 
-**Key notes:**
+This is a simplified overview. The actual implementation involves more complex logic and additional steps.
 
-- The energy equation (step 14) is solved **after** the pressure–velocity coupling has converged, treating it as a segregated equation
-- VOF transport (step 15) is also segregated, solved after P–V–T convergence
-- Within the SIMPLE loop, under-relaxation factors $\alpha_u$ and $\alpha_P$ control stability (typical values: $\alpha_u = 0.7$, $\alpha_P = 0.3$)
-- The outer time loop handles both steady-state (large `dt`, marching to pseudo-steady) and transient (physical `dt`) problems
+---

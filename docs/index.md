@@ -2,7 +2,7 @@
 	<img src="img/logo_marlim3.svg" alt="Marlim3 logo" width="320"/>
 </h1>
 
-Marlim3 is a transient 1D multiphase-flow simulator for production and injection systems in oil and gas applications.
+`Marlim3` is a transient 1D multiphase-flow simulator for production and injection systems in oil and gas applications.
 
 ## Core Capabilities
 
@@ -24,7 +24,7 @@ Marlim3 is a transient 1D multiphase-flow simulator for production and injection
 - **Near wellbore model**: radial and 2D models to consider phenomena such as water coning
 - **Thermal diffusion**: 2D and 3D coupled to the 1D flow model
 
-## How You Can Use Marlim3
+## How You Can Use `Marlim3`
 
 - **Streamlit GUI** for interactive model setup and result inspection (available also as a standalone app in GitHub Releases section)
 - **Python package** for automation, integration, and parametric studies
@@ -37,8 +37,8 @@ For installation instructions and usage guidelines in any of these settings, ple
 | Section | Content |
 |---------|---------|
 | [Tutorials](tutorials/index.md) | Step-by-step notebook-based workflows for common simulation tasks |
-| [Single-Branch Model Reference](single-branch-model-reference/fluids.md) | Full field catalog for fluids, pipes, accessories, boundary conditions, and more |
-| [Theoretical Reference](theoretical-reference/mass-momentum-balances.md) | Mathematical foundations: mass/momentum/energy balances and discretization |
+| [Single-Branch Model Reference](single-branch-model-reference/index.md) | Full field catalog for fluids, pipes, accessories, boundary conditions, and more |
+| [Theoretical Reference](theoretical-reference/index.md) | Mathematical foundations: mass/momentum/energy balances and discretization |
 | [Developer Guide](dev-guide/index.md) | Internal architecture, domain classes, solvers, and extension points |
 
 ## Build This Documentation

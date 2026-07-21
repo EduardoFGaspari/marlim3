@@ -1,16 +1,16 @@
 # Injection Well Simulation
 
-This document describes the **injection well** simulation mode in Marlim3 (`-s INJETOR` / `tipoSimulacao_t::poco_injetor`). Injection well simulations are **steady-state only** and model single-phase (liquid or supercritical gas) flow from the surface down to one or more injection zones.
+This document describes the **injection well** simulation mode in Marlim3 (`-s INJETOR` / `tipoSimulacao_t::poco_injetor`). Injection well simulations are **steady-state only** and model injection flow from the surface down to one or more injection zones.
 
 **Key source files:**
 
 | File | Role |
 |------|------|
-| [`src/Num4Main.cpp`](../../src/Num4Main.cpp) | Entry point: `SolveTramoSolteiro()`, `permanenteSimples()` dispatching |
-| [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` class: `marchaInjPerm1()`, `buscaInjPfundoPerm1–5()`, `delpInjPerm()` |
-| [`src/Leitura.h`](../../src/Leitura.h) / [`Leitura.cpp`](../../src/Leitura.cpp) | `detCondConInjec` structure, `parse_condcont_pocinjec()` |
-| [`src/PropFluCol.h`](../../src/PropFluCol.h) / [`PropFluCol.cpp`](../../src/PropFluCol.cpp) | `ProFluCol` — injection fluid properties (water, CO₂, compositional) |
-| [`src/FonteMas.h`](../../src/FonteMas.h) / [`FonteMas.cpp`](../../src/FonteMas.cpp) | `IPR` class — injectivity index model |
+| [`src/Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp) | Entry point: `SolveTramoSolteiro()`, `permanenteSimples()` dispatching |
+| [`src/SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) / [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | `SProd` class: `marchaInjPerm1()`, `buscaInjPfundoPerm1–5()`, `delpInjPerm()` |
+| [`src/Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) / [`Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) | `detCondConInjec` structure, `parse_condcont_pocinjec()` |
+| [`src/PropFluCol.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFluCol.h) / [`PropFluCol.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFluCol.cpp) | `ProFluCol` — injection fluid properties (water, CO₂, compositional) |
+| [`src/FonteMas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/FonteMas.h) / [`FonteMas.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/FonteMas.cpp) | `IPR` class — injectivity index model |
 
 ---
 
@@ -22,7 +22,7 @@ This document describes the **injection well** simulation mode in Marlim3 (`-s I
 4. [Injection Fluid Types](#injection-fluid-types)
 5. [Call Hierarchy](#call-hierarchy)
 6. [The Marching Method — marchaInjPerm1](#the-marching-method--marchainjperm1)
-7. [Root-Finding Methods](#root-finding-methods)
+7. [Root-Finding and Iterative Methods](#root-finding-and-iterative-methods)
    - [buscaInjPfundoPerm1 — CC 1 or 3](#buscainjpfundoperm1--cc-1-or-3)
    - [buscaInjPfundoPerm2 — CC 0](#buscainjpfundoperm2--cc-0)
    - [buscaInjPfundoPerm3 — CC 2](#buscainjpfundoperm3--cc-2)
@@ -30,7 +30,7 @@ This document describes the **injection well** simulation mode in Marlim3 (`-s I
    - [buscaInjPfundoPerm5 — CC 5](#buscainjpfundoperm5--cc-5)
 8. [IPR Model for Injection](#ipr-model-for-injection)
 9. [Pressure Drop Estimation — delpInjPerm](#pressure-drop-estimation--delpinjperm)
-10. [Injection Network — RedeInj](#injection-network--redeinjj)
+10. [Injection Network — RedeInj](#injection-network--redeinj)
 11. [Compositional Injection](#compositional-injection)
 12. [Key Differences from Production](#key-differences-from-production)
 13. [Summary of Key Methods](#summary-of-key-methods)
@@ -39,14 +39,16 @@ This document describes the **injection well** simulation mode in Marlim3 (`-s I
 
 ## Overview
 
-Injection well simulations model the downward flow of a single-phase fluid (water, CO₂, or compositional gas) from the surface wellhead to one or more reservoir injection zones. The solver computes pressure, temperature, and flow-rate profiles along the wellbore under steady-state conditions.
+Injection well simulations model the downward flow of an injection fluid from the surface wellhead to one or more reservoir injection zones. The solver computes pressure, temperature, and flow-rate profiles along the wellbore under steady-state conditions.
+
+For user-defined liquid and saline-water modes, the model is effectively single-phase. For table-based CO₂ and especially compositional injection, the code may also initialize and propagate gas/liquid split information (for example via `alfini`, `betini`, and `FracMassHidra()` in `marchaInjPerm1`), so the implementation should not be interpreted as strictly single-phase in every injection case.
 
 The fundamental approach is the same shooting method used for production:
 
 1. **Guess** an unknown boundary value (surface pressure or injection rate)
 2. **March** cell-by-cell from surface to bottom, computing pressure and temperature
 3. **Evaluate a residual** — the mismatch at the bottom boundary (IPR-predicted rate vs. computed rate, or specified vs. computed bottom-hole pressure)
-4. **Iterate** using Ridder's root-finding method until convergence
+4. **Iterate** using Ridder's root-finding method when the selected boundary-condition formulation requires bracketing of a scalar unknown
 
 The key constraint: **injection wells are steady-state only** (no transient simulation).
 
@@ -54,15 +56,15 @@ The key constraint: **injection wells are steady-state only** (no transient simu
 
 ## Boundary Condition Types
 
-The `detCondConInjec` structure ([`Leitura.h`](../../src/Leitura.h)) defines six BC configurations via the `CC` flag:
+The `detCondConInjec` structure ([`Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h)) defines six BC configurations via the `CC` flag:
 
 | CC | Given | Solved for | Root-finding? |
 |----|-------|-----------|---------------|
 | 0 | Flow rate + IPR at bottom | Surface pressure | Yes (`buscaInjPfundoPerm2`) |
 | 1 | Injection pressure (surface) + IPR at bottom | Flow rate | Yes (`buscaInjPfundoPerm1`) |
-| 2 | Bottom-hole pressure + IPR at bottom | Flow rate | Yes (`buscaInjPfundoPerm3`) |
+| 2 | Bottom-hole pressure + IPR at bottom | Flow rate | Iterative pressure-profile correction (`buscaInjPfundoPerm3`) |
 | 3 | Injection pressure + bottom-hole pressure | Flow rate | Yes (`buscaInjPfundoPerm1`) |
-| 4 | Flow rate + injection pressure | Bottom pressure | No (direct march) |
+| 4 | Flow rate + injection pressure | Bottom pressure/profile computed directly | No |
 | 5 | Flow rate + bottom-hole pressure | Surface pressure | Yes (`buscaInjPfundoPerm5`) |
 
 ### `detCondConInjec` members
@@ -119,7 +121,7 @@ The injection fluid is modeled by `ProFluCol`, dispatched via `injPoc`:
 | 2 | 3 | CO₂-rich gas (supercritical) | Bilinear interpolation from PVTSim 2D (P × T) tables for $\rho$, $\mu$, $k$, $C_p$ |
 | 3 | — | Compositional | Full cubic EOS flash via Fortran compositional library |
 
-For CO₂ injection (`tipoFlui == 2`), property tables are loaded from a PVTSim `.tab` file and stored as 2D arrays (`RhoInj[][]`, `ViscInj[][]`, `CondInj[][]`, `CpInj[][]`, `DrhoDtInj[][]`). The `interpolaVarInj()` method performs bilinear interpolation on these arrays.
+For CO₂ injection (`tipoFlui == 2`), property tables are loaded from a PVTSim `.tab` file and stored as 2D arrays (`RhoInj[][]`, `ViscInj[][]`, `CondInj[][]`, `CpInj[][]`, `DrhoDtInj[][]`). The `interpolaVarInj()` method performs bilinear interpolation on these arrays after first clamping pressure and temperature to the table bounds; therefore, out-of-range states are clipped to the nearest tabulated boundary rather than extrapolated.
 
 ---
 
@@ -151,9 +153,10 @@ main()
 
 ---
 
+<a id="the-marching-method--marchainjperm1"></a>
 ## The Marching Method — marchaInjPerm1
 
-`SProd::marchaInjPerm1(double chute)` ([`SisProd.cpp`](../../src/SisProd.cpp)) is the core marching function for injection wells.
+`SProd::marchaInjPerm1(double chute)` ([`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp)) is the core marching function for injection wells.
 
 ### Input interpretation
 
@@ -191,44 +194,55 @@ The meaning of `chute` depends on the BC type:
 
 ---
 
-## Root-Finding Methods
+## Root-Finding and Iterative Methods
 
-All five `buscaInjPfundoPerm*` methods share a common pattern: **generate initial guess → bracket the root → call `zriddr` (Ridder's method)**.
+The injection-well solution methods fall into two groups:
 
+1. **Bracketed scalar solves** using `zriddr` (Ridder's method)
+2. **Direct or iterative profile construction** without Ridder bracketing
+
+<a id="buscainjpfundoperm1--cc-1-or-3"></a>
 ### buscaInjPfundoPerm1 — CC 1 or 3
 
 - **Given:** injection pressure (or both pressures for CC 3)
 - **Unknown:** flow rate
-- **Initial guess:** hydrostatic estimate from surface downward, computing IPR contributions at each injection zone
+- **Initial guess:** hydrostatic pressure walk from the surface combined with cumulative IPR-based injection-rate accumulation along the well, including density correction for `tipoFlui ≥ 2`
 - **Bracketing:** multiplies guess by 0.9 / 1.1 until sign change in `marchaInjPerm1`
 - **Root-finding:** `zriddr(chuteNeg, chutePos)`
 
+<a id="buscainjpfundoperm2--cc-0"></a>
 ### buscaInjPfundoPerm2 — CC 0
 
 - **Given:** injection flow rate + IPR at bottom
 - **Unknown:** surface pressure
-- **Initial guess:** estimates surface pressure from bottom-hole using a reverse walk (bottom to top) via `delpInjPerm`, adding hydrostatic head and subtracting friction
+- **Initial guess:** reverse pressure estimate from the bottom condition using explicit hydrostatic and friction terms evaluated along the wellbore
 - **Bracketing:** multiplies by 0.9 / 1.1
 - **Root-finding:** `zriddr`
 
+<a id="buscainjpfundoperm3--cc-2"></a>
 ### buscaInjPfundoPerm3 — CC 2
 
 - **Given:** bottom-hole pressure + IPR
 - **Unknown:** flow rate
-- **Algorithm:** iterative approach — sets `celula[ncel].pres = presfundo`, estimates flow rate from IPR, then repeatedly marches and adjusts using `delpInjPerm` to correct the pressure profile from bottom upward
+- **Method type:** iterative pressure-profile correction, not a Ridder/bracketed root solve
+- **Algorithm:** sets `celula[ncel].pres = presfundo`, estimates flow rate from the terminal IPR, reconstructs the pressure profile upward, then remarches from the surface and repeats until the computed bottom-hole pressure matches the specified value
+- **Pressure update:** uses `delpInjPerm()` during the reverse pressure reconstruction step
 - **Convergence:** $|P_{\text{computed}} - P_{\text{specified}}| / P_{\text{specified}} < 0.01\%$
 
+<a id="buscainjpfundoperm4--cc-4"></a>
 ### buscaInjPfundoPerm4 — CC 4
 
-- **Given:** flow rate + injection pressure → **fully determined** (no root-finding needed)
-- **Algorithm:** direct march with `pGSup = presinj` and flow rate set
+- **Given:** flow rate + injection pressure
+- **Method type:** direct march
+- **Algorithm:** performs a forward march with the prescribed inlet condition and computes the resulting bottom pressure/profile as an output
 - Returns net mass flow at bottom for diagnostics
 
+<a id="buscainjpfundoperm5--cc-5"></a>
 ### buscaInjPfundoPerm5 — CC 5
 
 - **Given:** flow rate + bottom-hole pressure
 - **Unknown:** surface pressure
-- **Initial guess:** reverse walk from bottom-hole upward with friction + hydrostatic via `delpInjPerm`
+- **Initial guess:** reverse pressure estimate from the bottom condition using explicit hydrostatic and friction terms evaluated along the wellbore
 - **Root-finding:** `zriddr`
 
 ---
@@ -253,21 +267,27 @@ Multiple injection zones along the wellbore are supported — each cell can inde
 
 ---
 
+<a id="pressure-drop-estimation--delpinjperm"></a>
 ## Pressure Drop Estimation — delpInjPerm
 
-`SProd::delpInjPerm(int i)` estimates the pressure drop between cells $i-1$ and $i$ for single-phase injection:
+`SProd::delpInjPerm(int i)` estimates the pressure drop across the interface between cells $i-1$ and $i$ using a **two-half-cell evaluation**: one contribution from the right half of cell $i-1$ / left connection, and another from the left half of cell $i$. In each half-step, the code reevaluates local geometry, temperature, density, viscosity, Reynolds number, and friction factor.
 
-$$\Delta P = \frac{f \cdot \rho \cdot |v| \cdot v \cdot S_i \cdot \Delta x / (2A) + \rho \cdot g \cdot \sin\theta \cdot \Delta x}{98066.5}$$
+A compact conceptual representation of the implemented model is:
 
-where $f$ is the friction factor, $\rho$ is the fluid density from `fluicol`, and the result is in kgf/cm². User-specified correction factors `dPdLFric` and `dPdLHidro` are applied to the friction and hydrostatic terms respectively.
+$$
+\Delta P \approx \frac{f \rho |v| v S_i \Delta x /(2A) + \rho g \sin\theta \Delta x}{98066.5}
+$$
 
-This method is used for initial pressure guesses (reverse walk from bottom to surface) and by the network solver.
+where $f$ is the friction factor, $\rho$ is the fluid density from `fluicol`, and the result is in kgf/cm². In the actual implementation, this expression is applied separately over two half-cell segments, and the user-specified correction factors `dPdLFric` and `dPdLHidro` are applied to the friction and hydrostatic contributions respectively.
+
+This method is used mainly in reverse pressure reconstruction and pressure-guess support routines such as `buscaInjPfundoPerm3()` and `hidroreversoInj()`.
 
 ---
 
+<a id="injection-network--redeinj"></a>
 ## Injection Network — RedeInj
 
-When the simulation type is `REDE` and the network is tagged as injection (`arqRede.injec == 1`), the `RedeInj()` function ([`Num4Main.cpp`](../../src/Num4Main.cpp)) manages the network-level solve.
+When the simulation type is `REDE` and the network is tagged as injection (`arqRede.injec == 1`), the `RedeInj()` function ([`Num4Main.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Num4Main.cpp)) manages the network-level solve.
 
 ### Algorithm
 
@@ -315,7 +335,7 @@ When `analiseSens.listaV.vpocinj == 1`, injection parameters (`presfundo`, `temp
 | Flow direction | Reservoir → Surface | Surface → Reservoir |
 | Pressure profile | Decreases upward | Increases downward |
 | IPR sign convention | $P_{\text{res}} > P_{\text{bottom}}$ (inflow) | $P_{\text{bottom}} > P_{\text{res}}$ (outflow into reservoir) |
-| Fluid model | Black-oil multiphase (`ProFlu`) | Single-phase via `ProFluCol` (water, CO₂ tables, or compositional) |
+| Fluid model | Black-oil multiphase (`ProFlu`) | Injection-fluid model centered on `ProFluCol` for user liquid / water / table-based CO₂, with compositional handling available in injection mode |
 | Gas-lift line | Supported | Not applicable |
 | Transient | Supported | **Not supported** (steady-state only) |
 | Choke model | At outlet (surface separator) | At inlet (surface, restricts injection) |
@@ -336,9 +356,9 @@ When `analiseSens.listaV.vpocinj == 1`, injection parameters (`presfundo`, `temp
 | `buscaInjPfundoPerm3(chute)` | `SisProd.cpp` | Iterative solve for CC 2: given BHP + IPR, find flow rate |
 | `buscaInjPfundoPerm4()` | `SisProd.cpp` | Direct march for CC 4: fully determined (no root-finding) |
 | `buscaInjPfundoPerm5(chute)` | `SisProd.cpp` | Root-finding for CC 5: given flow rate + BHP, find surface pressure |
-| `delpInjPerm(i)` | `SisProd.cpp` | Single-phase ΔP estimate between cells |
+| `delpInjPerm(i)` | `SisProd.cpp` | Two-half-cell single-phase-like $\Delta P$ estimate used in reverse pressure reconstruction |
 | `hidroreversoInj(hol, vaz)` | `SisProd.cpp` | Reverse walk for pressure estimation (bottom → surface) |
 | `RedeInj()` | `Num4Main.cpp` | Injection network solver |
 | `chutePresRedeInj()` | `Num4Main.cpp` | Initial pressure guess for injection network |
 | `parse_condcont_pocinjec()` | `Leitura.cpp` | JSON parsing for injection well parameters |
-| `interpolaVarInj(P, T, Var)` | `PropFluCol.cpp` | Bilinear interpolation on PVTSim 2D tables |
+| `interpolaVarInj(P, T, Var)` | `PropFluCol.cpp` | Bilinear interpolation with pressure/temperature clamping to PVTSim table bounds |

@@ -4,6 +4,8 @@ site_author: Petrobras
 
 theme:
   name: material
+  icon:
+    repo: fontawesome/brands/github
   palette:
     - scheme: default
       primary: cyan
@@ -18,11 +20,21 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.indexes
+    - navigation.path
+    - toc.follow
     - toc.integrate
     - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.tabs.link
 
 nav:
   - Home: index.md
@@ -33,7 +45,7 @@ nav:
     - Gas Lift: tutorials/3-gas_lift.ipynb
     - Black-Box Correlations: tutorials/4_black_box_correlations.ipynb
     - Temperature Pulse: tutorials/5_temperature_pulse.ipynb
-  - Single-Branch Model Reference:
+  - Model Reference:
     - Overview: single-branch-model-reference/index.md
     - Fluids: single-branch-model-reference/fluids.md
     - Materials: single-branch-model-reference/materials.md
@@ -46,26 +58,34 @@ nav:
     - General: single-branch-model-reference/general.md
     - Results: single-branch-model-reference/results.md
     - JSON Schema: single-branch-model-reference/json-schema.md
-  - Theoretical Reference:
+  - Theory:
     - Overview: theoretical-reference/index.md
+    - Drift-Flux vs. Two-Fluid: theoretical-reference/two-fluids_vs_drift-flux.md
     - Mass & Momentum Balances: theoretical-reference/mass-momentum-balances.md
     - Energy Balance: theoretical-reference/energy-balance.md
     - Discretization: theoretical-reference/discretization.md
+    - Service Line: theoretical-reference/service-line.md
   - Developer Guide:
     - Overview: dev-guide/index.md
     - Num4Main — Main Entry Point: dev-guide/num4main.md
     - Core Domain Classes: dev-guide/core-domain-classes.md
     - Input Parsing: dev-guide/input-parsing.md
-    - Steady-State Tramo: dev-guide/steady-state-tramo.md
+    - Steady-State Solvers: dev-guide/steady-state-branch.md
     - Transient Solver: dev-guide/transient-solver.md
     - Network Simulation: dev-guide/network-simulation.md
     - Fluid Thermodynamics: dev-guide/fluid-thermodynamics.md
     - Heat Transfer: dev-guide/heat-transfer.md
+    - Embedded Solvers: dev-guide/embedded-solvers.md
+    - Parametric Analysis: dev-guide/parametric-analysis.md
     - Injection Well: dev-guide/injection-well.md
     - Natural Convection: dev-guide/natural-convection.md
-    - Sensitivity Analysis: dev-guide/sensitivity-analysis.md
-    - Embedded Solvers: dev-guide/embedded-solvers.md
     - Translations: dev-guide/translations.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/petrobras/marlim3
+      name: Marlim3 repository
 
 extra_javascript:
   - javascripts/mathjax.js

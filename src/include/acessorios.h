@@ -60,7 +60,7 @@ class acessorio {
 
 inline void carrega(const BomCentSub &acsr, acessorio &grupo) {
     grupo.bcs = acsr;
-    grupo.tipo = 3;
+    grupo.tipo = 4;
 }
 inline void carrega(const multiBomCentSub &acsr, acessorio &grupo) {
     grupo.multibcs = acsr;
