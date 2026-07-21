@@ -8241,6 +8241,7 @@ void leituraAPparalelo(string nomeArquivoAP, string nomeArquivoLog, tipoValidaca
     vg1dTramo = new varGlob1D[analisePara.nVariaveis];
     for (int iSeq = 0; iSeq < analisePara.nVariaveis; iSeq++)vg1dTramo[iSeq] = (*sistem1.vg1dSP);
     for (int iSeq = 0; iSeq < analisePara.nVariaveis; iSeq++) {
+    	indfalha[iSeq]=0;
         vg1dTramo[iSeq].sequenciaAP = iSeq;
         string nomeArquivoLogAP = nomeArquivoLog;
         nomeArquivoLogAP.erase(nomeArquivoLogAP.size() - 4);
@@ -12239,7 +12240,7 @@ double cicloRedeInj(SProd *malha, Rede &arqRede, Vcr<int> &inativo, int indativo
                                 qlmistStd += (Qcomp[k] * malha[i].celula[0].fluicol.MasEspFlu(pres, temp[k]) / malha[i].celula[0].fluicol.MasEspFlu(1.001, 15.));
                             } else {
                                 Mgas[k] = malha[ind].celula[fim].MC - malha[ind].celula[fim].Mliqini;
-                                Qliq[k] = malha[ind].celula[fim + 1].QG;
+                                Qliq[k]=Qgas[k] = malha[ind].celula[fim + 1].QG;
                                 Qcomp[k] = 0.;
                                 cpmist += (Mgas[k] * cpl[k]);
                                 tempmist += (Mgas[k] * cpl[k]) * temp[k];
