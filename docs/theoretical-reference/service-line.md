@@ -407,7 +407,7 @@ tl_1
 \end{equation}
 $$
 
-For this last condition, the variable $\dot{M}_{g\,|-\frac{1}{2}}^{k+1}$ is not used. Therefore, in the momentum equation at the first control volume, any average that would formally involve $\dot{M}_{g\,|-\frac{1}{2}}^{k+1}$ is replaced simply by $\dot{M}_{g\,|\frac{1}{2}}^{k+1}$.
+For this last condition, the variable $\dot{M}_g\big|_{-\frac{1}{2}}^{k+1}$ is not used. Therefore, in the momentum equation at the first control volume, any average that would formally involve $\dot{M}_g\big|_{-\frac{1}{2}}^{k+1}$ is replaced simply by $\dot{M}_g\big|_{\frac{1}{2}}^{k+1}$.
 
 ## Coupling with the production line
 
