@@ -12,12 +12,75 @@ from pathlib import Path
 import pytest
 
 TRANSLATIONS_FILE = Path(__file__).resolve().parent.parent / "marlim3" / "translations.json"
+SCHEMA_DIR = Path(__file__).resolve().parent.parent / "docs" / "schemas"
+NETWORK_PT = SCHEMA_DIR / "network.pt.json"
+NETWORK_EN = SCHEMA_DIR / "network.en.json"
+
+# Core EN->PT network mappings that must exist in translations.json so the
+# bilingual Network class and network.en.json/network.pt.json stay in sync.
+NETWORK_KEY_MAPPINGS = {
+    "version": "versao",
+    "initialConfig": "configuracaoInicial",
+    "files": "Arquivos",
+    "connection": "Conexao",
+    "parallelNetworkSource": "fonteRedeParalela",
+    "initialHoldupGuess": "ParametroInicial",
+    "relaxation": "Relaxacao",
+    "guessNodePressures": "ChuteNos",
+    "networkTransient": "Transiente",
+    "networkFluid": "fluidoRede",
+    "simulationTime": "TempoSimulacao",
+    "networkThreads": "threadRede",
+    "preProcessingOnly": "apenasPreProc",
+    "injection": "Injecao",
+    "gasLiftRing": "AnelGL",
+    "convergenceLimit": "limiteConvergencia",
+    "imposedPressure": "PressaoImposta",
+    "derivesFromMain": "derivaPrincipal",
+    "primaryBranch": "tramoPrimario",
+    "steadyStateActive": "permanente",
+    "upstreamPressure": "PressaoMontante",
+    "downstreamPressure": "PressaoJusante",
+    "reverse": "reverso",
+    "collectors": "coletores",
+    "tributaries": "afluentes",
+    "blockage": "bloqueio",
+    "ring": "Anel",
+    "ringLength": "ComprimentoAnel",
+    "primaryNodeId": "idNoPrimario",
+    "secondaryNodeId": "idNoSecundario",
+}
 
 
 @pytest.fixture
 def translations():
     with open(TRANSLATIONS_FILE, encoding="utf-8") as f:
         return json.load(f)
+
+
+def _schema_field_names(schema_path: Path) -> set:
+    """Flat set of all property names declared in a JSON Schema file."""
+    with open(schema_path, encoding="utf-8") as f:
+        schema = json.load(f)
+
+    names = set()
+
+    def _walk(node):
+        if not isinstance(node, dict):
+            return
+        for key, value in node.get("properties", {}).items():
+            names.add(key)
+            if isinstance(value, dict):
+                if value.get("type") == "array":
+                    items = value.get("items", {})
+                    if isinstance(items, dict):
+                        _walk(items)
+                else:
+                    _walk(value)
+
+    _walk(schema)
+    return names
+
 
 
 def test_translations_json_structure(translations):
@@ -72,3 +135,57 @@ def test_python_value_translations():
     from marlim3._tramo._keys import _VALUE_TRANSLATIONS
     assert "tipoMedicaoCamada" in _VALUE_TRANSLATIONS
     assert _VALUE_TRANSLATIONS["tipoMedicaoCamada"]["ESPESSURA"] == "THICKNESS"
+
+
+def test_network_keys_present(translations):
+    """All core network EN->PT mappings exist with the expected PT value."""
+    keys = translations["keys"]
+    missing = {
+        en: pt for en, pt in NETWORK_KEY_MAPPINGS.items() if keys.get(en) != pt
+    }
+    assert not missing, (
+        f"Network translation keys missing or mismatched: {missing}"
+    )
+
+
+def test_network_pt_schema_fully_translated(translations):
+    """Every field in network.pt.json is reachable through translations.json
+    (as a PT value or an identity EN key)."""
+    pt_values = set(translations["keys"].values())
+    en_keys = set(translations["keys"].keys())
+    meta = {"$schema", "layout"}
+    fields = _schema_field_names(NETWORK_PT) - meta
+    untranslated = {f for f in fields if f not in pt_values and f not in en_keys}
+    assert not untranslated, (
+        f"network.pt.json fields without a translation entry: {sorted(untranslated)}"
+    )
+
+
+def test_network_en_schema_keys_recognized(translations):
+    """Every field in network.en.json is a recognized English key in
+    translations.json (identity keys allowed)."""
+    en_keys = set(translations["keys"].keys())
+    meta = {"$schema", "layout"}
+    fields = _schema_field_names(NETWORK_EN) - meta
+    unknown = {f for f in fields if f not in en_keys}
+    assert not unknown, (
+        f"network.en.json fields not recognized as English keys: {sorted(unknown)}"
+    )
+
+
+def test_network_class_bilingual_roundtrip():
+    """The Network class translates PT constructor input to English internally
+    and can export back to Portuguese."""
+    from marlim3._rede._rede import Network
+
+    net = Network(
+        configuracaoInicial={"ParametroInicial": 0.5, "Transiente": True},
+        Arquivos=["a.mr3"],
+        Conexao=[{"PressaoImposta": True, "ativo": True}],
+    )
+    # English internal access
+    assert net.initialConfig["initialHoldupGuess"] == 0.5
+    # Portuguese access still works
+    assert net.configuracaoInicial["ParametroInicial"] == 0.5
+    assert net.connection[0]["imposedPressure"] is True
+

@@ -772,7 +772,7 @@ The `LerVap` class ([`LeituraVapor.h`](https://github.com/petrobras/marlim3/blob
 
 ## JSON Input Structure Reference
 
-The formal JSON schema for a single-branch input file is maintained in [`docs/schema_tramo.json`](../schema_tramo.json). Refer to that file for the complete list of accepted keys, types, required fields, and allowed values.
+The formal JSON schema for a single-branch input file is maintained in [`docs/schemas/branch.pt.json`](../schemas/branch.pt.json). Refer to that file for the complete list of accepted keys, types, required fields, and allowed values.
 
 ---
 
