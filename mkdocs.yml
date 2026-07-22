@@ -80,6 +80,14 @@ nav:
     - Injection Well: dev-guide/injection-well.md
     - Natural Convection: dev-guide/natural-convection.md
     - Translations: dev-guide/translations.md
+  - Schemas:
+    - Overview: schemas/index.md
+    - Branch EN: schemas/branch.en.json
+    - Branch PT: schemas/branch.pt.json
+    - Network EN: schemas/network.en.json
+    - Network PT: schemas/network.pt.json
+    - Buried Line 2D PT: schemas/buried-line-2d.pt.json
+    - Porous Radial PT: schemas/porous-radial.pt.json
 
 extra:
   social:
