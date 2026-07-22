@@ -6,8 +6,8 @@ Marlim3 uses JSON input files to define simulations. Two schema variants are ava
 
 | Schema | Language |
 |--------|----------|
-| [Tramo Schema](../schema_tramo.json) | Portuguese keys |
-| [Branch Schema](../schema_branch.json) | English keys |
+| [Branch Schema (PT)](../schemas/branch.pt.json) | Portuguese keys |
+| [Branch Schema (EN)](../schemas/branch.en.json) | English keys |
 
 !!! note
     The Branch schema is the recommended starting point for new simulations. It uses English key names and is the format produced by `branch.to_json()` in the Python API.
@@ -193,7 +193,7 @@ Input files can be validated against the JSON schema:
 import json
 import jsonschema
 
-with open("schema_branch.json") as f:
+with open("schemas/branch.en.json") as f:
     schema = json.load(f)
 
 with open("my_input.json") as f:
@@ -203,4 +203,4 @@ jsonschema.validate(data, schema)
 ```
 
 !!! tip
-    Use the Branch schema (`schema_branch.json`) for validation of English-language inputs. Use `schema_tramo.json` for Portuguese-language inputs.
+    Use the Branch schema (`schemas/branch.en.json`) for validation of English-language inputs. Use `schemas/branch.pt.json` for Portuguese-language inputs.

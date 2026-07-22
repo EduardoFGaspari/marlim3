@@ -364,7 +364,7 @@
           "properties": {
             "monophasicCriterion": {
               "type": "number",
-              "default": 1e-04,
+              "default": 0.0001,
               "description": "Minimum void-fraction value below which the system is treated as single-phase. Very small void fractions may cause numerical problems, so this threshold helps stabilization. Avoid excessively high truncation values because they may artificially remove mass. Valid for transient simulations."
             },
             "condensationCriterion": {
@@ -497,7 +497,8 @@
             },
             "minTimestepCriterion": {
               "type": "number",
-              "description": ""
+              "unit": "s",
+              "description": "Convergence criterion for minimum temperature variation between iterations."
             },
             "liquidJTSimple": {
               "type": "number",
@@ -517,12 +518,12 @@
             "disableMassTransferTempDeriv": {
               "type": "boolean",
               "default": false,
-              "description": ""
+              "description": "When active, disables DTransDtT terms in the cell."
             },
             "matrixThreads": {
               "type": "integer",
               "default": 1,
-              "description": ""
+              "description": "Number of OpenMP threads for parallel matrix coefficient operations (used in #pragma omp parallel for num_threads)."
             }
           }
         },
@@ -1889,134 +1890,27 @@
           "parallelNetworkThermalCoupling": {
             "type": "integer",
             "default": 0,
-            "description": ""
+            "description": "Indicator for thermal coupling with parallel network for heat exchange calculation."
           },
           "diffusion3d": {
             "type": "array",
-            "description": "",
+            "description": "Indicator for 3D thermal diffusion calculation.",
             "items": {
               "type": "integer"
             }
           },
           "diffusion3dFE": {
             "type": "array",
-            "description": "",
+            "description": "Indicator for 3D thermal diffusion using finite elements.",
             "items": {
               "type": "number"
             }
           },
           "diffusion3dCoupling": {
             "type": "array",
-            "description": "",
+            "description": "Indicator for coupled 3D thermal diffusion.",
             "items": {
               "type": "string"
-            }
-          },
-          "initialAndAmbientConditions": {
-            "type": "object",
-            "description": "",
-            "properties": {
-              "measuredPosition": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number"
-                }
-              },
-              "temp": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "degC"
-                }
-              },
-              "pressure": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "kgf/cm2"
-                }
-              },
-              "holdup": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number"
-                }
-              },
-              "complementaryFluidFraction": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number"
-                }
-              },
-              "usl": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "m/s"
-                }
-              },
-              "usg": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "m/s"
-                }
-              },
-              "ambientTemp": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "degC"
-                }
-              },
-              "ambientVel": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "m/s"
-                }
-              },
-              "ambientConductivity": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "W/(m.K)"
-                }
-              },
-              "ambientSpecificHeat": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "J/(kg.K)"
-                }
-              },
-              "ambientDensity": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "kg/m3"
-                }
-              },
-              "ambientVisc": {
-                "type": "array",
-                "description": "",
-                "items": {
-                  "type": "number",
-                  "unit": "cP"
-                }
-              }
             }
           }
         }
@@ -2759,11 +2653,11 @@
           },
           "ambientFluidQuality": {
             "type": "number",
-            "description": ""
+            "description": "Quality (vapor fraction) of the ambient fluid at the pressure source."
           },
-          "chokeTime": {
+          "chkTime": {
             "type": "array",
-            "description": "",
+            "description": "Time array for check valve opening time series.",
             "items": {
               "type": "number",
               "unit": "s"
