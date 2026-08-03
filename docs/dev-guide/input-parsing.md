@@ -6,17 +6,17 @@ This document describes how the Marlim3 simulator reads a JSON input file, valid
 
 | File | Role |
 |------|------|
-| [`src/JSONDataModel.h`](../../src/JSONDataModel.h) / [`JSONDataModel.cpp`](../../src/JSONDataModel.cpp) | Generic JSON data model built on RapidJSON |
-| [`src/JSON_entrada.h`](../../src/JSON_entrada.h) / [`JSON_entrada.cpp`](../../src/JSON_entrada.cpp) | Typed JSON schema — macro-based class hierarchy mirroring JSON structure |
-| [`src/Leitura.h`](../../src/Leitura.h) / [`Leitura.cpp`](../../src/Leitura.cpp) | `Ler` class — reads JSON, populates C structs, builds geometry and cells (~21,400 lines) |
-| [`src/LeituraVapor.h`](../../src/LeituraVapor.h) / [`LeituraVapor.cpp`](../../src/LeituraVapor.cpp) | `LerVap` class — variant for steam injection simulations |
-| [`src/LerAS.h`](../../src/LerAS.h) / [`LerAS.cpp`](../../src/LerAS.cpp) | `ASens` class — sensitivity analysis input reader |
-| [`src/SisProd.h`](../../src/SisProd.h) / [`SisProd.cpp`](../../src/SisProd.cpp) | `SProd` class — simulation engine; constructor invokes `Ler` and `montasistema()` |
-| [`src/estruturas.h`](../../src/estruturas.h) | Core data structs (`corteduto`, `detduto`, `detcelp`, etc.) |
-| [`src/celula3.h`](../../src/celula3.h) / [`celula3.cpp`](../../src/celula3.cpp) | `Cel` class — per-cell simulation state |
-| [`src/PropFlu.h`](../../src/PropFlu.h) / [`PropFlu.cpp`](../../src/PropFlu.cpp) | `ProFlu` — fluid property models |
-| [`src/Geometria.h`](../../src/Geometria.h) | `DadosGeo` — pipe geometry (diameter, roughness, layers) |
-| [`src/TrocaCalor.h`](../../src/TrocaCalor.h) / [`TrocaCalor.cpp`](../../src/TrocaCalor.cpp) | `TransCal` — radial heat-transfer model per cell |
+| [`src/JSONDataModel.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSONDataModel.h) / [`JSONDataModel.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSONDataModel.cpp) | Generic JSON data model built on RapidJSON |
+| [`src/JSON_entrada.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSON_entrada.h) / [`JSON_entrada.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSON_entrada.cpp) | Typed JSON schema — macro-based class hierarchy mirroring JSON structure |
+| [`src/Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) / [`Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) | `Ler` class — reads JSON, populates C structs, builds geometry and cells (~21,400 lines) |
+| [`src/LeituraVapor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LeituraVapor.h) / [`LeituraVapor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LeituraVapor.cpp) | `LerVap` class — variant for steam injection simulations |
+| [`src/LerAP.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerAP.h) / [`LerAP.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LerAP.cpp) | `APara` class — parametric analysis input reader |
+| [`src/SisProd.h`](https://github.com/petrobras/marlim3/blob/main/src/include/SisProd.h) / [`SisProd.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProd.cpp) | `SProd` class — simulation engine; constructor invokes `Ler` and `montasistema()` |
+| [`src/estruturas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturas.h) | Core data structs (`corteduto`, `detduto`, `detcelp`, etc.) |
+| [`src/celula3.h`](https://github.com/petrobras/marlim3/blob/main/src/include/celula3.h) / [`celula3.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/celula3.cpp) | `Cel` class — per-cell simulation state |
+| [`src/PropFlu.h`](https://github.com/petrobras/marlim3/blob/main/src/include/PropFlu.h) / [`PropFlu.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/PropFlu.cpp) | `ProFlu` — fluid property models |
+| [`src/Geometria.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Geometria.h) | `DadosGeo` — pipe geometry (diameter, roughness, layers) |
+| [`src/TrocaCalor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/TrocaCalor.h) / [`TrocaCalor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/TrocaCalor.cpp) | `TransCal` — radial heat-transfer model per cell |
 
 ---
 
@@ -37,7 +37,7 @@ This document describes how the Marlim3 simulator reads a JSON input file, valid
 13. [montasistema — Building the Simulation Mesh](#montasistema--building-the-simulation-mesh)
 14. [Time-Dependent BC Updates (atualiza)](#time-dependent-bc-updates-atualiza)
 15. [Output Methods on Ler](#output-methods-on-ler)
-16. [Sensitivity Analysis (ASens)](#sensitivity-analysis-asens)
+16. [Parametric Analysis (APara)](#parametric-analysis-apara)
 17. [Steam Injection Variant (LerVap)](#steam-injection-variant-lervap)
 18. [JSON Input Structure Reference](#json-input-structure-reference)
 19. [Summary of Key Methods](#summary-of-key-methods)
@@ -72,6 +72,7 @@ The `Ler` object (`arq`) is stored as a member of `SProd` and remains accessible
 
 ---
 
+<a id="architecture--the-three-layer-pipeline"></a>
 ## Architecture — The Three-Layer Pipeline
 
 | Layer | Class(es) | Responsibility |
@@ -87,9 +88,10 @@ This separation means:
 
 ---
 
+<a id="layer-1--jsondatamodel-generic-json-parser"></a>
 ## Layer 1 — JSONDataModel: Generic JSON Parser
 
-Defined in [`JSONDataModel.h`](../../src/JSONDataModel.h) / [`JSONDataModel.cpp`](../../src/JSONDataModel.cpp), built on top of the **RapidJSON** library.
+Defined in [`JSONDataModel.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSONDataModel.h) / [`JSONDataModel.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSONDataModel.cpp), built on top of the **RapidJSON** library.
 
 ### Class hierarchy
 
@@ -126,9 +128,10 @@ Each `JSONInstance` subclass tracks whether its value was present in the JSON vi
 
 ---
 
+<a id="layer-2--json_entrada-typed-schema-classes"></a>
 ## Layer 2 — JSON_entrada: Typed Schema Classes
 
-Defined in [`JSON_entrada.h`](../../src/JSON_entrada.h) / [`JSON_entrada.cpp`](../../src/JSON_entrada.cpp).
+Defined in [`JSON_entrada.h`](https://github.com/petrobras/marlim3/blob/main/src/include/JSON_entrada.h) / [`JSON_entrada.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/JSON_entrada.cpp).
 
 ### Macro-based type aliasing
 
@@ -192,9 +195,10 @@ The root `JSON_entrada` class registers these top-level keys:
 
 ---
 
+<a id="layer-3--ler-the-data-reader"></a>
 ## Layer 3 — Ler: The Data Reader
 
-Defined in [`Leitura.h`](../../src/Leitura.h) / [`Leitura.cpp`](../../src/Leitura.cpp) (~21,400 lines).
+Defined in [`Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) / [`Leitura.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/Leitura.cpp) (~21,400 lines).
 
 The `Ler` class is the **central data reader** that bridges the typed JSON schema and the simulation engine. It reads, validates, unit-converts, and stores simulation data in C-style structs.
 
@@ -207,7 +211,7 @@ typedef enum { jusante, montante } origemGeometria_t;
 typedef enum { multifasico, injetor, oleoduto } sistemaSimulacao_t;
 ```
 
-### Major data structs (defined in [`Leitura.h`](../../src/Leitura.h) and [`estruturas.h`](../../src/estruturas.h))
+### Major data structs (defined in [`Leitura.h`](https://github.com/petrobras/marlim3/blob/main/src/include/Leitura.h) and [`estruturas.h`](https://github.com/petrobras/marlim3/blob/main/src/include/estruturas.h))
 
 | Struct | Purpose | Key Fields |
 |--------|---------|------------|
@@ -224,10 +228,10 @@ typedef enum { multifasico, injetor, oleoduto } sistemaSimulacao_t;
 | `detMultiBCS` | Multi-stage BCS configuration | Same plus staging info |
 | `detFONGAS` / `detFONLIQ` / `detFONMASS` | Source time series | `tempo[]`, `valor[]`, `indcel`, `indfluP` |
 | `detValv` | Valve opening schedule | `tempo[]`, `abertura[]`, `Cv[]`, `curvaDinamic` |
-| `detMASTER1` | Master valve (wet christmas tree) | `abertura[]`, `razareaativ`, `tempo[]` |
+| `detMASTER1` | Master valve (wet christmas tree) | `abertura[]`, `razareaativ`, `tempo[]`, `curvaCV`, `ncv`, `cvCurv[]` |
 | `detPSEP` | Separator pressure time series | `tempo[]`, `pres[]` |
-| `detCHOKESUP` | Surface choke | `AreaGarg`, `AreaTub`, `cd`, `tipo` |
-| `detPig` | PIG data | `posicLanc`, `posicReceb`, `velLanc`, mass, friction coefficients |
+| `detCHOKESUP` | Surface choke | `cd`, `modelo`, `abertura[]`, `tempo[]`, `curvaDinamic`, `cvCurv[]` |
+| `detPig` | PIG data | `lanca` (launch cell), `receb` (receive cell), `compL` (launch position), `compR` (receive position), `tempo` (launch time) |
 | `detTempo` | Time discretization | `dtmax[]`, `tempoDT[]`, convergence tolerances |
 | `detPROFP` | Profile output config | Variable flags (`pres`, `temp`, `hol`, `ugs`, `uls`, ...), time interval |
 | `detTRENDP` | Trend output config | Same flags plus cell position |
@@ -270,48 +274,67 @@ Ler::Ler(const string IMPFILE, const string ARQUIVO_LOG,
 lerArq()
   │
   ├─ parseEntrada()                        → JSON_entrada jsonDoc
-  │    └─ jsonDoc.load(path)               → RapidJSON parse + recursive key load
+  │    ├─ RapidJSON FileReadStream + ParseStream
+  │    ├─ (optional) JSONKeyTranslator::translateEnToPt() if language == "en"
+  │    └─ jsonDoc.loadFromDocument(rawDoc) → typed JSON_entrada schema
   │
   ├─ parse_configuracao_inicial(...)       → simulation flags, defaults
-  ├─ parse_condcont_pocinjec(...)          → injection well BCs (if applicable)
+  ├─ parse_condcont_pocinjec(...)          → injection well BCs (if pocinjec == 1)
+  │
+  ├─ (business-rule cross-validations)     → warnings/errors for missing required keys
+  │
+  ├─ parse_parafina(...)                   → wax model (if modoParafina == 1)
   ├─ parse_materiais(...)                  → mat[] (material properties)
   ├─ parse_corte(...)                      → corte[] (cross-sections)
   ├─ parse_tempo(...)                      → dtmax, tfinal, schedule
+  │    (only when pocinjec==0 AND transiente==1; otherwise defaults are set inline)
   ├─ parse_tabela(...)                     → tabent (PVT grid: P/T range, npoints)
-  ├─ parse_parafina(...)                   → wax model (if active)
   ├─ parse_fluidos_producao(...)           → flup[] (ProFlu objects)
   ├─ parse_fluido_complementar(...)        → complementary fluid
   ├─ parse_fluido_gas(...)                 → gas fluid
+  ├─ parse_correcao(...)                   → gradient multiplier corrections (if present)
   │
   ├─ Allocate duto[] (nduto = nunidadep + nunidadeg)
   ├─ parse_unidades_producao(...)          → unidadeP[], duto[] (geometry)
   ├─ Allocate celp[] (ncelp cells)
   ├─ Populate celp[] from unidadeP[]      → interpolate IC profiles per cell
-  ├─ parse_unidades_servico(...)           → service line ducts
+  ├─ parse_unidades_servico(...)           → service line ducts (if lingas > 0)
+  ├─ Populate celg[] from unidadeG[]
   │
+  ├─ parse_hidrato(...)                    → hydrate model (if present)
   ├─ parse_ipr(...)                        → IPRS[] (inflow models)
-  ├─ parse_gasInj(...)                     → gas injection BCs
   ├─ parse_fonte_gaslift(...)              → valvgl[] (gas-lift valve geometry)
+  ├─ parse_fontechk(...)                   → choke-type source (fonteChoke key)
   ├─ parse_fonte_gas(...)                  → gas source time series
-  ├─ parse_valv(...)                       → valve opening schedules
   ├─ parse_fonte_liquido(...)              → liquid source time series
   ├─ parse_fonte_massa(...)                → mass source time series
-  ├─ parse_bcs(...)                        → bcs[] (ESP pump curves)
-  ├─ parse_bomba_volumetrica(...)          → volumetric pumps
-  ├─ parse_delta_pressao(...)              → generic ΔP accessories
-  ├─ parse_multibcs(...)                   → multi-stage BCS
-  ├─ parse_fonteCalor(...)                 → heat source accessories
-  ├─ parse_master1(...)                    → master valve (wet christmas tree)
-  ├─ parse_master2(...)                    → secondary master valve
+  ├─ parse_fonte_PoroRadial(...)           → radial porous inflow sources
+  ├─ parse_fonte_Poro2D(...)              → 2D porous inflow sources
+  │
+  ├─ (pocinjec == 0 block):
+  │    ├─ parse_valv(...)                  → valve opening schedules
+  │    ├─ parse_bcs(...)                   → bcs[] (ESP pump curves)
+  │    ├─ parse_multibcs(...)              → multi-stage BCS
+  │    ├─ parse_bomba_volumetrica(...)     → volumetric pumps
+  │    ├─ parse_delta_pressao(...)         → generic ΔP accessories
+  │    ├─ parse_fonteCalor(...)            → heat source accessories
+  │    ├─ parse_furo(...)                  → leak/puncture sources (fontePressao key)
+  │    ├─ parse_master1(...)               → master valve (wet christmas tree)
+  │    ├─ parse_intermitencia(...)         → intermittent flow settings
+  │    ├─ parse_pig(...)                   → PIG data
+  │    ├─ parse_tendencia_producao(...)    → production trend output config
+  │    ├─ parse_tendencia_trans_producao() → production radial trend config
+  │    └─ (if lingas > 0):
+  │         ├─ parse_gasInj(...)           → gas injection BCs at platform
+  │         ├─ parse_master2(...)          → secondary master valve
+  │         ├─ parse_tendencia_servico(...) → service trend output config
+  │         └─ parse_tendencia_trans_servico()
+  │
   ├─ parse_separador(...)                  → separator pressure schedule
   ├─ parse_chokeSup(...)                   → surface choke settings
-  ├─ parse_chokeInj(...)                   → injection choke
-  ├─ parse_intermitencia(...)              → intermittent flow settings
-  ├─ parse_fontechk(...)                   → choke-type source
-  ├─ parse_pig(...)                        → PIG data
+  ├─ parse_chokeInj(...)                   → injection choke (if lingas > 0)
   ├─ parse_perfil_producao(...)            → output profile configuration
-  ├─ parse_perfil_servico(...)             → service line profile config
-  └─ Business-rule cross-validation        → warnings/errors for inconsistencies
+  └─ parse_perfis_trans_producao(...)      → radial profile configuration
 ```
 
 ### parseEntrada() — JSON File Loading
@@ -319,11 +342,22 @@ lerArq()
 ```cpp
 JSON_entrada Ler::parseEntrada() {
     JSON_entrada jsonDoc;
-    jsonDoc.load(impfile.c_str());       // RapidJSON FileReadStream + ParseStream
-    if (jsonDoc.HasParseError()) {
+    // First pass: raw RapidJSON parse to check syntax and detect "language" key
+    FILE* fp = fopen(impfile.c_str(), "r");
+    char buf[65536];
+    FileReadStream stream(fp, buf, sizeof(buf));
+    Document rawDoc;
+    rawDoc.ParseStream(stream);
+    fclose(fp);
+    if (rawDoc.HasParseError()) {
         // Log error with position, line number, and localized message
         logger.log_write_logs_and_exit(LOGGER_FALHA, ...);
     }
+    // Optional English-input translation:
+    // if rawDoc["language"] == "en", all English keys are translated to
+    // their Portuguese equivalents via JSONKeyTranslator::translateEnToPt()
+    // before the typed schema is populated.
+    jsonDoc.loadFromDocument(rawDoc);   // populate typed JSON_entrada schema
     return jsonDoc;
 }
 ```
@@ -332,6 +366,7 @@ If `validacaoJson == tipoValidacaoJson_t::json`, the process stops after confirm
 
 ---
 
+<a id="parse_configuracao_inicial--simulation-configuration"></a>
 ## parse_configuracao_inicial — Simulation Configuration
 
 `parse_configuracao_inicial()` reads the `"configuracaoInicial"` JSON object and sets ~80 simulation flags and parameters. It follows a **defaults-then-override** pattern:
@@ -340,15 +375,16 @@ If `validacaoJson == tipoValidacaoJson_t::json`, the process stops after confirm
 
 | Parameter | Default | Meaning |
 |-----------|---------|---------|
-| `lingas` | 0 | No gas-lift service line |
-| `equilterm` | 1 | Thermal equilibrium between phases |
-| `transiente` | 0 | Steady-state mode |
-| `flashCompleto` | 0 | Black-oil fluid model |
-| `mono` | 1e-9 | Monophasic criterion |
-| `critcond` | 1e-9 | Condensate criterion |
-| `escorregaPerm` | 0 | No slip in steady-state |
-| `escorregaTran` | 0 | No slip in transient |
-| `CriterioConvergPerm` | 0.001 | Steady-state convergence tolerance |
+| `perm` | `1` | Steady-state calculation enabled |
+| `lingas` | `0` | No gas-lift service line |
+| `equilterm` | `1` | Thermal equilibrium between phases |
+| `transiente` | `0` | Transient mode disabled |
+| `flashCompleto` | `0` | Black-oil fluid model |
+| `mono` | `1e-4` | Monophasic criterion |
+| `critcond` | `0.001` | Condensate criterion |
+| `escorregaPerm` | `0` | No slip in steady-state |
+| `escorregaTran` | `0` | No slip in transient |
+| `CriterioConvergPerm` | `0.001` | Steady-state convergence tolerance |
 | `origemGeometria` | `montante` | Geometry origin at upstream end |
 
 ### JSON overrides
@@ -369,13 +405,15 @@ The `"Avancado"` sub-object contains expert-level settings:
 | Parameter | JSON path | Meaning |
 |-----------|-----------|---------|
 | `nthrd` | `configuracaoInicial.Avancado.nthrd` | Number of OpenMP threads |
-| `dtmax` | `configuracaoInicial.Avancado.dtmax` | Maximum time step (s) |
 | `CriterioMonofasico` | `configuracaoInicial.Avancado.CriterioMonofasico` | Threshold for single-phase treatment |
 | `taxaDespre` | `configuracaoInicial.Avancado.taxaDespre` | Depressurization rate threshold for adaptive model |
 | `modoDifus3D` | `configuracaoInicial.Avancado.modoDifus3D` | 3D thermal diffusion coupling mode |
 
+> **Note:** `dtmax` is **not** set here; it comes from `parse_tempo()`, which reads the `"tempo"` JSON section (called only in transient production mode — see below).
+
 ---
 
+<a id="geometry-parsing--cross-sections-ducts-and-cells"></a>
 ## Geometry Parsing — Cross-Sections, Ducts, and Cells
 
 The geometry is parsed in three stages: cross-sections → duct segments → individual cells.
@@ -400,7 +438,7 @@ Each production unit defines a section of the pipeline:
 - Cross-section reference `idCorte`
 - Number of cells `ncel` in this segment
 - Total length `comp`
-- Cell widths `dx[]` (uniform or variable)
+- Cell widths `dx[]` (uniform or variable); when `agrupaDiscre == 1`, discretization is specified as groups of cells rather than individual lengths
 - Initial condition profiles `var[][]` — temperature, pressure, holdup, water cut interpolated along the segment length
 
 Similarly, `parse_unidades_servico()` reads the gas-lift service line segments.
@@ -443,7 +481,7 @@ For each active fluid in the JSON array:
 
 ### `parse_tabela()` — PVT table grid
 
-Reads `"tabela"` → `tabent`:
+Reads `"tabela"` → `detTabelaEntalp tabent`:
 
 ```
 tabent.npont = number of interpolation points
@@ -461,6 +499,7 @@ Read the gas fluid (`flug`) and complementary (water) fluid (`flucol`) propertie
 
 ---
 
+<a id="accessory-parsing--sources-pumps-valves"></a>
 ## Accessory Parsing — Sources, Pumps, Valves
 
 Accessories are devices placed at specific cell positions. Each type is identified by an integer `acsr.tipo`:
@@ -485,7 +524,7 @@ Accessories are devices placed at specific cell positions. Each type is identifi
 | 16 | 2D porous inflow | (special IPR variant) | — |
 | 17 | Multi-stage BCS | `parse_multibcs()` | `detMultiBCS` |
 
-> **Note:** Type 13 is unused. Steam types (11, 12, 14) are implemented in [`SisProdVap.cpp`](../../src/SisProdVap.cpp).
+> **Note:** Type 13 is unused. Steam types (11, 12, 14) are implemented in [`SisProdVap.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/SisProdVap.cpp).
 
 Each `parse_*` method follows the same pattern:
 1. Count active items in the JSON array
@@ -532,21 +571,22 @@ Reads the downstream pressure BC:
 ### `parse_chokeSup()` — Surface choke
 
 Reads the surface choke (topside) parameters:
-- Throat area (`AreaGarg`), upstream pipe area (`AreaTub`)
+- Relative opening schedule `abertura[]` (fraction of pipe area)
 - Discharge coefficient (`cd`)
-- Choke type flag
+- Multiphase choke model selector (`modelo`; 0 = Sachdeva)
+- Optional Cv curve (`curvaCV`, `cvCurv[]`) and dynamic valve model (`curvaDinamic`)
 
 ### `parse_pig()` — PIG (Pipeline Inspection Gauge)
 
 Reads PIG parameters (the PIG is an accessory that travels inside the pipeline):
-- Launch/receive cell positions
-- Launch velocity
-- Mass and friction coefficients
+- Launch cell index (`lanca`) and receive cell index (`receb`)
+- Launch position along the line (`compL`) and receive position (`compR`), in metres from the well bottom
+- Launch time (`tempo`)
 
 ### Output configuration
 
 - `parse_perfil_producao()` / `parse_perfil_servico()`: which variables to write in spatial profiles, at what time intervals
-- `parse_trend_producao()` / `parse_trend_servico()`: which variables to track over time at specific cell positions
+- `parse_tendencia_producao()` / `parse_tendencia_servico()`: which variables to track over time at specific cell positions
 
 ---
 
@@ -557,17 +597,23 @@ The `SProd` constructor ties everything together:
 ```cpp
 SProd::SProd(string nomeArquivoEntrada, string nomeArquivoLog,
              tipoValidacaoJson_t validacaoJson, tipoSimulacao_t tipoSimulacao,
-             varGlob1D *Vvg1dSP, ...)
+             varGlob1D *Vvg1dSP = 0, int TD = -1, int vbloq = 0,
+             int temporario = 0, int reverso = 0,
+             double *compfonte = 0, int *posicfonte = 0,
+             int nfontes = 0, int redeperm = 1)
     : arq(nomeArquivoEntrada, nomeArquivoLog, validacaoJson, tipoSimulacao,
-          reverso, Vvg1dSP, redeperm),       // ← Ler constructed (full JSON parse)
-      flut(arq.ncelp, arq.nvarprofp + 6),    // profile output table
-      flutG(arq.ncelg, arq.nvarprofg + 7),   // gas-line profile table
-      matglobP(2 * arq.ncelp, 3, 2),          // production banded matrix
-      termolivreP(2 * arq.ncelp),             // production RHS vector
-      matglobG(3 * arq.ncelg, 5, 5),          // gas-line banded matrix
-      termolivreG(3 * arq.ncelg)              // gas-line RHS vector
+          reverso, Vvg1dSP, redeperm),           // ← Ler constructed (full JSON parse)
+      flut(arq.ncelp, arq.nvarprofp + 2 + 1 + 1 + 1 + 1),   // profile output table
+      flutG(arq.ncelg, arq.nvarprofg + 2 + 1 + 1 + 1 + 1 + 1), // gas-line profile table
+      matglobP(2 * arq.ncelp, 3, 2),              // production banded matrix
+      termolivreP(2 * arq.ncelp),                 // production RHS vector
+      matglobG(3 * arq.ncelg, 5, 5),              // gas-line banded matrix
+      termolivreG(3 * arq.ncelg)                  // gas-line RHS vector
 {
     // Zero ~80 member variables
+    // ...
+    if (TD >= 0)
+        arq.tabelaDinamica = TD;    // optional dynamic-table override
     // ...
     montasistema(compfonte, posicfonte, nfontes);  // ← build the mesh
 }
@@ -575,12 +621,23 @@ SProd::SProd(string nomeArquivoEntrada, string nomeArquivoLog,
 
 The initializer list is critical:
 1. **`arq`** (type `Ler`) is constructed first — this triggers the full JSON parse
-2. **`flut` / `flutG`** (profile tables) are sized from the parsed cell counts
+2. **`flut` / `flutG`** (profile tables) are sized from the parsed cell counts plus fixed extra columns
 3. **`matglobP` / `matglobG`** (banded matrices) are sized: 2 DOFs/cell for production (P, ṁ), 3 DOFs/cell for gas line (P, ṁ, T)
 4. **`termolivreP` / `termolivreG`** (RHS vectors) match the matrix sizes
 
+The additional constructor parameters after `Vvg1dSP`:
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `TD` | `-1` | Dynamic-table override index; applied to `arq.tabelaDinamica` when ≥ 0 |
+| `vbloq` | `0` | Network blocking mode — forces an inlet source at cell 1 |
+| `temporario` | `0` | Marks this section as a temporary network segment |
+| `reverso` | `0` | Reverses geometry direction (passed through to `Ler`) |
+| `compfonte` / `posicfonte` / `nfontes` | `0`/`0`/`0` | External gas sources from the network layer |
+| `redeperm` | `1` | Enables steady-state network mode |
+
 ---
 
+<a id="montasistema--building-the-simulation-mesh"></a>
 ## montasistema — Building the Simulation Mesh
 
 `SProd::montasistema()` transforms the parsed `arq` data into the simulation-ready `Cel[]` and `CelG[]` arrays:
@@ -690,14 +747,14 @@ Writes a row per time step for a monitored cell:
 
 ---
 
-## Sensitivity Analysis (ASens)
+## Parametric Analysis (APara)
 
-> Full documentation: [Sensitivity Analysis](sensitivity-analysis.md)
+> Full documentation: [Parametric Analysis](parametric-analysis.md)
 
-The `ASens` class ([`LerAS.h`](../../src/LerAS.h) / [`LerAS.cpp`](../../src/LerAS.cpp)) reads sensitivity analysis (Análise de Sensibilidade) JSON files. It allows automated parameter sweeps:
+The `APara` class ([`LerAP.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LerAP.h) / [`LerAP.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LerAP.cpp)) reads parametric analysis JSON files. It allows automated parameter sweeps:
 
 - Defines per-variable struct arrays (`detIPRAS`, `detBCSAS`, `detFONGASAS`, etc.) with `vector<>` storage for multiple values
-- A `casoVEC` struct holds indices for building the sensitivity case matrix (all combinations)
+- A `casoVEC` struct holds indices for building the parametric case matrix (all combinations)
 - Constructor signature: `ASens(varGlob1D*, string IMPFILE, int vncel, detcelp*, ProFlu*, detBCS*, detFONGAS*)`
 - Used by `Num4Main.cpp` to loop over parameter combinations and call the solver for each case
 
@@ -705,7 +762,7 @@ The `ASens` class ([`LerAS.h`](../../src/LerAS.h) / [`LerAS.cpp`](../../src/LerA
 
 ## Steam Injection Variant (LerVap)
 
-The `LerVap` class ([`LeituraVapor.h`](../../src/LeituraVapor.h) / [`LeituraVapor.cpp`](../../src/LeituraVapor.cpp)) mirrors `Ler` but for **steam injection** simulations. It has:
+The `LerVap` class ([`LeituraVapor.h`](https://github.com/petrobras/marlim3/blob/main/src/include/LeituraVapor.h) / [`LeituraVapor.cpp`](https://github.com/petrobras/marlim3/blob/main/src/core/LeituraVapor.cpp)) mirrors `Ler` but for **steam injection** simulations. It has:
 
 - Analogous structs: `materialVap`, `cortedutoVap`, `detalhaPVap`, `detBCSVap`, etc.
 - A simplified subset — no gas-lift service line, no multiphase slip, no compositional model
@@ -715,7 +772,7 @@ The `LerVap` class ([`LeituraVapor.h`](../../src/LeituraVapor.h) / [`LeituraVapo
 
 ## JSON Input Structure Reference
 
-The formal JSON schema for a single-tramo input file is maintained in [`docs/schema_tramo.json`](../schema_tramo.json). Refer to that file for the complete list of accepted keys, types, required fields, and allowed values.
+The formal JSON schema for a single-branch input file is maintained in [`docs/schemas/branch.pt.json`](../schemas/branch.pt.json). Refer to that file for the complete list of accepted keys, types, required fields, and allowed values.
 
 ---
 
@@ -733,7 +790,8 @@ The formal JSON schema for a single-tramo input file is maintained in [`docs/sch
 | `Ler::parse_materiais()` | Leitura.cpp | Material thermal properties → `mat[]` |
 | `Ler::parse_corte()` | Leitura.cpp | Cross-sections → `corte[]` |
 | `Ler::parse_fluidos_producao()` | Leitura.cpp | Fluid properties → `flup[]` (ProFlu) |
-| `Ler::parse_tabela()` | Leitura.cpp | PVT table grid → `tabent` |
+| `Ler::parse_tabela()` | Leitura.cpp | PVT table grid → `detTabelaEntalp tabent` |
+| `Ler::parse_tempo()` | Leitura.cpp | Time step + schedule → `dtmaxserie`, `tfinal` (transient production mode only) |
 | `Ler::parse_unidades_producao()` | Leitura.cpp | Production line segments → `unidadeP[]`, `duto[]` |
 | `Ler::parse_unidades_servico()` | Leitura.cpp | Gas service line segments |
 | `Ler::parse_ipr()` | Leitura.cpp | IPR definitions → `IPRS[]` |
@@ -742,7 +800,7 @@ The formal JSON schema for a single-tramo input file is maintained in [`docs/sch
 | `Ler::parse_valv()` | Leitura.cpp | Valve schedules → `detValv` |
 | `Ler::parse_master1()` | Leitura.cpp | Master valve schedule (wet christmas tree) |
 | `Ler::parse_separador()` | Leitura.cpp | Separator pressure schedule |
-| `Ler::parse_pig()` | Leitura.cpp | PIG parameters |
+| `Ler::parse_pig()` | Leitura.cpp | PIG parameters (`lanca`, `receb`, `compL`, `compR`, `tempo`) |
 | `Ler::geraduto()` | Leitura.cpp | `detduto[]` → `DadosGeo dutosMRT[]` |
 | `Ler::novatrans()` | Leitura.cpp | Build `TransCal` heat-transfer objects per cell |
 | `Ler::geracelp()` | Leitura.cpp | `detcelp[]` → `Cel celula[]` (production cells) |
@@ -755,4 +813,4 @@ The formal JSON schema for a single-tramo input file is maintained in [`docs/sch
 | `Ler::imprimeTrend()` | Leitura.cpp | Write time-series trends |
 | `SProd::SProd()` | SisProd.cpp | Constructor — builds `arq`, sizes matrices, calls `montasistema()` |
 | `SProd::montasistema()` | SisProd.cpp | Build mesh: `geraduto` → `geracelp` → attach accessories |
-| `ASens::ASens()` | LerAS.cpp | Sensitivity analysis reader |
+| `APara::APara()` | LerAP.cpp | Parametric analysis reader |

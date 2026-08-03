@@ -196,13 +196,13 @@ These keywords enable data-driven performance improvements:
 
 ---
 
-## 8. Sensitivity analysis
+## 8. Parametric analysis
 
-- `sensitivityAnalysis` · `AS`:
-  If `true`, runs steady-state sensitivity analysis using the `leituraAS.json` file.
+- `parametricAnalysis` · `AP`:
+  If `true`, runs steady-state parametric analysis using the `leituraAP.json` file.
 
-- `parallelizeSA` · `paralelizaAS`:
-  If `true`, parallelizes sensitivity analysis. Requires `sensitivityAnalysis: true` to be meaningful.
+- `parallelizePA` · `paralelizaAP`:
+  If `true`, parallelizes parametric analysis. Requires `parametricAnalysis: true` to be meaningful.
 
 ---
 

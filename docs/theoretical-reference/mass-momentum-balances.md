@@ -1,6 +1,6 @@
-# Transient drift-flux modeling
-
 `Marlim3` transient solver uses an one-dimensional drift-flux model to describe three-phase gas-liquid-liquid flow in petroleum production systems. The model accounts for temperature variation along the pipe and heat exchange with the surroundings, as well as the coupling with a gas injection line, whose mass flow rate through the gas-lift valve is determined by the pressure difference between the service and production lines.
+
+Before presenting the governing equations, it is useful to clarify the physical role of each balance in transient multiphase flow. In the class of problems targeted by `Marlim3`, not all information propagates through the system at the same speed. Pressure disturbances are associated with the fastest wave families and tend to adjust much more rapidly, whereas changes in void fraction and liquid distribution are predominantly linked to slower waves whose propagation speeds are of the order of the phase velocities. This separation of transport scales is one of the main reasons why `Marlim3` can treat holdup-related variables explicitly while reserving an implicit coupling for pressure and mixture mass flow rate. The derivation presente in this section should therefore be read as the basis for identifying which parts of the transient are fast, which are slow, and which simplifications are acceptable for the intended applications.
 
 The key modeling hypotheses are:
 
@@ -225,13 +225,14 @@ Where:
 
 - $B_a$ is the water formation volume factor;
 - $F_w^{std}$ is the water fraction in the produced liquid phase at standard conditions, which is generally equal to the BSW (Basic Sediment and Water) when sediments are not considered.
+
 It is worth noting that in the derivation of this expression, the possibility of gas dissolution in the water phase was not taken into account.
 
 ## Simplifications of the Governing Equations for Implementation
 
 The equations presented in the previous sections are not exactly those implemented in `Marlim3`. A set of simplifications has been introduced with the primary goal of improving computational efficiency, without compromising the ability to resolve the physical problems `Marlim3` was designed for, and while maintaining acceptable numerical robustness — a particularly critical requirement for multiphase flow simulators intended for petroleum industry applications.
 
-The starting point for defining which simplifications are appropriate is to identify the physical phenomena involved in the problems `Marlim3` is expected to solve. These are predominantly **long-duration transient processes**, governed by kinematic waves or low-propagation-speed dynamic waves. Phenomena associated with pressure wave propagation, abrupt pressure changes, and rapid temperature variations are of secondary importance in this context. This is precisely why a **semi-implicit scheme** was chosen: it is inherently better suited to wave propagation speeds on the order of the flow velocity. If the intent were to capture sonic wave propagation, an explicit scheme would be more appropriate due to its simplicity and efficiency for such fast phenomena. That said, there may be situations in which the analysis of high-speed dynamic wave transients becomes relevant; in those cases, it would be preferable to **switch the numerical approach** to a more suitable method for the duration of the fast transient — most likely a high-resolution explicit Riemann solver.
+The starting point for defining which simplifications are appropriate is to identify the physical phenomena involved in the problems `Marlim3` is expected to solve. These are predominantly **long-duration transient processes**, governed by kinematic waves or low-propagation-speed dynamic waves. In practical terms, this means that the most relevant transient information is usually carried by the slower families responsible for redistributing gas fraction, liquid holdup, and phase inventory along the pipe. Phenomena associated with pressure wave propagation, abrupt pressure changes, and rapid temperature variations are of secondary importance in this context. This is precisely why a **semi-implicit scheme** was chosen: it is inherently better suited to wave propagation speeds on the order of the flow velocity. If the intent were to capture sonic wave propagation, an explicit scheme would be more appropriate due to its simplicity and efficiency for such fast phenomena. That said, there may be situations in which the analysis of high-speed dynamic wave transients becomes relevant; in those cases, it would be preferable to **switch the numerical approach** to a more suitable method for the duration of the fast transient — most likely a high-resolution explicit Riemann solver.
 
 With this in mind, the simplifications should target physical contributions that have **limited impact on slow wave propagation phenomena** — namely, the role of fluid compressibility in the temporal evolution of the solution, rather than its spatial variation. The compressibility of the **gas phase** is non-negotiable and must be retained, since even in slow transients there are gas accumulation processes with strong dependence on gas compressibility. However, for a multiphase problem, the compressibility of the **liquid phase** contributes very little even in these slow phenomena, and it is therefore the first candidate for simplification.
 
@@ -260,7 +261,7 @@ $$
 \label{eq:gas_balance_rearran}
 $$
 
-For Equations \eqref{eq:prod_liquid_balance_rearran} and \eqref{eq:comp_liquid_balance1_rearran}, the liquid density derivative terms are moved to the right-hand side and treated as source terms within the convergence iteration of the numerical scheme, to be included whenever deemed necessary:
+For Equations \eqref{eq:prod_liquid_balance_rearran} and \eqref{eq:comp_liquid_balance_rearran}, the liquid density derivative terms are moved to the right-hand side and treated as source terms within the convergence iteration of the numerical scheme, to be included whenever deemed necessary:
 
 **Produced liquid**:
 
@@ -317,7 +318,7 @@ The left-hand side now retains only the **pressure-compressibility** term for th
 
 ### Momentum equation
 
-In the momentum equation, the dynamic (acceleration) terms are expected to be of minor relevance for the class of phenomena `Marlim3 is designed to simulate. Removing all acceleration terms from Equation \eqref{eq:mixture_momentum1} would render the model very similar to the well-known NPW scheme. Therefore, we will retain the $\partial \dot{M}_g / \partial t$ term in Equation \eqref{eq:mixture_momentum1}, yielding:
+In the momentum equation, the dynamic (acceleration) terms are expected to be of minor relevance for the class of phenomena `Marlim3` is designed to simulate. Removing all acceleration terms from Equation \eqref{eq:mixture_momentum1} would render the model very similar to the well-known NPW scheme. Therefore, we will retain the $\partial \dot{M}_g / \partial t$ term in Equation \eqref{eq:mixture_momentum1}, yielding:
 
 $$
 \frac{\partial \dot{M}_g}{\partial t} + A_t \frac{\partial p}{\partial x} = f_m \frac{\rho_m j^2}{2} S_w + \rho_m g A_t \sin(\theta)
@@ -414,4 +415,113 @@ $$\frac{\alpha}{\rho_g}\left.\frac{\partial \rho_g}{\partial p}\right|_T \frac{\
 
 With all flux divergence terms now expressed exclusively in terms of $\dot{M}_m$ through the drift-flux coefficients $T_1$ and $T_2$, this equation — together with the simplified momentum equation \eqref{eq:simplified_momentum} — forms the **closed system** to be solved implicitly for the pressure and mixture mass flow rate profiles at each time step.
 
-$$\psi=-A\frac{\partial\left(1-\alpha\right)\left(1-\beta\right)\left(1-F_w\right)\frac{R_s\gamma_g\rho_{\mathrm{ar}}^{\mathrm{std}}}{B_o}}{\partial t}-\frac{\partial\left(1-\beta\right)\left(1-F_w\right)\frac{R_s\gamma_g\rho_{\mathrm{ar}}^{\mathrm{std}}}{B_o}Q_l}{\partial x}$$
+## Property Tracking
+
+In addition to the conservation equations derived above, a set of partial differential equations is used to track fluid properties — namely, the gas-oil ratio (GOR), free gas density, dead oil API gravity, water cut (BSW), and pseudo-component fractions (the latter in the compositional case). These equations are solved in a **marching fashion**, always immediately after the holdup, $\beta$, pressure, temperature, and mixture mass flow rate profiles have been obtained for the current time step.
+
+Black-oil models are, in essence, phase-equilibrium models that treat petroleum as a **two-component system**: a light component (referred to as gas), which can exist either in the liquid phase — where it is called dissolved gas — or in the free gas phase; and a heavier component (referred to as dead oil), which always remains in the liquid phase. Consequently, the liquid hydrocarbon mixture always contains two components: dead oil plus dissolved gas.
+
+The solution gas-oil ratio, formation volume factors, gas specific gravity, gas pseudo-critical pressure and temperature, oil viscosity, emulsion viscosity corrections, and many other properties are computed from the same black-oil correlations implemented in `Marlim2`. When PVT tables are provided, all these properties are read directly, which makes fluid property determination simpler and faster. In general, variables such as the solubility ratio and the formation volume factors are not directly tabulated in PVT tables, but converting the tabulated properties is a straightforward operation.
+
+For black-oil models, inputs such as API gravity, water cut (BSW), GOR, gas specific gravity, and $\text{CO}_2$ mole fraction are required for property calculations, in addition to pressure and temperature. `Marlim3` mass sources carry fixed fluid characterization variables; however, along the production system these variables change as mass sources with different fluid properties mix throughout the well. In this work, emphasis is placed on the tracking of GOR, gas specific gravity, and $\text{CO}_2$ fraction, for which dedicated transport equations have been implemented.
+
+It is important to note that in all equations presented below, **instantaneous thermodynamic equilibrium** between components is assumed. This is a simplification — in reality, the kinetics of phase change should be considered, and the assumption becomes increasingly inaccurate when a high $\text{CO}_2$ fraction is present. Unfortunately, due to its complexity, this aspect has not yet been incorporated into the model.
+
+A key observation common to all property-tracking equations — including compositional tracking — is that they are **less critical** to the multiphase flow solution than the conservation equations for holdup, pressure, and mass flow rate, and are simultaneously strongly associated with **slow propagation phenomena**. They can therefore be treated entirely **explicitly** within a semi-implicit numerical scheme. In the numerical solution, the tracking equations are always resolved **last**, once the holdup, $\beta$, pressure, mass flow rate, and temperature profiles are already available for the current time level. This makes them the easiest equations to advance in time.
+
+### Light-component mass conservation
+
+The first property-tracking equation is the **mass conservation of the light component** in the black-oil model. It is formulated in terms of the volume of the light component at standard conditions, which is equivalent to tracking the mass of this component. This equation has direct value for black-oil property tracking, since the balance of the light and heavy fractions underpins the evaluation of all other fluid properties.
+
+$$
+\frac{\partial \text{Vol}_{\text{light}}}{\partial t}
++ \frac{\partial}{\partial x}\left[\frac{(1-\beta)(1-F_w) R_s Q_l}{B_o}\right]
++ \frac{\partial}{\partial x}\left[\frac{\dot{M}_g}{\rho_g^{\text{std}}}\right]
+= \frac{\Gamma_{lp}}{\Delta L} \frac{R_s}{\rho_{lp}^{\text{std}}}(1-F_w)
++ \frac{\Gamma_g}{\Delta L} \frac{1}{\rho_{gf}^{\text{std}}}
+\label{eq:light_component_conservation}
+$$
+
+where
+
+$$
+\text{Vol}_{\text{light}} = A\left[(1-\alpha)(1-\beta)(1-F_w)\frac{R_s}{B_o} + \alpha \frac{\rho_g}{\rho_g^{\text{std}}}\right]
+\label{eq:vol_light}
+$$
+
+### Free gas specific gravity tracking
+
+The transport equation for the **free gas specific gravity** $\gamma_{gl}$ is derived directly from Equation \eqref{eq:light_component_conservation}:
+
+$$
+\frac{\partial \gamma_{gl} \, \text{Vol}_{\text{light}}}{\partial t}
++ \frac{\partial}{\partial x}\left[\frac{\gamma_g (1-\beta)(1-F_w) R_s Q_l}{B_o} \right]
++ \frac{\partial \gamma_{gl} \dot{M}_g \rho_g^{\text{std}}}{\partial x}
+= \gamma_g \frac{\Gamma_{lp}}{\Delta L} \frac{R_s}{\rho_{lp}^{\text{std}}}(1-F_w)
++ \gamma_{gf} \frac{\Gamma_g}{\Delta L} \frac{1}{\rho_{gf}^{\text{std}}}
+\label{eq:gas_gravity_tracking}
+$$
+
+where $\gamma_{gl}$ is the free gas specific gravity.
+
+### CO$_2$ mole fraction tracking
+
+Analogously, the transport equation for the **$\text{CO}_2$ mole fraction** $y_{\text{CO}_2}$ is:
+
+$$
+\frac{\partial y_{\text{CO}_2} \, \text{Vol}_{\text{light}}}{\partial t}
++ \frac{\partial}{\partial x}\left[\frac{y_{\text{CO}_2}(1-\beta)(1-F_w)R_s  Q_l}{B_o}\right]
++ \frac{\partial y_{\text{CO}_2} \dot{M}_g \rho_g^{\text{std}}}{\partial x}
+= y_{\text{CO}_2} \frac{\Gamma_{lp}}{\Delta L} \frac{R_s}{\rho_{lp}^{\text{std}}}(1-F_w)
++ {y_{\text{CO}_2}}\big|_f \frac{\Gamma_g}{\Delta L} \frac{1}{\rho_{gf}^{\text{std}}}
+\label{eq:co2_tracking}
+$$
+
+### Instantaneous GOR
+
+The GOR is generally a model input corresponding to the ratio of gas volume to oil volume at standard conditions, measured under a specific separation process. This implies that GOR is not solely an intrinsic fluid property — it also depends on the separation conditions, and can vary significantly for fluids with high dissolved-gas content.
+
+In a transient simulation, an additional complication arises: the GOR obtained from a separation test, which characterizes the fluid produced by the reservoir, should not be held constant along the tubing. Transient phenomena such as production shut-in and fluid segregation can lead to fluid states along the production line with a GOR very different from the original reservoir fluid GOR. The concept of **instantaneous GOR** must therefore be adopted: the ratio of the light-component volume to the dead-oil volume at standard conditions at a given pipe location and time instant:
+
+$$
+\text{GOR} = \frac{\text{Vol}_{\text{light}} \, B_o}{(1-\alpha)(1-\beta)(1-F_w) A}
+\label{eq:gor_instantaneous}
+$$
+
+The GOR, as well as the gas specific gravity and mole fractions, must be **continuously re-evaluated** during a transient simulation that uses a black-oil property model.
+
+### API gravity tracking
+
+The API gravity tracking equation is:
+
+$$
+\frac{\partial \left(\text{API} \cdot \text{Vol}_{\text{dead oil}}\right)}{\partial t}
++ \frac{\partial}{\partial x}\left[\text{API} \cdot \frac{(1-\beta)(1-F_w) Q_l}{B_o}\right]
+= \text{API} \cdot \frac{\Gamma_{\text{dead oil}}}{\Delta L}
+\label{eq:api_tracking}
+$$
+
+### BSW tracking
+
+The **BSW (Basic Sediment and Water)** tracking equation is:
+
+$$
+\frac{\partial \left[\text{BSW} \left(\text{Vol}_{\text{dead oil}} + \text{Vol}_{\text{water}}\right)\right]}{\partial t}
++ \frac{\partial}{\partial x}\left[\text{BSW} \cdot \frac{(1-\beta) Q_l}{B_o}\right]
+= \text{BSW} \left(\frac{\Gamma_{\text{dead oil}}}{\Delta L} + \frac{\Gamma_{\text{water}}}{\Delta L}\right)
+\label{eq:bsw_tracking}
+$$
+
+where:
+
+$$
+\text{Vol}_{\text{dead oil}} = \frac{(1-\beta)(1-F_w) \alpha}{B_o}
+$$
+
+$$
+\text{Vol}_{\text{water}} = \frac{(1-\beta) F_w \alpha}{B_a}
+$$
+
+## References
+
+Oliveira, G.P.H., (1995), Estabilidade Operacional de Poços com Gas-Lift Contínuo, Doctoral Thesis, UNICAMP/FEM/DEP.

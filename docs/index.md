@@ -2,13 +2,13 @@
 	<img src="img/logo_marlim3.svg" alt="Marlim3 logo" width="320"/>
 </h1>
 
-Marlim3 is a transient 1D multiphase-flow simulator for production and injection systems in oil and gas applications.
+`Marlim3` is a one-dimensional multiphase flow simulator based on the drift-flux model, featuring steady-state and transient capabilities for oil and gas production and injection systems.
 
 ## Core Capabilities
 
 - **Production wells**
 - **Injection wells** (water or gas)
-- **Network**
+- **Integrated subsea arrangements**
 	- Production networks
 	- Injection networks
 	- Gas-lift loops
@@ -17,14 +17,14 @@ Marlim3 is a transient 1D multiphase-flow simulator for production and injection
 	- ESP pumps
 	- Volumetric pumps
 
-## Advanced modeling
+## Advanced Modeling
 
-- **Natural convection**: 2D solutions for natural convection analysis in confined spaces (single-phase or two-phase), such as pipeline cross-sections during production shutdowns
+- **Natural convection**: 2D solutions for natural convection analysis in confined spaces (single-phase or two-phase), such as for the cooldown in pipeline cross-sections during shutdowns
 - **Compositional fluid model library**
-- **Near wellbore model**: radial and 2D models to consider phenomena such as water coning
-- **Thermal diffusion**: 2D and 3D coupled to the 1D flow model
+- **Near wellbore model**: radial and 2D models to consider phenomena such as water coning (multiphase flow in a porous medium)
+- **Thermal diffusion**: 2D and 3D coupled to the 1D flow model (for partially and fully buried flowlines)
 
-## How You Can Use Marlim3
+## How You Can Use `Marlim3`
 
 - **Streamlit GUI** for interactive model setup and result inspection (available also as a standalone app in GitHub Releases section)
 - **Python package** for automation, integration, and parametric studies
@@ -37,9 +37,10 @@ For installation instructions and usage guidelines in any of these settings, ple
 | Section | Content |
 |---------|---------|
 | [Tutorials](tutorials/index.md) | Step-by-step notebook-based workflows for common simulation tasks |
-| [Single-Branch Model Reference](single-branch-model-reference/fluids.md) | Full field catalog for fluids, pipes, accessories, boundary conditions, and more |
-| [Theoretical Reference](theoretical-reference/mass-momentum-balances.md) | Mathematical foundations: mass/momentum/energy balances and discretization |
-| [Developer Guide](dev-guide/index.md) | Internal architecture, domain classes, solvers, and extension points |
+| [Single-Branch Model Reference](single-branch-model-reference/index.md) | Full field catalog for fluids, pipes, accessories, boundary conditions, and more |
+| [Theoretical Reference](theoretical-reference/index.md) | Mathematical foundations: mass/momentum/energy balances and discretization |
+| [Developer Guide](dev-guide/index.md) | Source code architecture, classes, solvers, and extension points |
+| [Schemas](schemas/index.md) | JSON schemas for model verification and auto-completing Marlim3 input files |
 
 ## Build This Documentation
 
